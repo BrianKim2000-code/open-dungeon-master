@@ -9,6 +9,7 @@
 
 import { writeFileSync } from "node:fs";
 import path from "node:path";
+import { THIS_TURN_HEADING } from "../../prompt-boundary.ts";
 import { parseJsonLine, runProgram, spawnProgram } from "../process.ts";
 import type { HarnessAdapter, HarnessModel, HarnessStartOptions } from "../types.ts";
 
@@ -70,11 +71,30 @@ export const CLAUDE_ENV = {
   ENABLE_CLAUDEAI_MCP_SERVERS: "false",
   CLAUDE_CODE_AUTO_CONNECT_IDE: "0",
   DISABLE_AUTOUPDATER: "1",
+  // The advisor is a server tool (a second model that reads the whole
+  // conversation), so it never shows in the init event's tool list that the
+  // lockdown checks; Claude Code attaches it unasked.
+  CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1",
+  // A program reading the table's story sends nothing beyond its model
+  // requests: no telemetry, error reports or feature-flag fetches.
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
   // Long engine calls (a parked roll, a slow handler) must not time out
   // inside the program before ODM answers them.
   MCP_TOOL_TIMEOUT: "600000",
   MCP_TIMEOUT: "30000",
 };
+
+// Claude Code (2.1.275+) caches the system prompt file in two blocks, split
+// at a line holding only this marker, which it then removes: the part above
+// it, the campaign's static rules, is read from the cache on later turns
+// instead of written again. Only the first occurrence is swapped: the DM
+// rules come before anything a player writes, so a player who types the
+// heading cannot move the split. Through Bedrock, Vertex or a gateway
+// Claude Code sends one block, as without the marker.
+// https://code.claude.com/docs/en/agent-sdk/modifying-system-prompts
+export function withCacheBoundary(system: string): string {
+  return system.replace(THIS_TURN_HEADING, "__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__");
+}
 
 function textOf(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -105,7 +125,7 @@ async function start(options: HarnessStartOptions) {
   // characters (Linux caps one argument at 128 K), so on argv the program
   // could not start at all.
   const systemPromptPath = path.join(options.cwd, "odm-system-prompt.md");
-  writeFileSync(systemPromptPath, options.system, { mode: 0o600 });
+  writeFileSync(systemPromptPath, withCacheBoundary(options.system), { mode: 0o600 });
   const args = claudeArgs({
     systemPromptPath,
     model: options.model,

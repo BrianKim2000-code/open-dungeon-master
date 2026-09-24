@@ -40,6 +40,7 @@ import { imageProducerReady } from "@/lib/image-generate";
 import { enqueueNarrationAudio } from "@/lib/tts";
 import { requestDmMessage } from "@/lib/dm/model";
 import { releaseHarnessConversation } from "@/lib/harness/bridge";
+import { toMcpTools } from "@/lib/harness/render";
 import { setDmStatus } from "@/lib/dm/status";
 import {
   extractToolCalls,
@@ -632,7 +633,7 @@ async function advance(context: TurnContext, turn: DmTurn) {
 // the moment start_encounter succeeds mid-turn, the combat tools must appear
 // on the very next call. Encounter tools ignore DM_LEAN_TOOLS; they are the
 // point of combat. Rest tools only exist outside combat.
-function dmTurnTools(
+export function dmTurnTools(
   campaign: Campaign,
   inEncounter: boolean,
   imageEnabled: boolean,
@@ -697,9 +698,14 @@ function dmTurnTools(
 // token, so the proxy errs slightly high). A fight can start mid-turn and
 // swap the set offered, so the larger of the two sets is charged: the prompt
 // is packed once, before the first call, and has to leave room for either.
+// An agent program is handed the whole catalogue once, in and out of a fight
+// alike (dmTurnToolCatalogue), so that is what it is charged.
 export function dmTurnToolTokens(campaign: Campaign): number {
   const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   const leanTools = process.env.DM_LEAN_TOOLS === "1";
+  if (campaign.settings.textProvider === "harness") {
+    return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, imageEnabled, leanTools))));
+  }
   return Math.max(
     estimateTokens(JSON.stringify(dmTurnTools(campaign, false, imageEnabled, leanTools))),
     estimateTokens(JSON.stringify(dmTurnTools(campaign, true, imageEnabled, leanTools))),
