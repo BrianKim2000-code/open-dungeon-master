@@ -1028,14 +1028,14 @@ export const requestRollTool = {
   function: {
     name: "request_roll",
     description:
-      "Ask the server to roll dice for an uncertain outcome. The server resolves the character's modifier from their sheet, rolls, and returns the real result for you to narrate. Call it once per uncertain action.",
+      "Ask the server to roll dice for an uncertain outcome; it resolves the character's modifier from their sheet.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         characterId: {
           type: "string",
-          description: "The exact characterId from GAME STATE whose roll this is.",
+          description: "The character whose roll this is: exact characterId from GAME STATE.",
         },
         kind: {
           type: "string",
@@ -1052,12 +1052,12 @@ export const requestRollTool = {
         skill: {
           type: "string",
           enum: SRD_SKILLS.map((skill) => skill.id),
-          description: "For skill_check: which skill.",
+          description: "skill_check only: which skill.",
         },
         ability: {
           type: "string",
           enum: ["str", "dex", "con", "int", "wis", "cha"],
-          description: "For saving_throw or ability_check: which ability.",
+          description: "saving_throw and ability_check only: which ability.",
         },
         difficulty: {
           type: "string",
@@ -1068,17 +1068,17 @@ export const requestRollTool = {
         dc: {
           type: "integer",
           description:
-            "An exact difficulty class, only when a specific number is called for. Usually pass difficulty instead. Omit for damage or initiative.",
+            "An exact DC, only when a specific number is called for.",
         },
         expression: {
           type: "string",
           description:
-            "For damage or custom rolls only: the dice expression, e.g. 2d6+3. Never an enemy's attack or damage (enemy_attack rolls those) and never a party character's attack (pc_attack).",
+            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's attack or damage (enemy_attack rolls those) and never a party character's attack (pc_attack).",
         },
         damageType: {
           type: "string",
           description:
-            "For kind=damage: the damage type (fire, slashing, poison...), so the target's resistances, immunities and vulnerabilities apply.",
+            "damage only: the damage type (fire, slashing, poison...), so the target's resistances, immunities and vulnerabilities apply.",
         },
         advantage: {
           type: "string",
@@ -1094,7 +1094,7 @@ export const requestRollTool = {
         targetEnemyId: {
           type: "string",
           description:
-            "For kind=damage during combat from someone with no sheet (an NPC ally who was never recruited): the exact enemyId from GAME STATE this damage strikes. The server applies the rolled total to that enemy automatically and reports its new state; never follow up with damage_enemy. A party character's damage goes through pc_attack or the spell tools, and the server refuses it here.",
+            "damage only, in combat, from someone with no sheet (an NPC ally who was never recruited): the enemy this damage strikes, exact enemyId from GAME STATE. The server applies the rolled total to that enemy automatically and reports its new state; never follow up with damage_enemy. A party character's damage goes through pc_attack or the spell tools, and the server refuses it here.",
         },
         reason: {
           type: "string",
@@ -1104,12 +1104,12 @@ export const requestRollTool = {
         against: {
           type: "string",
           description:
-            "For saving_throw: what the save resists: a condition (frightened, charmed, poisoned), a damage type, or 'spell' for a magical effect, with its caster's type when known ('spell cast by a fiend'). The server applies Brave, Fey Ancestry, Dwarven and Stout Resilience, Gnome Cunning, Countercharm and Holy Nimbus from it.",
+            "saving_throw only: what the save resists: a condition (frightened, charmed, poisoned), a damage type, or 'spell' for a magical effect, with its caster's type when known ('spell cast by a fiend'). The server applies Brave, Fey Ancestry, Dwarven and Stout Resilience, Gnome Cunning, Countercharm and Holy Nimbus from it.",
         },
         tool: {
           type: "string",
           description:
-            "For ability_check made with a tool: the tool's name as the sheet lists it (\"thieves' tools\" to pick a lock or disarm a trap, \"herbalism kit\"). A character proficient in it adds their proficiency bonus; the server does it, so never add it to an expression yourself.",
+            "ability_check with a tool only: the tool's name as the sheet lists it (\"thieves' tools\" to pick a lock or disarm a trap, \"herbalism kit\"). A character proficient in it adds their proficiency bonus; the server does it, so never add it to an expression yourself.",
         },
         useInspiration: {
           type: "boolean",
@@ -1149,7 +1149,7 @@ export const requestPlayerInputTool = {
   function: {
     name: "request_player_input",
     description:
-      "Give the floor to one or more specific characters and pause for their response. Call this whenever your reply ends with an NPC speaking to particular characters or a decision that belongs to particular players, not the whole party. Narrate first, then call this. Never answer for them instead.",
+      "Give the floor to one or more specific characters and pause for their response. Narrate first, then call it.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -1186,13 +1186,13 @@ export const movePartyTool = {
   function: {
     name: "move_party",
     description:
-      "Move the party to a location (creates it if new). Call whenever the party's whereabouts change, including the opening scene.",
+      "Move the party to a location (creates it if new). Call it whenever the party's whereabouts change, including the opening scene.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         ...waypointProperty,
-        name: { type: "string", description: "Short place name, e.g. The Rusted Flagon." },
+        name: { type: "string", description: "Short place name (The Rusted Flagon)." },
         layoutDescription: {
           type: "string",
           description:
@@ -1245,7 +1245,7 @@ export const completeBeatTool = {
   function: {
     name: "complete_beat",
     description:
-      "Report that the party just accomplished the [NOW] beat of the story arc, in the same reply that narrates it happening. Required whenever that beat is achieved; it is what ends a chapter. Not for working toward it: searching, shopping, travel, talk, and rest leave the beat open. A beat with open waypoints is refused until they are ticked (the server ticks them from your tools and from play). Once per reply.",
+      "Report that the party just accomplished the [NOW] beat of the story arc; resting leaves it open. A beat with open waypoints is refused until they are ticked (the server also ticks them from play). Once per reply.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -1268,7 +1268,7 @@ export const sendWhisperTool = {
   function: {
     name: "send_whisper",
     description:
-      "Send a private note that only the named characters' players can read. Use it whenever information belongs to some of the party but not all: a detail only one character notices, true orders for a mind-controlled ally, a private vision or temptation, a secret ally's signal. It is also how you answer a private message a player sent you (listed in GAME STATE when present). Anything a player types in the table chat is public. Never reveal or hint at private content in your shared narration.",
+      "Send a private note that only the named characters' players can read.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -1294,7 +1294,7 @@ export const recallStoryTool = {
   function: {
     name: "recall_story",
     description:
-      "Look up past chapters when players reference old events you no longer remember. Give a chapter number for that chapter's summary, or a query for the verbatim scenes that match it, nearest first, and the chapters they come from.",
+      "Look up past chapters: a chapter number returns that chapter's summary, a query the verbatim scenes that match it, nearest first, and the chapters they come from.",
     parameters: {
       type: "object",
       additionalProperties: false,
