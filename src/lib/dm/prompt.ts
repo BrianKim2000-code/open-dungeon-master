@@ -49,6 +49,7 @@ import { renderChapterLod } from "@/lib/dm/chapter-lod";
 import { buildPinnedMemoriesBlock } from "@/lib/dm/pin-logic";
 import {
   computeBudgets,
+  cutCoveredHistory,
   estimateTokens,
   fitHistory,
   usableTokens,
@@ -154,6 +155,9 @@ export type DmGameState = {
   enemySuggestions?: Array<{ slug: string; name: string; cr: number }>;
   recentRolls: StoredRoll[];
   storySummary: string;
+  // The newest message the chapter summaries or the rolling summary cover;
+  // the transcript leaves out what is older (cutCoveredHistory).
+  summaryCoveredSeq?: number | null;
   currentLocation?: {
     name: string;
     layoutDescription: string;
@@ -1342,8 +1346,9 @@ export function buildDmMessages(
       message.authorType === "player" && message.intent
         ? `\n${describeIntent(message.intent, message.characterId)}`
         : "";
-    return { message, id: message.id, text: `${content}${card}` };
+    return { message, id: message.id, seq: message.seq, text: `${content}${card}` };
   });
+  const uncovered = cutCoveredHistory(rendered, state.summaryCoveredSeq ?? null);
 
   const physicalDiceUsers = realDiceUserIds(state.campaign, state.members);
   const anyPhysicalDice = state.sheets.some((sheet) => physicalDiceUsers.has(sheet.userId));
@@ -1381,9 +1386,9 @@ export function buildDmMessages(
     0,
     Math.min(budgets.history, usableTokens(state.contextLimitTokens) - fixedTokens),
   );
-  const fitted = fitHistory(rendered, historyAllowance);
+  const fitted = fitHistory(uncovered.kept, historyAllowance);
   const keptIds = new Set(fitted.kept.map((entry) => entry.id));
-  const historyMessages: ChatMessage[] = rendered
+  const historyMessages: ChatMessage[] = uncovered.kept
     .filter((entry) => keptIds.has(entry.id))
     .map((entry) => ({
       role: entry.message.authorType === "dm" ? ("assistant" as const) : ("user" as const),
@@ -1453,9 +1458,14 @@ export function buildDmMessages(
         kind: "history" as BlockKind,
         tokens: fitted.tokens,
         included: true,
-        reason: fitted.dropped
-          ? `kept ${fitted.kept.length} of ${rendered.length} messages; ${fitted.dropped} older dropped over the history budget`
-          : `all ${fitted.kept.length} messages fit`,
+        reason:
+          uncovered.cut || fitted.dropped
+            ? [
+                `kept ${fitted.kept.length} of ${rendered.length} messages`,
+                ...(uncovered.cut ? [`${uncovered.cut} covered by the summaries left out`] : []),
+                ...(fitted.dropped ? [`${fitted.dropped} older dropped over the history budget`] : []),
+              ].join("; ")
+            : `all ${fitted.kept.length} messages fit`,
         position: systemParts.length + 1,
       },
       ...(state.directorBlock

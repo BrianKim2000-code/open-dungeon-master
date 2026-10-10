@@ -24,7 +24,7 @@ import {
 import { DM_HALTED_PREFIX } from "@/lib/campaign-types";
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
 import { normalizeEventKind, strictBooleanArgs } from "@/lib/dm/arg-coerce";
-import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
+import { insertCampaignMessage, listMessagesPage, listRecentMessages } from "@/lib/db/messages";
 import { narrationShown, takeNarrationSeq } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls } from "@/lib/db/rolls";
 import { listSheets } from "@/lib/db/sheets";
@@ -397,7 +397,7 @@ export async function startDmTurn(campaignId: string) {
   // Combat can never wedge on missing initiative: when nothing is pending,
   // stragglers are auto-rolled before the prompt is built.
   ensureInitiativeProgress(campaign);
-  const { summary } = getCampaignSummaryState(campaignId);
+  const { summary, coveredCount } = getCampaignSummaryState(campaignId);
   const currentLocation = getCurrentLocation(campaignId);
   // Variant rules always ride; house rules and world lore are retrieved
   // against the current moment (one local embed, keyword fallback).
@@ -461,6 +461,7 @@ export async function startDmTurn(campaignId: string) {
       ),
       recentRolls: listRecentRolls(campaignId, 5),
       storySummary: summary,
+      summaryCoveredSeq: coveredCount ? listMessagesPage(campaignId, coveredCount - 1, 1)[0].seq : null,
       currentLocation: currentLocation
         ? {
             name: currentLocation.name,
