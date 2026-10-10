@@ -26,7 +26,7 @@ import { genreClassIds } from "@/lib/classes";
 import { renderArcForPrompt } from "@/lib/dm/arc-logic";
 import { renderWorldArcsForPrompt } from "@/lib/dm/world-arc-logic";
 import { renderFactsForPrompt, type FactLike } from "@/lib/dm/fact-logic";
-import { THIS_TURN_HEADING } from "@/lib/prompt-boundary";
+import { splitAtMoment, THIS_MOMENT_HEADING, THIS_TURN_HEADING } from "@/lib/prompt-boundary";
 import { companionMode } from "@/lib/dm/companion-tools";
 import { breakDown, describeInstant, isDark, normalizeClock } from "@/lib/dm/calendar";
 import { describeWeather } from "@/lib/srd/weather";
@@ -69,8 +69,11 @@ import { languageDirective } from "@/lib/dm/table-language-logic";
 export { DM_SYSTEM, dmSystemText, ENCOUNTER_RULES, encounterRulesText } from "@/lib/dm/prompt-rules";
 
 // Full system prompt for a campaign: base rules plus genre flavor plus any
-// custom world text.
-export function buildDmSystem(campaign: Campaign): string {
+// custom world text. settingsRules are the optional rules that change only
+// with the campaign's settings (real dice, companions, relationships): they
+// join the rules above the turn heading, which the Claude Code harness caches
+// (src/lib/prompt-boundary.ts).
+export function buildDmSystem(campaign: Campaign, settingsRules: readonly string[]): string {
   const preset = presetFor(campaign.gameSettings);
   // The engine-boundary contract leads: one labelled statement of which facts
   // the runtime owns, which the numbered rules below it then apply tool by
@@ -99,6 +102,7 @@ export function buildDmSystem(campaign: Campaign): string {
   if (language) {
     parts.push(language);
   }
+  parts.push(...settingsRules);
   // Closes what changes only with the campaign's settings; the cover block's
   // countdown below changes every turn (src/lib/prompt-boundary.ts).
   parts.push(THIS_TURN_HEADING);
@@ -158,6 +162,12 @@ export type DmGameState = {
   // The newest message the chapter summaries or the rolling summary cover;
   // the transcript leaves out what is older (cutCoveredHistory).
   summaryCoveredSeq?: number | null;
+  // A chat model reads the game state's turn-to-turn part after the
+  // transcript, as one user message, so a server that caches the prompt's
+  // start (llama-server) reuses the history from one turn to the next. An
+  // agent program's rendering (src/lib/harness/render.ts) moves that part
+  // itself, so its prompt leaves it in the system message.
+  momentAfterHistory?: boolean;
   currentLocation?: {
     name: string;
     layoutDescription: string;
@@ -599,10 +609,16 @@ export function buildGameStateBlock(state: DmGameState): string {
     return `- ${who}: ${roll.kind.replaceAll("_", " ")}${roll.detail ? ` (${roll.detail.replaceAll("_", " ")})` : ""} rolled ${roll.total}${outcome}${roll.breakdown.crit === "nat20" ? " (natural 20)" : roll.breakdown.crit === "nat1" ? " (natural 1)" : ""}${secret}`;
   });
 
+  // Two parts, each section in exactly one: what a turn rarely changes stands
+  // first; what changes from one turn to the next (the fight, the dice, what
+  // retrieval and the newest lines brought up) follows THIS_MOMENT_HEADING
+  // (src/lib/prompt-boundary.ts). Sorted by how often each section changed
+  // between the turns of recorded sessions.
   const sections = [
     "=== GAME STATE (authoritative; never contradict) ===",
     `Campaign: ${campaign.title} | Difficulty: ${campaign.difficulty}${campaign.theme ? ` | Setting: ${campaign.theme}` : ""}`,
   ];
+  const moment: string[] = [];
   if (campaign.description) {
     sections.push(`Premise: ${campaign.description}`);
   }
@@ -656,7 +672,7 @@ export function buildGameStateBlock(state: DmGameState): string {
   // there is no scene, so an ordinary turn's prompt is unchanged.
   const sceneBlock = trackerPromptBlock(getSceneTracker(campaign.id));
   if (sceneBlock) {
-    sections.push(sceneBlock);
+    moment.push(sceneBlock);
   }
   // What the table is hearing, so set_ambience is called when the sound
   // should CHANGE rather than every turn. Omitted entirely when the sound
@@ -680,7 +696,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     return `- ${who}: ${describeEffect(effect)}`;
   });
   if (effectLines.length) {
-    sections.push(`Active effects (the server applies these to the rolls they name):\n${effectLines.join("\n")}`);
+    moment.push(`Active effects (the server applies these to the rolls they name):\n${effectLines.join("\n")}`);
   }
   const mounts = getMounts(campaign.id);
   const mountLines = Object.entries(mounts).map(([characterId, mount]) => {
@@ -691,7 +707,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     sections.push(`Mounted:\n${mountLines.join("\n")}`);
   }
   if (state.directorNotes?.length) {
-    sections.push(
+    moment.push(
       `DIRECTOR NOTES (the world moved; weave each into this turn's scene naturally, without announcing it as an event):\n${state.directorNotes
         .map((note) => `- ${note}`)
         .join("\n")}`,
@@ -785,7 +801,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     if (encounter.map) {
       lines.push(encounter.map);
     }
-    sections.push(lines.join("\n"));
+    moment.push(lines.join("\n"));
   } else if (state.enemySuggestions?.length) {
     sections.push(
       `Enemy picks for this world (use these with start_encounter when violence breaks out; any 5e monster slug also works, and you may rename any monster to fit the setting):\n${state.enemySuggestions
@@ -814,10 +830,10 @@ export function buildGameStateBlock(state: DmGameState): string {
     sections.push(state.variantRulesBlock);
   }
   if (state.houseRulesBlock) {
-    sections.push(state.houseRulesBlock);
+    moment.push(state.houseRulesBlock);
   }
   if (state.loreBlock) {
-    sections.push(state.loreBlock);
+    moment.push(state.loreBlock);
   }
   if (state.publicNotes?.length) {
     sections.push(
@@ -862,7 +878,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     );
   }
   if (state.shopsBlock) {
-    sections.push(state.shopsBlock);
+    moment.push(state.shopsBlock);
   }
   // The table's prepared fights, out of combat only (#154).
   if (state.preparedFightsBlock) {
@@ -872,7 +888,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     sections.push(state.factionsBlock);
   }
   if (state.worldBlock) {
-    sections.push(state.worldBlock);
+    moment.push(state.worldBlock);
   }
   if (state.relationships?.length) {
     sections.push(
@@ -889,7 +905,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     );
   }
   if (state.pendingPlayerWhispers?.length) {
-    sections.push(
+    moment.push(
       `Private messages from players, sent only to you; nobody else at the table saw them. Handle each one this turn per the private-message rules:\n${state.pendingPlayerWhispers
         .map((whisper) => `- [${whisper.from}, privately] ${whisper.content}`)
         .join("\n")}`,
@@ -898,6 +914,8 @@ export function buildGameStateBlock(state: DmGameState): string {
   // Only when somebody at the table fields several characters: the usual
   // one-each table pays no window for it (issue 120). Each line names the
   // player, the characters they control and the one they have selected.
+  // The selection changes whenever its player switches, so the section goes
+  // in the turn-to-turn part.
   const severalOwned = members
     .map((member) => ({
       member,
@@ -905,7 +923,7 @@ export function buildGameStateBlock(state: DmGameState): string {
     }))
     .filter((entry) => entry.owned.length > 1);
   if (severalOwned.length) {
-    sections.push(
+    moment.push(
       `Players running several characters (player: the characters they control; the one they have selected). Every one of these is a player character and never an AI companion of yours, selected or not. The acting character is the one a player message names (its characterId), and in a fight the one whose turn it is; never speak or act for a player's other characters, and never turn one into a follower. A sheet's bound pet stays a pet.\n${severalOwned
         .map(({ member, owned }) => {
           const selected = owned.find((sheet) => sheet.id === member.activeCharacterId) ?? owned[0];
@@ -938,7 +956,7 @@ export function buildGameStateBlock(state: DmGameState): string {
       .join("\n")}`,
   );
   if (rollLines.length) {
-    sections.push(`Recent rolls:\n${rollLines.join("\n")}`);
+    moment.push(`Recent rolls:\n${rollLines.join("\n")}`);
   }
   if (state.pins?.length) {
     // Unconditional and unfiltered by design: the table asked for these to be
@@ -980,8 +998,7 @@ export function buildGameStateBlock(state: DmGameState): string {
   if (hazards) {
     sections.push(hazards);
   }
-  sections.push("=== END GAME STATE ===");
-  return sections.join("\n\n");
+  return [...sections, THIS_MOMENT_HEADING, ...moment, "=== END GAME STATE ==="].join("\n\n");
 }
 
 function tableHazardLine(campaignId: string): string {
@@ -1352,21 +1369,22 @@ export function buildDmMessages(
 
   const physicalDiceUsers = realDiceUserIds(state.campaign, state.members);
   const anyPhysicalDice = state.sheets.some((sheet) => physicalDiceUsers.has(sheet.userId));
-  const systemParts = [buildDmSystem(state.campaign)];
+  const settingsRules: string[] = [];
   if (anyPhysicalDice) {
-    systemParts.push(REAL_DICE_RULE);
-  }
-  if (state.encounter) {
-    systemParts.push(encounterRulesText(tracksAmmunition(state.campaign)));
+    settingsRules.push(REAL_DICE_RULE);
   }
   const mode = companionMode(state.campaign);
   if (mode !== "off") {
-    systemParts.push(companionRules(state.campaign, mode));
+    settingsRules.push(companionRules(state.campaign, mode));
   }
   if (state.campaign.gameSettings.relationships !== "off") {
-    systemParts.push(
+    settingsRules.push(
       relationshipRules(state.campaign.gameSettings.romance !== "off"),
     );
+  }
+  const systemParts = [buildDmSystem(state.campaign, settingsRules)];
+  if (state.encounter) {
+    systemParts.push(encounterRulesText(tracksAmmunition(state.campaign)));
   }
   if (state.pendingPlayerWhispers?.length) {
     systemParts.push(PLAYER_WHISPER_RULES);
@@ -1495,9 +1513,12 @@ export function buildDmMessages(
     ],
   };
 
+  const system = systemParts.join("\n\n");
+  const { standing, moment } = state.momentAfterHistory ? splitAtMoment(system) : { standing: system, moment: "" };
   return [
-    { role: "system", content: systemParts.join("\n\n") },
+    { role: "system", content: standing },
     ...historyMessages,
+    ...(moment ? [{ role: "user" as const, content: moment }] : []),
     // Last, after the newest player line, so the model reads it closest to
     // the point of generation. Omitted entirely when nothing is armed.
     ...(state.directorBlock

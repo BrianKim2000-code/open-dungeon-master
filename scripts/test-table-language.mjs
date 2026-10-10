@@ -123,8 +123,8 @@ await test("English has no directive; every other language names itself", () => 
 await test("the DM's system prompt carries the directive, and an English one reads as before", async () => {
   const english = getCampaignById(await newCampaign({}));
   const italian = { ...english, gameSettings: { ...english.gameSettings, tableLanguage: "italian" } };
-  const englishPrompt = buildDmSystem(english);
-  const italianPrompt = buildDmSystem(italian);
+  const englishPrompt = buildDmSystem(english, []);
+  const italianPrompt = buildDmSystem(italian, []);
   assert.ok(!englishPrompt.includes("TABLE LANGUAGE"));
   // The directive is per campaign, so it joins the campaign-static rules, above the turn heading.
   assert.equal(

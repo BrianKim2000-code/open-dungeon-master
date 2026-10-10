@@ -13,6 +13,7 @@
 // mutates mechanical state; a detection at most costs one corrective model call.
 
 import type { NarrationClaim } from "./claims-logic.ts";
+import { THIS_MOMENT_HEADING } from "../prompt-boundary.ts";
 
 // ---------------------------------------------------------------------------
 // Part 1: the contract block
@@ -656,7 +657,14 @@ export function unrolledFigure(claims: readonly NarrationClaim[], conversation: 
   }
   const shown = new Set(outcomes.numbers);
   for (const message of conversation) {
-    if (message.role === "system" || typeof message.content !== "string") {
+    // The game state is no table note: its numbers (hit points, the last
+    // rolls) are not figures the turn dealt, wherever a chat model reads it
+    // (src/lib/dm/prompt.ts momentAfterHistory).
+    if (
+      message.role === "system" ||
+      typeof message.content !== "string" ||
+      message.content.startsWith(THIS_MOMENT_HEADING)
+    ) {
       continue;
     }
     for (const match of message.content.matchAll(BARE_NUMBER)) {

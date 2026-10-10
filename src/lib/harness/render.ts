@@ -8,6 +8,7 @@
 // program starts, and each later message (a correction, a nudge) is sent to
 // the same running program rather than re-sending everything.
 
+import { splitAtMoment } from "../prompt-boundary.ts";
 import type { McpToolDefinition } from "./types.ts";
 
 type RenderMessage = {
@@ -150,7 +151,10 @@ export function renderTurn(messages: readonly RenderMessage[]): RenderedTurn {
     }
   }
 
-  const system = [HARNESS_PREAMBLE, ...systemParts].join("\n\n");
+  // The game state's turn-to-turn part goes after the transcript, so the
+  // system prompt an agent program starts from (the rules and the standing
+  // state) reads the same from one turn to the next and its cache holds.
+  const { standing, moment } = splitAtMoment([HARNESS_PREAMBLE, ...systemParts].join("\n\n"));
   const transcript = lines.length
     ? `<table_transcript>\n${lines.join("\n\n")}\n</table_transcript>`
     : "The table has not spoken yet.";
@@ -160,7 +164,7 @@ export function renderTurn(messages: readonly RenderMessage[]): RenderedTurn {
     : lastUser
       ? "It is your turn as the Dungeon Master. Resolve what the players just did with your tools, then write the narration."
       : "It is your turn as the Dungeon Master. Open the scene: use your tools for anything mechanical, then write the narration.";
-  return { system, prompt: `${transcript}\n\n${instruction}` };
+  return { system: standing, prompt: [transcript, moment, instruction].filter(Boolean).join("\n\n") };
 }
 
 // Messages that arrived after a program started, rendered as the follow-up

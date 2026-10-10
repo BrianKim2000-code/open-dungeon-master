@@ -32,8 +32,8 @@ const { grokArgs, grokAgentProfile, GROK_ENV } = await import("../src/lib/harnes
 const { sniffImage, imageSize, acceptImage, MAX_HARNESS_IMAGE_BYTES } = await import("../src/lib/harness/images.ts");
 const { maskAccount } = await import("../src/lib/harness/status.ts");
 const { knownInstallDirs } = await import("../src/lib/harness/discover.ts");
-const { THIS_TURN_HEADING } = await import("../src/lib/prompt-boundary.ts");
-const { buildDmMessages, buildDmSystem, ENCOUNTER_RULES, PLAYER_WHISPER_RULES } = await import(
+const { THIS_TURN_HEADING, THIS_MOMENT_HEADING } = await import("../src/lib/prompt-boundary.ts");
+const { buildDmMessages, buildGameStateBlock, ENCOUNTER_RULES, PLAYER_WHISPER_RULES, REAL_DICE_RULE } = await import(
   "../src/lib/dm/prompt.ts"
 );
 
@@ -174,7 +174,10 @@ const CACHE_BOUNDARY = "__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__";
 // covering for a DM who stepped away, so everything that changes during play
 // is in the prompt. The player typed the heading into their message, which
 // must stay text.
-function fightingState(turnsLeft = 2) {
+// A table with every rule that can join the DM's prompt switched on: the
+// settings-only ones (physical dice, companions, relationships) and the ones
+// play switches (a fight, a pending whisper, a DM cover).
+function fightingState(turnsLeft = 2, settings = {}) {
   return {
     campaign: {
       id: "camp-1",
@@ -186,11 +189,54 @@ function fightingState(turnsLeft = 2) {
       questLog: [],
       dmOutline: "",
       storyArc: null,
-      gameSettings: { genre: "high_fantasy", customGenreText: "", aiStorySetup: true, dicePolicy: "digital_only", tableLanguage: "italian" },
+      gameSettings: {
+        genre: "high_fantasy",
+        customGenreText: "",
+        aiStorySetup: true,
+        dicePolicy: "real_allowed",
+        tableLanguage: "italian",
+        companions: "full",
+        relationships: "on",
+        romance: "on",
+        ...settings,
+      },
       dmCover: { turnsLeft, brief: "Keep them in the vault.", byUserId: "user-1", startedAt: "2026-01-01" },
     },
-    members: [{ userId: "user-1", username: "avery", role: "owner", ready: true, useRealDice: false, joinedAt: "2026-01-01" }],
-    sheets: [],
+    members: [{ userId: "user-1", username: "avery", role: "owner", ready: true, useRealDice: true, joinedAt: "2026-01-01" }],
+    sheets: [
+      {
+        id: "sheet-1",
+        campaignId: "camp-1",
+        userId: "user-1",
+        libraryCharacterId: null,
+        name: "Avery",
+        race: "human",
+        class: "fighter",
+        subclass: "",
+        background: "",
+        alignment: "",
+        level: 1,
+        xp: 0,
+        abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+        maxHp: 12,
+        currentHp: 12,
+        tempHp: 0,
+        ac: 16,
+        speed: 30,
+        hitDice: { die: "d10", total: 1, spent: 0 },
+        proficiencies: { saves: ["str", "con"], skills: [], languages: [], tools: [], armor: [], weapons: [] },
+        equipment: [],
+        gold: 15,
+        feats: [],
+        spellcasting: null,
+        conditions: [],
+        portrait: null,
+        notes: "",
+        backstory: "",
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      },
+    ],
     encounter: {
       round: 2,
       orderReady: true,
@@ -228,13 +274,120 @@ test("the DM prompt closes its campaign-static rules with the turn heading, befo
   }
   assert.ok(!above.includes("Quillfeather"), "no game state above the heading");
   assert.ok(above.includes("TABLE LANGUAGE: The players read Italian."), "the table language is campaign-static");
-  assert.equal(above, aboveHeading(buildDmMessages(fightingState(1), [])[0].content), "the cover countdown stays below");
-  assert.equal(`${above}${HEADING_PARAGRAPH}`, buildDmSystem(state.campaign).slice(0, above.length + HEADING_PARAGRAPH.length));
+  for (const part of [REAL_DICE_RULE, "Companions belong to THIS world", "Relationships (how people actually feel"]) {
+    assert.ok(above.includes(part) && !below.includes(part), `a settings-only rule sits above the heading: ${part}`);
+  }
   assert.deepEqual(
     state.contextTrace.blocks.map((block) => block.id),
-    ["safety", "rules-0", "rules-1", "rules-2", "rules-3", "rules-4", "game-state", "sky", "history"],
+    ["safety", "rules-0", "rules-1", "rules-2", "game-state", "sky", "history"],
     "the heading stays inside the first rules block instead of adding one",
   );
+});
+
+test("the game state stands first and its turn-to-turn part follows one heading, every section once", () => {
+  const state = {
+    ...fightingState(),
+    recentRolls: [
+      {
+        characterId: "sheet-1",
+        kind: "skill_check",
+        detail: "perception",
+        total: 14,
+        dc: 12,
+        success: true,
+        visibility: "public",
+        breakdown: { crit: null },
+      },
+    ],
+    loreBlock: "WORLD LORE: the bell was cast from a drowned saint's chains.",
+    houseRulesBlock: "HOUSE RULES: potions are a bonus action.",
+    directorNotes: ["The fog thickens over the jetty."],
+    worldBlock: "WORLD: Old Maren keeps a knife for every toll.",
+    shopsBlock: "SHOP: the chandler sells lamp oil.",
+  };
+  const block = buildGameStateBlock(state);
+  assert.equal(count(block, THIS_MOMENT_HEADING), 1);
+  const [standing, moment] = block.split(THIS_MOMENT_HEADING);
+  for (const part of ["=== GAME STATE (authoritative; never contradict) ===", "Campaign: The Quillfeather Heist", "Date and time:", "Party:\n"]) {
+    assert.equal(count(block, part), 1, part);
+    assert.ok(standing.includes(part), `standing: ${part}`);
+  }
+  for (const part of ["Active combat, round 2", "Recent rolls:", "WORLD LORE:", "HOUSE RULES:", "DIRECTOR NOTES", "WORLD: Old Maren", "SHOP:", "Private messages from players", "=== END GAME STATE ==="]) {
+    assert.equal(count(block, part), 1, part);
+    assert.ok(moment.includes(part), `moment: ${part}`);
+  }
+  assert.ok(buildDmMessages(state, [])[0].content.endsWith(`${moment.trimEnd()}`), "the moment runs to the end of the system prompt");
+});
+
+test("what play switches leaves the text above the heading as it was; a settings change moves it", () => {
+  const above = aboveHeading(buildDmMessages(fightingState(), [])[0].content);
+  const quiet = fightingState();
+  quiet.encounter = null;
+  quiet.pendingPlayerWhispers = [];
+  quiet.campaign.dmCover = null;
+  assert.equal(aboveHeading(buildDmMessages(quiet, [])[0].content), above, "fight, whisper and cover off");
+  assert.equal(aboveHeading(buildDmMessages(fightingState(1), [])[0].content), above, "the cover countdown moved");
+  for (const settings of [{ relationships: "off" }, { companions: "off" }, { romance: "off" }]) {
+    assert.notEqual(aboveHeading(buildDmMessages(fightingState(2, settings), [])[0].content), above, JSON.stringify(settings));
+  }
+  const digital = fightingState();
+  digital.members[0].useRealDice = false;
+  assert.ok(!aboveHeading(buildDmMessages(digital, [])[0].content).includes(REAL_DICE_RULE), "a player gave up physical dice");
+});
+
+test("a chat model reads the turn-to-turn state after the transcript, the same text in the same words", () => {
+  const history = [
+    { id: "m1", seq: 1, authorType: "player", characterId: "sheet-1", content: "I listen at the chapel door.", intent: null },
+    { id: "m2", seq: 2, authorType: "dm", characterId: null, content: "Chanting, low and wet.", intent: null },
+  ];
+  const plain = { ...fightingState(), contextLimitTokens: 131_072, directorBlock: "DIRECTOR: the bell rings once." };
+  const chat = { ...plain, momentAfterHistory: true };
+  const before = buildDmMessages(plain, history);
+  const after = buildDmMessages(chat, history);
+  assert.equal(after.length, before.length + 1, "one more message: the moment");
+  assert.ok(before[0].content.includes(THIS_MOMENT_HEADING));
+  assert.ok(!after[0].content.includes(THIS_MOMENT_HEADING), "no turn-to-turn state in the system message");
+  const moment = after[1 + history.length];
+  assert.equal(moment.role, "user");
+  assert.ok(moment.content.startsWith(THIS_MOMENT_HEADING) && moment.content.endsWith("=== END GAME STATE ==="));
+  assert.deepEqual(after.slice(1, 1 + history.length), before.slice(1, 1 + history.length), "the history is untouched");
+  assert.equal(after.at(-1).content, "DIRECTOR: the bell rings once.", "the director's note stays last");
+  assert.equal(`${after[0].content}\n\n${moment.content}`, before[0].content, "only the order changes, byte for byte");
+  assert.deepEqual(plain.contextTrace, chat.contextTrace, "the budget and the trace are the same");
+});
+
+// What Claude Code caches as its second system block: everything after the
+// boundary marker in the system prompt file it is given.
+function blockTwo(state, history = []) {
+  return withCacheBoundary(renderTurn(buildDmMessages(state, history)).system).split(CACHE_BOUNDARY)[1];
+}
+
+test("an agent program reads the turn-to-turn state after the transcript, and the rest stays put", () => {
+  const state = { ...fightingState(), recentRolls: [], loreBlock: "WORLD LORE: the bell was cast from chains." };
+  const history = [
+    { id: "m1", seq: 1, authorType: "player", characterId: "sheet-1", content: "I listen at the chapel door.", intent: null },
+    { id: "m2", seq: 2, authorType: "dm", characterId: null, content: "Chanting, low and wet.", intent: null },
+  ];
+  const { system, prompt } = renderTurn(buildDmMessages(state, history));
+  assert.ok(!system.includes(THIS_MOMENT_HEADING) && !system.includes("WORLD LORE:"), "no turn-to-turn state in the system prompt");
+  const block = blockTwo(state, history);
+  for (const part of [ENCOUNTER_RULES, PLAYER_WHISPER_RULES, "=== GAME STATE (authoritative; never contradict) ===", "Party:\n"]) {
+    assert.ok(block.includes(part), `block 2 holds ${part.slice(0, 40)}`);
+  }
+  const transcript = prompt.indexOf("</table_transcript>");
+  const moment = prompt.indexOf(THIS_MOMENT_HEADING);
+  const instruction = prompt.indexOf("It is your turn as the Dungeon Master");
+  assert.ok(transcript > 0 && transcript < moment && moment < instruction, "transcript, then the moment, then the instruction");
+  for (const part of ["Active combat, round 2", "WORLD LORE:", "Private messages from players", "=== END GAME STATE ==="]) {
+    assert.equal(count(prompt, part) + count(system, part), 1, part);
+  }
+  // Only the moment differs: new dice and new lore leave block 2 as it was.
+  const later = { ...state, loreBlock: "WORLD LORE: the chains came from a drowned saint." };
+  later.recentRolls = [{ characterId: "sheet-1", kind: "skill_check", detail: "perception", total: 9, dc: 12, success: false, visibility: "public", breakdown: { crit: null } }];
+  assert.equal(blockTwo(later, history), block, "fast state only");
+  const withFact = { ...state, facts: [{ category: "world", subject: "The bell", fact: "The bell rings at the new moon.", pinned: false, knownBy: [] }] };
+  assert.notEqual(blockTwo(withFact, history), block, "a fact added");
+  assert.notEqual(blockTwo({ ...state, encounter: null }, history), block, "the fight ended");
 });
 
 test("Claude Code gets its cache boundary where the heading was, once, and every other prompt untouched", () => {
@@ -248,14 +401,14 @@ test("Claude Code gets its cache boundary where the heading was, once, and every
 });
 
 test("a real DM turn reaches Claude Code with the boundary on its own line, directly after the DM rules", () => {
-  const { system } = renderTurn(buildDmMessages(fightingState(), []));
+  const { system, prompt } = renderTurn(buildDmMessages(fightingState(), []));
   const written = withCacheBoundary(system);
   assert.equal(count(written, CACHE_BOUNDARY), 1);
   assert.equal(written.split("\n").filter((line) => line === CACHE_BOUNDARY).length, 1, "a line holding only the marker");
   assert.equal(written.slice(0, written.indexOf(CACHE_BOUNDARY)), `${aboveHeading(system)}\n\n`);
   assert.ok(aboveHeading(system).startsWith(`${HARNESS_PREAMBLE}\n\n`));
   assert.equal(written.replace(CACHE_BOUNDARY, THIS_TURN_HEADING), system, "nothing else changes");
-  assert.ok(written.includes(`${THIS_TURN_HEADING} I pocket the key.`), "the player's copy stays text");
+  assert.ok(prompt.includes(`${THIS_TURN_HEADING} I pocket the key.`), "the player's copy stays text, in the moment");
 });
 
 test("Codex is started with its shell, web, apps and sub-agents off, read-only, never approving", () => {

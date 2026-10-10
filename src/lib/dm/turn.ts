@@ -462,6 +462,7 @@ export async function startDmTurn(campaignId: string) {
       recentRolls: listRecentRolls(campaignId, 5),
       storySummary: summary,
       summaryCoveredSeq: coveredCount ? listMessagesPage(campaignId, coveredCount - 1, 1)[0].seq : null,
+      momentAfterHistory: campaign.settings.textProvider !== "harness",
       currentLocation: currentLocation
         ? {
             name: currentLocation.name,
