@@ -105,7 +105,7 @@ const KIND_LINES: Record<ClaimKind, string> = {
   dies: '{"kind":"dies","target":REF,"quote":Q}: that creature dies, is killed, or is now a corpse.',
   downed: '{"kind":"downed","target":REF,"quote":Q}: that creature falls unconscious or drops.',
   amount: '{"kind":"amount","value":N,"of":"damage"|"healing","quote":Q}: a figure of damage or healing written in digits.',
-  cast: '{"kind":"cast","caster":PARTY_REF,"spell":"English spell name","quote":Q}: a party character casts a spell now.',
+  cast: '{"kind":"cast","caster":PARTY_REF,"spell":"English spell name","spent":SPENT_REF,"quote":Q}: a party character casts a spell now. spent only when what the narration describes is the effect of something that character spent this turn, as the message lists it under "Spent refs": a feature, an item or an action is no spell, whatever spell it looks like.',
   fight_start:
     '{"kind":"fight_start","quote":Q}: the narration announces to the players that a fight begins now: a call to roll initiative, or a stat-block style enemy roster (enemy counts with challenge ratings, a surprise field).',
   roll_ask:
@@ -158,6 +158,8 @@ export type ReaderRefs = {
   party: Array<{ ref: string; name: string }>;
   // Everyone who may speak a line, by ref, when speakers are asked.
   speakers: Array<{ ref: string; name: string; aliases?: readonly string[] }>;
+  // What the party spent this turn, by ref, with who spent it.
+  spent: Array<{ ref: string; name: string; by: string }>;
 };
 
 export function renderReaderInput(kinds: readonly ClaimKind[], refs: ReaderRefs, text: string): string {
@@ -166,7 +168,11 @@ export function renderReaderInput(kinds: readonly ClaimKind[], refs: ReaderRefs,
   const speakers = kinds.includes("speaker")
     ? `\nSpeaker refs: ${refs.speakers.map((entry) => `"${entry.ref}" for ${entry.name}${entry.aliases?.length ? ` (also: ${entry.aliases.join(", ")})` : ""}`).join(", ") || "(none)"}`
     : "";
-  return `Ask: ${kinds.join(", ")}\nCreature refs: ${creatures}\nParty refs: ${party}${speakers}\n\nNarration:\n<<<\n${text}\n>>>`;
+  const spent =
+    kinds.includes("cast") && refs.spent.length
+      ? `\nSpent refs: ${refs.spent.map((entry) => `"${entry.ref}" for ${entry.name} (${entry.by})`).join(", ")}`
+      : "";
+  return `Ask: ${kinds.join(", ")}\nCreature refs: ${creatures}\nParty refs: ${party}${spent}${speakers}\n\nNarration:\n<<<\n${text}\n>>>`;
 }
 
 // The reply, read once at the boundary: a claim that is not shaped as its
@@ -175,7 +181,15 @@ const quoteField = z.string().trim().min(1).max(600);
 const claimSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.enum(["hit", "miss", "dies", "downed"]), target: z.string().min(1).max(120), quote: quoteField }),
   z.object({ kind: z.literal("amount"), value: z.number().int().min(0).max(999), of: z.enum(["damage", "healing"]), quote: quoteField }),
-  z.object({ kind: z.literal("cast"), caster: z.string().min(1).max(120), spell: z.string().min(1).max(120), quote: quoteField }),
+  z.object({
+    kind: z.literal("cast"),
+    caster: z.string().min(1).max(120),
+    spell: z.string().min(1).max(120),
+    // A model writes null for a field it leaves empty: that is no spend,
+    // and the cast still counts.
+    spent: z.string().max(20).nullable().optional(),
+    quote: quoteField,
+  }),
   z.object({ kind: z.literal("fight_start"), quote: quoteField }),
   z.object({
     kind: z.literal("roll_ask"),
@@ -223,6 +237,8 @@ export type ClaimContext = {
   leveledSpells: ReadonlySet<string>;
   normalizeSpell: (name: string) => string;
   skills: ReadonlySet<string>;
+  // Spend ref to the party character id who spent it.
+  spent: ReadonlyMap<string, string>;
   // Speaker ref to who it is: the people the passage names (namedSpeakers).
   speakers: ReadonlyMap<string, Speaker>;
 };
@@ -289,7 +305,11 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
       case "cast": {
         const caster = context.party.get(claim.caster);
         const spell = context.normalizeSpell(claim.spell);
-        if (caster && context.leveledSpells.has(spell)) {
+        // Tied to what its own caster spent, the cast is that spend, which
+        // its tool already resolved. A tie to anyone else's spend, or to none
+        // the turn made, excuses nothing.
+        const paid = claim.spent ? context.spent.get(claim.spent) === claim.caster : false;
+        if (caster && context.leveledSpells.has(spell) && !paid) {
           kept.push({ kind: "cast", caster, spell, quote: claim.quote });
         }
         break;
