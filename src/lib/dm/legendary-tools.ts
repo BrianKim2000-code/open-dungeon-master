@@ -202,7 +202,7 @@ export function handleLegendaryAction(campaign: Campaign, rawArguments: string):
   const turnDue =
     Boolean(encounter.legendary.handoff?.enemyIds.includes(enemy.id)) && !enemyActedThisRound(encounter, enemy.id);
   if ((current && orderEntryId(current) === enemy.id) || turnDue) {
-    return { error: `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn with enemy_attack (or its ability or spell) first.` };
+    return { error: `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn first: enemy_attack, or cast_at_player / aoe_damage with casterEnemyId for an ability or spell.` };
   }
   // One option at the end of each other creature's turn: the turn is the
   // pointer's, and each enemy that acts since closes a turn of its own.

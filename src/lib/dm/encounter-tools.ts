@@ -121,7 +121,7 @@ import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
-import { enemiesDue, enemiesOwedTurn, holdForEnemies } from "@/lib/dm/enemies-due";
+import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies } from "@/lib/dm/enemies-due";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
 import { dmRoll } from "@/lib/dm/roll-card";
 
@@ -998,7 +998,7 @@ function handleEndTurn(
       names.length
         ? ` ${names.join(" and ")} act${names.length === 1 ? "s" : ""} before ${next?.name}${
             turn.actor === "ai"
-              ? ": take their turns now, one enemy_attack (or ability or spell) each, then narrate and stop. Any you leave act on their own after your narration."
+              ? `. ${ENEMY_TURNS_CUE}`
               : "."
           }`
         : ""
@@ -1381,11 +1381,16 @@ function advancePointer(
   }
   publishEncounter(campaign.id);
   // The pointer move is announced as a table note so the transcript can
-  // never silently disagree with the banner about whose turn it is.
+  // never silently disagree with the banner about whose turn it is. Held for
+  // the enemies due, the banner says they go first, and so does the note:
+  // it is the newest line the DM turn the pass wakes answers.
+  const landedOn = encounter.order[encounter.turnIndex];
+  const owed = enemiesOwedTurn(encounter).map((enemy) => enemy.displayName);
+  const owedNote = owed.length ? ` ${owed.join(" and ")} act${owed.length === 1 ? "s" : ""} before ${landedOn.name}.` : "";
   if (typeof options?.announce === "function") {
-    tableNote(campaign, options.announce(encounter.order[encounter.turnIndex]), "cue-battle");
+    tableNote(campaign, `${options.announce(landedOn)}${owedNote}`, "cue-battle");
   } else if (options?.announce !== false) {
-    announceTurn(campaign, encounter, lairOpen(encounter) ? LAIR_NOTE : "");
+    announceTurn(campaign, encounter, `${lairOpen(encounter) ? LAIR_NOTE : ""}${owedNote}`);
   }
   // Downed PCs the pointer skipped make their death saves now, once per
   // pass, announced to the table as system messages and dice cards.

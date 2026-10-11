@@ -63,6 +63,7 @@ import { rollerName } from "@/lib/roll-labels";
 import { tableHazards } from "@/lib/srd/table-hazards";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { languageDirective } from "@/lib/dm/table-language-logic";
+import { ENEMY_TURNS_CUE } from "@/lib/dm/enemies-due";
 
 export { DM_SYSTEM, dmSystemText, ENCOUNTER_RULES, encounterRulesText } from "@/lib/dm/prompt-rules";
 
@@ -123,6 +124,12 @@ export type DmEncounterState = {
   // The current combatant's name while their turn waits on their player
   // (src/lib/dm/player-word.ts characterAwaitingPlayer).
   awaitingPlayer: string | null;
+  // The enemies a pass made outside the model's turn left owed their turns
+  // before the current character's (src/lib/dm/enemies-due.ts); absent when
+  // none are. The pass's table note names them too
+  // (src/lib/dm/encounter-tools.ts advancePointer); this adds their ids and
+  // what to do.
+  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }> };
   enemies: Array<{
     enemyId: string;
     name: string;
@@ -729,7 +736,16 @@ export function buildGameStateBlock(state: DmGameState): string {
       if (encounter.movementLeft) {
         lines.push(`Movement left this turn: ${encounter.movementLeft}, counted by the board.`);
       }
-      if (encounter.awaitingPlayer) {
+      // Their turns come first: asking the current character's player now
+      // would leave them to the backstop.
+      if (encounter.enemiesDue) {
+        const { before, enemies } = encounter.enemiesDue;
+        const due = enemies.map((enemy) => `${enemy.name} [enemyId=${enemy.enemyId}]`);
+        const one = due.length === 1;
+        lines.push(
+          `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${encounter.round}, its action, bonus action and movement unspent.`,
+        );
+      } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
         lines.push(
           `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
