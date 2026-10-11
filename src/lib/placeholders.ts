@@ -620,6 +620,8 @@ export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
       ],
       "cyberpunk-gang": ["Street Ganger", "Gang Boss", "Chromed Bruiser", "Ganger", "Gang Bruiser", "Gang Shooter", "Gang Member"],
       "cyberpunk-synth": ["Face-Dancer", "Synth", "Synthetic Infiltrator", "Android", "Replicant", "Combat Synth"],
+      "cyberpunk-microdrone": ["Spy Microdrone", "Surveillance Microdrone", "Microdrone"],
+      "cyberpunk-walking-turret": ["Walking Turret", "Mobile Gun Turret", "Autonomous Walking Turret"],
     },
     // guard is the Corpo Rent-a-Cop; bandit and bandit-captain are the
     // Street Ganger and the Gang Boss.
@@ -629,6 +631,9 @@ export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
     names: {
       "steampunk-sky-pirate": ["Sky Pirate Captain", "Ironclad Marine", "Sky Pirate", "Air Pirate", "Boarding Marine"],
       "steampunk-surgeon": ["Rogue Surgeon", "Mad Doctor", "Galvanist", "Mad Scientist"],
+      "steampunk-clockwork-spider": ["Clockwork Spider", "Brass Spider", "Clockwork Arachnid"],
+      "steampunk-repair-swarm": ["Repair Swarm", "Clockwork Repair Swarm", "Repair Beetle Swarm"],
+      "steampunk-galvanic-corpse": ["Galvanic Revenant", "Galvanic Corpse", "Reanimated Laborer", "Reanimated Labourer"],
       // Humanlike bosses, which the boiler-machine boss plate got wrong.
       "steampunk-magnate": [
         "The Colonial Magnate", "The Perpetual Chairman", "The Royal Society's Shadow", "The Opium Magnate",

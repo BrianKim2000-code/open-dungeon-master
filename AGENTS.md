@@ -7,3 +7,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Token artwork
+
+Before creating or replacing monster, NPC or character artwork, read
+[docs/art/token-readability.md](docs/art/token-readability.md). These images also
+appear as small round tokens: review the shipped asset at 96px and 40px, preserve
+existing paths for repaints, and reuse approved art that already reads well.
