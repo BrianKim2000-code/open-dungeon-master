@@ -73,7 +73,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "take_action",
       description:
-        "A character takes one of the standard 5e actions that is not an attack or a spell: Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, or Escape (a grapple). The server spends the action from their turn, rolls any check or contest the action calls for through the same resolver as request_roll, and applies the real effect (Dodge makes attacks against them roll at disadvantage, a won Grapple applies grappled, a won Shove knocks prone or pushes, a won Escape ends the grapple). Grapple and Shove each take the place of ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. bonus=true takes Dash, Disengage or Hide as a bonus action with Cunning Action, Dash with Expeditious Retreat running (the casting's own Dash too, on the turn it is cast), Use an Object with a Thief's Fast Hands, and Dash, Disengage or Dodge with a monk's ki (Step of the Wind, Patient Defense, 1 ki spent by the server); with the action already spent, Cunning Action is used by itself. Ready needs the trigger and holds one readied attack for the character's reaction until their next turn; Ready with spell casts a one-action spell now (slot and concentration) and holds it: when the trigger comes, cast it with its own tool and it is released with the reaction, no second slot. Hide is for a fight; out of one, call request_roll for Stealth. An enemy escaping a character's grapple: action=escape with enemyId. Call this BEFORE narrating the action; narrate exactly what it reports.",
+        "Resolve a character taking one of the standard 5e actions that is not an attack or a spell: Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, or Escape (a grapple). The server spends the action from their turn, rolls any check or contest the action calls for through the same resolver as request_roll, and applies the real effect (Dodge makes attacks against them roll at disadvantage, a won Grapple applies grappled, a won Shove knocks prone or pushes, a won Escape ends the grapple). Grapple and Shove each take the place of ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready holds one readied attack for the character's reaction until their next turn. Hide is for a fight; out of one, use request_roll for Stealth. Call it BEFORE narrating the action; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -83,16 +83,16 @@ export const actionTools: ToolDef[] = [
           bonus: {
             type: "boolean",
             description:
-              "Take Dash, Disengage, Hide or Dodge as a bonus action through a feature that allows it (Cunning Action, Step of the Wind, Patient Defense, Expeditious Retreat's Dash), or Use an Object with a Thief's Fast Hands.",
+              "Take the action as a bonus action: Dash, Disengage or Hide with Cunning Action (with the action already spent, Cunning Action is used by itself); Dash with Expeditious Retreat running (the casting's own Dash too, on the turn it is cast); Use an Object with a Thief's Fast Hands; Dash, Disengage or Dodge with a monk's ki (Step of the Wind, Patient Defense; the server spends 1 ki).",
           },
           targetEnemyId: {
             type: "string",
             description:
-              "Grapple and Shove: the exact enemyId being seized or pushed. Help: the enemy the ally's attack is helped against (within 5 ft of the helper); omit to help an ability check.",
+              "Grapple and Shove: the enemy seized or pushed. Help: the enemy the ally's attack is helped against (within 5 ft of the helper); omit to help an ability check. Exact enemyId from GAME STATE.",
           },
           targetCharacterId: {
             type: "string",
-            description: "Help: the exact characterId of the ally being helped.",
+            description: "Help only: the ally being helped, exact characterId from GAME STATE.",
           },
           shove: {
             type: "string",
@@ -101,7 +101,7 @@ export const actionTools: ToolDef[] = [
           },
           trigger: {
             type: "string",
-            description: "Ready only: what the readied attack waits for, e.g. 'when the ogre comes through the door'.",
+            description: "Ready only, and needed for it: what the readied attack waits for (when the ogre comes through the door).",
           },
           skill: {
             type: "string",
@@ -110,11 +110,11 @@ export const actionTools: ToolDef[] = [
           },
           item: {
             type: "string",
-            description: "Use an Object only: the object, when it is one they carry. Consumables go through use_item instead.",
+            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item.",
           },
           enemyId: {
             type: "string",
-            description: "Escape only, for an ENEMY escaping a character's grapple: the exact enemyId. Omit characterId then.",
+            description: "Escape only, for an ENEMY escaping a character's grapple: the enemy, exact enemyId from GAME STATE. Omit characterId then.",
           },
           spell: {
             type: "string",
@@ -125,7 +125,7 @@ export const actionTools: ToolDef[] = [
             type: "integer",
             minimum: 1,
             maximum: 9,
-            description: "Ready with a spell: the slot level to cast it from. Omit for the spell's own level.",
+            description: "Ready with a spell only: the slot level to cast it from. Omit for the spell's own level.",
           },
           reason: { type: "string", description: "Short in-fiction cause." },
         },
@@ -138,7 +138,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "use_reaction",
       description:
-        "A character spends their reaction on a feature or spell that answers someone else's turn, and the server applies it. The engine keeps the last attack against each character, so a reaction to a hit that already landed re-resolves that attack and gives back what the rules give back: Shield (+5 AC, the hit becomes a miss if the new AC beats the roll), Uncanny Dodge (the hit's damage is halved), Deflect Missiles (a ranged weapon hit loses 1d10 + DEX + monk level), Cutting Words (a Bardic Inspiration die off the attacker's roll or damage; targetCharacterId is the one attacked), Protection (a shield-bearer with the style imposes disadvantage on an attack against an adjacent ally, re-rolled against the attack that just came), Slow Fall and Feather Fall (after a fall), Hellish Rebuke (targetEnemyId: the attacker's DEX save and fire damage), Counterspell (targetEnemyId and spell, called BEFORE the enemy's spell is resolved: a countered spell spends the enemy's action and is not cast). Subclass reactions resolve the same way: Spectral Defense, Spirit Shield, Protective Field, Guardian Coil, Song of Defense (level: the slot) and Body of the Astral Self take damage off the hit; Arcane Deflection and Combat Inspiration raise AC against it; Shadowy Dodge rerolls it at disadvantage; Dampen Elements resists it; Divine Allegiance, Aura of the Guardian and Protective Bond move it onto the protector (targetCharacterId); Storm's Fury, Halo of Spores, Vigilant Rebuke and Ascendant Aspect strike back (targetEnemyId); Opportunist, Hold the Line, Soul of Vengeance, Slayer's Counter, Voice of Authority and Inspiring Surge make one weapon attack (targetEnemyId); Tipsy Sway (1 ki) turns a melee attack that just missed the monk onto another creature within 5 feet (targetEnemyId); Skirmisher (when an enemy stands within 5 feet) and Relentless Avenger (right after the paladin's opportunity attack hit, spending no second reaction) move the character up to half their speed to the square x, y, drawing no opportunity attacks; Retaliation (a Berserker damaged by a creature within 5 feet) makes one melee weapon attack at it; Stand Against the Tide (a Hunter a melee attack just missed) makes the attacker repeat it against another creature (targetEnemyId), rolled by the server. Only the holder of a feature uses it, and a refusal spends nothing. Opportunity attacks are not taken here: on a battle map the server rolls them itself; off the map pass targetEnemyId and the server resolves the swing. One reaction per round, refreshed at the start of their turn.",
+        "Resolve a character spending their reaction on a feature or spell that answers someone else's turn; the server applies it. The server keeps the last attack against each character, so a reaction to a hit that already landed re-resolves that attack and gives back what the rules give back: Shield (+5 AC; the hit becomes a miss if the new AC beats the roll), Uncanny Dodge (the hit's damage is halved), Deflect Missiles (a ranged weapon hit loses 1d10 + DEX + monk level), Cutting Words (a Bardic Inspiration die off the attacker's roll or damage), Protection (a shield-bearer with the style imposes disadvantage on an attack against an adjacent ally, re-rolled against the attack that just came), Slow Fall and Feather Fall (after a fall), Hellish Rebuke (the attacker's DEX save and fire damage), Counterspell (call it BEFORE the enemy's spell is resolved: a countered spell spends the enemy's action and is not cast). Subclass reactions resolve the same way (feature). Only the holder of a feature uses it, and a refusal spends nothing. Opportunity attacks are not taken here: on a battle map the server rolls them itself; off the map it resolves the swing. One reaction per round, refreshed at the start of their turn.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -146,17 +146,18 @@ export const actionTools: ToolDef[] = [
           characterId: { type: "string", description: "Exact characterId from GAME STATE." },
           feature: {
             type: "string",
-            description: "What they react with, e.g. 'Shield', 'Uncanny Dodge', 'Cutting Words'.",
+            description:
+              "What they react with, by name (Shield, Uncanny Dodge, Cutting Words). Subclass reactions: Spectral Defense, Spirit Shield, Protective Field, Guardian Coil, Song of Defense and Body of the Astral Self take damage off the hit; Arcane Deflection and Combat Inspiration raise AC against it; Shadowy Dodge rerolls it at disadvantage; Dampen Elements resists it; Divine Allegiance, Aura of the Guardian and Protective Bond move it onto the protector (targetCharacterId); Storm's Fury, Halo of Spores, Vigilant Rebuke and Ascendant Aspect strike back (targetEnemyId); Opportunist, Hold the Line, Soul of Vengeance, Slayer's Counter, Voice of Authority and Inspiring Surge make one weapon attack (targetEnemyId); Tipsy Sway (1 ki) turns a melee attack that just missed the monk onto another creature within 5 feet (targetEnemyId); Skirmisher (when an enemy stands within 5 feet) and Relentless Avenger (right after the paladin's opportunity attack hit, spending no second reaction) move the character up to half their speed, drawing no opportunity attacks; Retaliation (a Berserker damaged by a creature within 5 feet) makes one melee weapon attack at it; Stand Against the Tide (a Hunter a melee attack just missed) makes the attacker repeat it against another creature (targetEnemyId), rolled by the server.",
           },
           targetCharacterId: {
             type: "string",
             description:
-              "The ally the reaction is for: Protection's covered ally, Cutting Words' attacked ally, Feather Fall's falling ally.",
+              "The ally the reaction is for: exact characterId from GAME STATE. Protection's covered ally, Cutting Words' attacked ally, Feather Fall's falling ally.",
           },
           targetEnemyId: {
             type: "string",
             description:
-              "The enemy the reaction answers: Hellish Rebuke's attacker, Counterspell's caster, Deflect Missiles' shooter to throw the caught missile back at (1 ki), an opportunity attack's target off the map.",
+              "The enemy the reaction answers: exact enemyId from GAME STATE. Hellish Rebuke's attacker, Counterspell's caster, Deflect Missiles' shooter to throw the caught missile back at (1 ki), an opportunity attack's target off the map.",
           },
           spell: {
             type: "string",
@@ -166,10 +167,10 @@ export const actionTools: ToolDef[] = [
             type: "integer",
             minimum: 1,
             maximum: 9,
-            description: "A reaction SPELL (Shield, Counterspell, Hellish Rebuke) cast from a higher slot. Omit for the spell's own level; the server spends the slot.",
+            description: "A reaction SPELL (Shield, Counterspell, Hellish Rebuke) cast from a higher slot, or Song of Defense's slot. Omit for the spell's own level; the server spends the slot.",
           },
-          x: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger: the column of the square the character moves to." },
-          y: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger: the row of the square the character moves to." },
+          x: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger only: the column of the square the character moves to." },
+          y: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger only: the row of the square the character moves to." },
           reason: { type: "string", description: "Short in-fiction cause." },
         },
         required: ["characterId", "feature"],

@@ -24,7 +24,7 @@ import {
 import { DM_HALTED_PREFIX } from "@/lib/campaign-types";
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
 import { normalizeEventKind, strictBooleanArgs } from "@/lib/dm/arg-coerce";
-import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
+import { insertCampaignMessage, listMessagesPage, listRecentMessages } from "@/lib/db/messages";
 import { narrationShown, takeNarrationSeq } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls } from "@/lib/db/rolls";
 import { listSheets } from "@/lib/db/sheets";
@@ -40,6 +40,7 @@ import { imageProducerReady } from "@/lib/image-generate";
 import { enqueueNarrationAudio } from "@/lib/tts";
 import { requestDmMessage } from "@/lib/dm/model";
 import { releaseHarnessConversation } from "@/lib/harness/bridge";
+import { toMcpTools } from "@/lib/harness/render";
 import { setDmStatus } from "@/lib/dm/status";
 import {
   extractToolCalls,
@@ -405,7 +406,7 @@ export async function startDmTurn(campaignId: string) {
   // Combat can never wedge on missing initiative: when nothing is pending,
   // stragglers are auto-rolled before the prompt is built.
   ensureInitiativeProgress(campaign);
-  const { summary } = getCampaignSummaryState(campaignId);
+  const { summary, coveredCount } = getCampaignSummaryState(campaignId);
   const currentLocation = getCurrentLocation(campaignId);
   // Variant rules always ride; house rules and world lore are retrieved
   // against the current moment (one local embed, keyword fallback).
@@ -469,6 +470,8 @@ export async function startDmTurn(campaignId: string) {
       ),
       recentRolls: listRecentRolls(campaignId, 5),
       storySummary: summary,
+      summaryCoveredSeq: coveredCount ? listMessagesPage(campaignId, coveredCount - 1, 1)[0].seq : null,
+      momentAfterHistory: campaign.settings.textProvider !== "harness",
       currentLocation: currentLocation
         ? {
             name: currentLocation.name,
@@ -641,7 +644,7 @@ async function advance(context: TurnContext, turn: DmTurn) {
 // the moment start_encounter succeeds mid-turn, the combat tools must appear
 // on the very next call. Encounter tools ignore DM_LEAN_TOOLS; they are the
 // point of combat. Rest tools only exist outside combat.
-function dmTurnTools(
+export function dmTurnTools(
   campaign: Campaign,
   inEncounter: boolean,
   imageEnabled: boolean,
@@ -706,9 +709,14 @@ function dmTurnTools(
 // token, so the proxy errs slightly high). A fight can start mid-turn and
 // swap the set offered, so the larger of the two sets is charged: the prompt
 // is packed once, before the first call, and has to leave room for either.
+// An agent program is handed the whole catalogue once, in and out of a fight
+// alike (dmTurnToolCatalogue), so that is what it is charged.
 export function dmTurnToolTokens(campaign: Campaign): number {
   const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   const leanTools = process.env.DM_LEAN_TOOLS === "1";
+  if (campaign.settings.textProvider === "harness") {
+    return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, imageEnabled, leanTools))));
+  }
   return Math.max(
     estimateTokens(JSON.stringify(dmTurnTools(campaign, false, imageEnabled, leanTools))),
     estimateTokens(JSON.stringify(dmTurnTools(campaign, true, imageEnabled, leanTools))),

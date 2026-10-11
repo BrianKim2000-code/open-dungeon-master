@@ -56,7 +56,7 @@ export const hazardTools: ToolDef[] = [
     function: {
       name: "apply_hazard",
       description:
-        "Resolve a trap, a fall, or an environmental hazard against one or more characters with real 5e numbers. The server computes the damage and (for traps) the save DC from the book and applies the save and damage itself, so you never invent them. Use this instead of damage_enemy for any harm from the environment. Call it BEFORE narrating the result and narrate exactly what it reports. Types: 'falling' (pass feet; 1d6 per 10 ft, no save), 'trap' (pass severity; a Dexterity save and damage scaled to each victim's level), 'generic' (pass your own damage dice, saveAbility, and dc for a bespoke hazard like a gout of flame), 'suffocation'/'drowning' (a character out of air; pass roundsWithoutAir and the server derives from their Constitution how long they last before dropping to 0 HP), or 'extreme_cold'/'extreme_heat' (pass hours: one CON save per hour of exposure, a failure a level of exhaustion, applied automatically; cold weather gear or the matching resistance shrugs it off).",
+        "Resolve a trap, a fall, or an environmental hazard against one or more characters with real 5e numbers. The server computes the damage and (for traps) the save DC from the book and applies the save and damage itself, so you never invent them. Use this instead of damage_enemy for any harm from the environment. Call it BEFORE narrating the result; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -72,45 +72,46 @@ export const hazardTools: ToolDef[] = [
               "extreme_cold",
               "extreme_heat",
             ],
-            description: "Which hazard math to use.",
+            description:
+              "Which hazard math to use: 'falling' (feet), 'trap' (severity, or trap by name), 'generic' (a bespoke hazard like a gout of flame, with your own damage, saveAbility and dc), 'suffocation'/'drowning' (a character out of air: roundsWithoutAir), 'extreme_cold'/'extreme_heat' (hours).",
           },
           hours: {
             type: "integer",
             minimum: 1,
             maximum: 48,
             description:
-              "extreme_cold/extreme_heat only: hours of exposure. The server rolls one Constitution save for each hour (cold DC 10; heat DC 5 rising by 1 an hour, at disadvantage in medium or heavy armor) and applies a level of exhaustion for each failure.",
+              "extreme_cold/extreme_heat only: hours of exposure. The server rolls one Constitution save for each hour (cold DC 10; heat DC 5 rising by 1 an hour, at disadvantage in medium or heavy armor) and applies a level of exhaustion for each failure. Cold weather gear or the matching resistance shrugs it off.",
           },
           roundsWithoutAir: {
             type: "integer",
             description:
-              "suffocation/drowning only: how many rounds the character has already gone without air. 0 means they have just run out. The server compares this to how long their Constitution lets them last.",
+              "suffocation/drowning only: how many rounds the character has already gone without air; 0 means they have just run out. The server derives from their Constitution how long they last before dropping to 0 HP.",
           },
           characterIds: {
             type: "array",
             items: { type: "string" },
             minItems: 1,
-            description: "Exact characterIds caught by the hazard.",
+            description: "Exact characterIds from GAME STATE caught by the hazard.",
           },
           feet: {
             type: "integer",
-            description: "falling only: how far the character falls, in feet.",
+            description: "falling only: how far the character falls, in feet (1d6 per 10 ft, no save).",
           },
           severity: {
             type: "string",
             enum: [...SEVERITY_ENUM],
             description:
-              "trap only: how dangerous the trap is. setback is a nuisance, dangerous can drop a careless character, deadly can kill.",
+              "trap only: how dangerous the trap is, for a Dexterity save and damage scaled to each victim's level: setback is a nuisance, dangerous can drop a careless character, deadly can kill.",
           },
           saveAbility: {
             type: "string",
             enum: ["str", "dex", "con", "int", "wis", "cha"],
-            description: "trap/generic: the save the hazard forces. Defaults to dex.",
+            description: "trap and generic only: the save the hazard forces. Default 'dex'.",
           },
           dc: { type: "integer", description: "generic only: the save DC." },
           damage: {
             type: "string",
-            description: "generic only: the damage dice, e.g. 3d6.",
+            description: "generic only: the damage dice ('3d6').",
           },
           damageType: {
             type: "string",
@@ -118,12 +119,12 @@ export const hazardTools: ToolDef[] = [
           },
           halfOnSave: {
             type: "boolean",
-            description: "Whether a successful save halves the damage. Defaults to true for traps.",
+            description: "Whether a successful save halves the damage. Default true for traps.",
           },
           condition: {
             type: "string",
             description:
-              "Optional condition a failed save also inflicts (e.g. poisoned, restrained).",
+              "A condition a failed save also inflicts (poisoned, restrained).",
           },
           trap: {
             type: "string",
