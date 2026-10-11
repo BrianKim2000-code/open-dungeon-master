@@ -1,5 +1,9 @@
+import { allocateSeq } from "@/lib/db/campaigns";
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { proposalExpired, type ProposalStatus } from "@/lib/dm/proposal-logic";
+import { insertCampaignMessage } from "@/lib/db/messages";
+import { getSheetById } from "@/lib/db/sheets";
+import { OFFER_NOTE_PREFIX, proposalExpired, resolutionNote, type ProposalStatus } from "@/lib/dm/proposal-logic";
+import { publishWithSeq } from "@/lib/events";
 
 // DM-proposed inventory/gold changes awaiting the owning player's answer
 // (game setting inventoryApprovals). args_json keeps the original tool
@@ -126,11 +130,29 @@ export function listOpenItemProposals(campaignId: string): ItemProposal[] {
   for (const row of rows) {
     if (proposalExpired(row.created_at, now)) {
       expire.run(nowIso(), row.id);
+      announceLapsed(mapProposal(row));
     } else {
       open.push(mapProposal(row));
     }
   }
   return open;
+}
+
+// An offer that lapsed unanswered is told to the table like any other
+// settlement (issue 239), so the DM reads that it is closed rather than
+// forgetting it was ever made. Once, on the read that expires it.
+function announceLapsed(proposal: ItemProposal) {
+  const characterName =
+    getSheetById(proposal.toolName === "trade" ? proposal.toCharacterId : proposal.characterId)?.name ?? "the character";
+  const seq = allocateSeq(proposal.campaignId);
+  const message = insertCampaignMessage({
+    campaignId: proposal.campaignId,
+    seq,
+    authorType: "system",
+    glyph: "cue-bell",
+    content: `${OFFER_NOTE_PREFIX}${resolutionNote({ status: "expired", summary: proposal.summary, characterName })}`,
+  });
+  publishWithSeq(proposal.campaignId, seq, "message_added", { message });
 }
 
 // Settled offers, newest first: what the DM's game state lists and what the

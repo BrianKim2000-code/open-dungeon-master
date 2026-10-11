@@ -34,12 +34,15 @@ export function usePartyOrder<T extends { id: string }>({
 }) {
   const saved = member?.partyOrder ?? EMPTY;
   const savedKey = saved.join("|");
-  // The list just saved, keyed to the account copy it was saved over: once
-  // the stream brings that copy up to date (or another device changes it),
-  // the key no longer matches and the account's copy wins. The local list
-  // is only ever ahead of it by one save.
-  const [local, setLocal] = useState<{ key: string; order: string[] } | null>(null);
-  const order = local && local.key === savedKey ? local.order : saved;
+  // The list as this seat last put it, shown ahead of the account's copy
+  // while saves are in flight and until the stream echoes the last one
+  // back (quick successive moves each build on the one before, never on an
+  // earlier echo). It is let go a moment after the last save lands, so a
+  // change from another device shows once this seat is idle.
+  const [local, setLocal] = useState<string[] | null>(null);
+  const [inFlight, setInFlight] = useState(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const order = local && (inFlight > 0 || savedKey !== local.join("|")) ? local : saved;
   const [arranging, setArranging] = useState(false);
   const [error, setError] = useState("");
   const [moved, setMoved] = useState("");
@@ -49,6 +52,7 @@ export function usePartyOrder<T extends { id: string }>({
   useEffect(
     () => () => {
       if (movedTimer.current) clearTimeout(movedTimer.current);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
     },
     [],
   );
@@ -58,8 +62,10 @@ export function usePartyOrder<T extends { id: string }>({
   const shownIds = ordered.map((card) => card.id);
 
   async function save(next: string[], id: string) {
-    setLocal({ key: savedKey, order: next });
+    setLocal(next);
     setError("");
+    setInFlight((count) => count + 1);
+    if (settleTimer.current) clearTimeout(settleTimer.current);
     if (id) {
       setMoved("");
       if (movedTimer.current) clearTimeout(movedTimer.current);
@@ -84,6 +90,17 @@ export function usePartyOrder<T extends { id: string }>({
     } catch {
       setLocal(null);
       setError("Could not reach the server; the order was not saved.");
+    } finally {
+      setInFlight((count) => {
+        if (count === 1) {
+          // The echo is normally here already (same order, no visible
+          // change); if it is not, the account's copy takes over a moment
+          // later.
+          if (settleTimer.current) clearTimeout(settleTimer.current);
+          settleTimer.current = setTimeout(() => setLocal(null), 3_000);
+        }
+        return count - 1;
+      });
     }
   }
 
@@ -106,7 +123,7 @@ export function usePartyOrder<T extends { id: string }>({
       if (!samePartyOrder(next, shownIds)) void save(next, id);
     },
     reset: () => {
-      if (order.length) void save([], "");
+      if (order.length || saved.length) void save([], "");
     },
   };
 }

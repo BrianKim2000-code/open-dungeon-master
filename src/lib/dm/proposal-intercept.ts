@@ -12,6 +12,7 @@ import {
   duplicateOfferProblem,
   offerLineStatus,
   offerPrecheck,
+  parseOfferArgs,
   proposalSummary,
   SETTLED_OFFERS_MAX,
   SETTLED_OFFERS_WINDOW_MS,
@@ -21,7 +22,6 @@ import {
   type OfferLine,
 } from "@/lib/dm/proposal-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { parseCoins } from "@/lib/srd/currency";
 
 // Interception for the inventoryApprovals and vitalsApprovals game
 // settings: a DM inventory, gold, damage, healing or condition mutation
@@ -44,16 +44,8 @@ export function publicItemProposal(proposal: ItemProposal) {
     createdAt: proposal.createdAt,
     toCharacterId: proposal.toCharacterId,
     // A trade carries its offer so the bar can lay out both sides.
-    ...(proposal.toolName === "trade" ? { offer: normalizeTradeOffer(safeParse(proposal.argsJson)) } : {}),
+    ...(proposal.toolName === "trade" ? { offer: normalizeTradeOffer(parseOfferArgs(proposal.argsJson)) } : {}),
   };
-}
-
-function safeParse(raw: string): unknown {
-  try {
-    return JSON.parse(raw || "{}");
-  } catch {
-    return {};
-  }
 }
 
 export function maybeProposeItemChange(
@@ -106,11 +98,8 @@ export function maybeProposeItemChange(
   }
 
   // An offer that could not apply is refused now, before the player sees
-  // an apparently valid one (issue 239): nothing to take, nothing to pay
-  // with. A coin string moves what it says, signed by delta.
-  const coins = args.coins ? parseCoins(args.coins) : null;
-  const moveCp = coins === null ? null : Number(args.delta ?? 0) < 0 ? -coins : coins;
-  const cannot = offerPrecheck(toolName, args, sheet!, moveCp);
+  // an apparently valid one (issue 239): nothing to take, nothing to sell.
+  const cannot = offerPrecheck(toolName, args, sheet!);
   if (cannot) {
     return { error: cannot };
   }
@@ -151,26 +140,28 @@ export function maybeProposeItemChange(
   };
 }
 
-// The offers block of the DM's game state (issue 239): every offer still
-// waiting on a player, then what was settled in the last hours and how.
+// The offers block of the DM's game state (issue 239): every offer of the
+// DM's still waiting on a player, then what was settled in the last hours
+// and how. A trade between players is not the DM's offer; the DM hears of
+// one through the table note it leaves when it settles.
 export function offerLinesForPrompt(
   campaignId: string,
   sheetsById: Map<string, { name: string }>,
   nowMs = Date.now(),
 ): OfferLine[] {
-  const nameOf = (proposal: ItemProposal) =>
-    sheetsById.get(proposal.toolName === "trade" ? proposal.toCharacterId : proposal.characterId)?.name ??
-    sheetsById.get(proposal.characterId)?.name ??
-    "a character";
-  const open = listOpenItemProposals(campaignId).map((proposal) => ({
-    summary: proposal.summary,
-    characterName: nameOf(proposal),
-    status: "pending" as const,
-    outcome: "",
-    minutesAgo: null,
-  }));
+  const nameOf = (proposal: ItemProposal) => sheetsById.get(proposal.characterId)?.name ?? "a character";
+  const open = listOpenItemProposals(campaignId)
+    .filter((proposal) => proposal.toolName !== "trade")
+    .map((proposal) => ({
+      summary: proposal.summary,
+      characterName: nameOf(proposal),
+      status: "pending" as const,
+      outcome: "",
+      minutesAgo: null,
+    }));
   const settled = listRecentItemProposals(campaignId, SETTLED_OFFERS_MAX * 2)
     .filter((proposal) => {
+      if (proposal.toolName === "trade") return false;
       const at = Date.parse(proposal.resolvedAt ?? "");
       return !Number.isNaN(at) && nowMs - at <= SETTLED_OFFERS_WINDOW_MS;
     })

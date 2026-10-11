@@ -12,9 +12,9 @@ import {
   appliedOutcome,
   canResolveProposal,
   OFFER_NOTE_PREFIX,
+  parseOfferArgs,
   resolutionNote,
   VITALS_PROPOSAL_TOOL_NAMES,
-  type OfferArgs,
   type OfferResolution,
 } from "@/lib/dm/proposal-logic";
 import { publicItemProposal } from "@/lib/dm/proposal-intercept";
@@ -40,8 +40,7 @@ function announceSettled(
   campaignId: string,
   proposal: ItemProposal,
   status: OfferResolution,
-  characterName: string,
-  byLead: boolean,
+  who: { characterName: string; byLead: boolean; withdrawnBy?: string },
   outcome: string,
 ) {
   const seq = allocateSeq(campaignId);
@@ -50,18 +49,9 @@ function announceSettled(
     seq,
     authorType: "system",
     glyph: glyphFor(proposal.toolName),
-    content: `${OFFER_NOTE_PREFIX}${resolutionNote({ status, summary: proposal.summary, characterName, byLead, outcome })}`,
+    content: `${OFFER_NOTE_PREFIX}${resolutionNote({ status, summary: proposal.summary, ...who, outcome })}`,
   });
   publishWithSeq(campaignId, seq, "message_added", { message });
-}
-
-function parseArgs(raw: string): OfferArgs {
-  try {
-    const parsed = JSON.parse(raw || "{}");
-    return parsed && typeof parsed === "object" ? (parsed as OfferArgs) : {};
-  } catch {
-    return {};
-  }
 }
 
 // The owning player answers a DM item offer; the lead may also answer or
@@ -95,12 +85,17 @@ export async function POST(
   // character it is made to.
   const answerer = getSheetById(isTrade ? proposal.toCharacterId : proposal.characterId);
   const characterName = answerer?.name ?? "the character";
-  let byLead = !actorIsOwner;
+  // Who settled it, for the table note: the player, the lead for them, or
+  // (a trade) its own proposer taking it back.
+  const who = { characterName, byLead: !actorIsOwner, withdrawnBy: "" };
   if (isTrade) {
     // A trade: the counterparty answers, the proposer may withdraw, the
     // lead may do either (docs/vtt-parity-implementation-plan.md 11.2).
     const actorIsCounterparty = Boolean(answerer && answerer.userId === context.user.id);
-    byLead = !actorIsCounterparty && !actorIsOwner;
+    who.byLead = !actorIsCounterparty && !actorIsOwner;
+    if (actorIsOwner && !actorIsCounterparty) {
+      who.withdrawnBy = getSheetById(proposal.characterId)?.name ?? "The offerer";
+    }
     if (!canResolveTrade(action, actorIsOwner, actorIsCounterparty, steersStory(context))) {
       return Response.json({ error: "Only the other side, the offerer or the lead can do that." }, { status: 403 });
     }
@@ -118,7 +113,7 @@ export async function POST(
       const declined = resolveItemProposal(proposalId, "declined", `failed: ${applied.error}`);
       if (declined) {
         publishPersisted(campaignId, "item_proposal_resolved", { proposal: publicItemProposal(declined) });
-        announceSettled(campaignId, declined, "failed", characterName, byLead, String(applied.error));
+        announceSettled(campaignId, declined, "failed", who, String(applied.error));
       }
       return Response.json({ error: `The trade could not go through: ${applied.error}` }, { status: 409 });
     }
@@ -146,7 +141,7 @@ export async function POST(
         publishPersisted(campaignId, "item_proposal_resolved", {
           proposal: publicItemProposal(declined),
         });
-        announceSettled(campaignId, declined, "failed", characterName, byLead, why);
+        announceSettled(campaignId, declined, "failed", who, why);
       }
       return Response.json(
         { error: `The offer could not be applied: ${why}` },
@@ -155,7 +150,7 @@ export async function POST(
     }
     const after = getSheetById(proposal.characterId);
     if (after) {
-      outcome = appliedOutcome(proposal.toolName, parseArgs(proposal.argsJson), {
+      outcome = appliedOutcome(proposal.toolName, parseOfferArgs(proposal.argsJson), {
         name: after.name,
         equipment: after.equipment,
         gold: after.gold,
@@ -176,6 +171,6 @@ export async function POST(
   publishPersisted(campaignId, "item_proposal_resolved", {
     proposal: publicItemProposal(resolved),
   });
-  announceSettled(campaignId, resolved, status, characterName, byLead, outcome);
+  announceSettled(campaignId, resolved, status, who, outcome);
   return Response.json({ proposal: publicItemProposal(resolved) });
 }

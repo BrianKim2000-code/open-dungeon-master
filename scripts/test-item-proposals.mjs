@@ -116,6 +116,7 @@ import {
   offerLineStatus,
   offerPrecheck,
   OFFER_NOTE_PREFIX,
+  parseOfferArgs,
   renderOffersBlock,
   resolutionNote,
 } from "../src/lib/dm/proposal-logic.ts";
@@ -135,21 +136,23 @@ check("a removal of what is not carried, or of more than carried, is refused bef
   assert.equal(offerPrecheck("remove_item", { name: "DART" }, nysa), null);
 });
 
-check("coin the purse cannot pay is refused; a gain never is", () => {
-  assert.match(offerPrecheck("modify_gold", { delta: -6 }, nysa), /holds 5 gp 50 cp; it cannot lose 6 gp/);
-  assert.equal(offerPrecheck("modify_gold", { delta: -5 }, nysa), null);
-  assert.equal(offerPrecheck("modify_gold", { delta: 100 }, nysa), null);
-  // A coin string resolved by the caller moves what it says.
-  assert.match(offerPrecheck("modify_gold", { delta: -1, coins: "6 gp" }, nysa, -600), /cannot lose 6 gp/);
-  assert.equal(offerPrecheck("modify_gold", { delta: -1, coins: "5 sp" }, nysa, -50), null);
+check("coin is never prechecked: modify_gold floors at zero and a purchase is priced by the shelf", () => {
+  assert.equal(offerPrecheck("modify_gold", { delta: -600 }, nysa), null);
+  assert.equal(offerPrecheck("purchase", { item: "Lantern", price: 600, action: "buy" }, nysa), null);
 });
 
-check("a purchase checks the purse to buy and the pack to sell", () => {
-  assert.match(offerPrecheck("purchase", { item: "Lantern", price: 6, action: "buy" }, nysa), /cannot afford Lantern/);
-  assert.equal(offerPrecheck("purchase", { item: "Lantern", price: 5, action: "buy" }, nysa), null);
+check("a sale checks the pack; a buy is left to the shelf", () => {
   assert.match(offerPrecheck("purchase", { item: "Lantern", price: 1, action: "sell" }, nysa), /does not carry "Lantern" to sell/);
   assert.match(offerPrecheck("purchase", { item: "Rope", price: 1, qty: 2, action: "sell" }, nysa), /carries only 1 Rope/);
   assert.equal(offerPrecheck("purchase", { item: "Rope", price: 1, action: "sell" }, nysa), null);
+});
+
+check("only the first row by that name counts, as a removal takes it", () => {
+  const twins = { ...nysa, equipment: [{ name: "Silver ring", qty: 1 }, { name: "Silver ring", qty: 1, identified: false }] };
+  assert.match(offerPrecheck("remove_item", { name: "Silver ring", qty: 2 }, twins), /carries only 1 Silver ring/);
+  assert.deepEqual(parseOfferArgs('{"name":"Rope"}'), { name: "Rope" });
+  assert.deepEqual(parseOfferArgs("[1]"), {});
+  assert.deepEqual(parseOfferArgs("not json"), {});
 });
 
 check("grants and vitals pass the precheck; it is about what cannot apply", () => {
@@ -215,6 +218,7 @@ check("the chronicle's line for each way an offer settles", () => {
   assert.equal(resolutionNote({ status: "approved", summary: "Give Coin purse to Nysa", characterName: "Nysa", byLead: true }), "The lead accepted the offer for Nysa: Give Coin purse to Nysa.");
   assert.equal(resolutionNote({ status: "declined", summary: "Take Dart x10 from Nysa", characterName: "Nysa" }), "Nysa declined the offer: Take Dart x10 from Nysa. Nothing changed.");
   assert.equal(resolutionNote({ status: "cancelled", summary: "Give Rope to Nysa", characterName: "Nysa" }), "The lead withdrew the offer: Give Rope to Nysa. Nothing changed.");
+  assert.equal(resolutionNote({ status: "cancelled", summary: "Ann offers Bo a Ruby", characterName: "Bo", withdrawnBy: "Ann" }), "Ann withdrew the offer: Ann offers Bo a Ruby. Nothing changed.");
   assert.equal(resolutionNote({ status: "failed", summary: "Take Dart from Nysa", characterName: "Nysa", outcome: 'Nysa does not carry "Dart".' }), 'The offer "Take Dart from Nysa" could not be applied (Nysa does not carry "Dart"). Nothing changed.');
   assert.equal(resolutionNote({ status: "expired", summary: "Give Rope to Nysa", characterName: "Nysa" }), "The offer lapsed unanswered: Give Rope to Nysa. Nothing changed.");
   assert.ok(OFFER_NOTE_PREFIX.startsWith("["));

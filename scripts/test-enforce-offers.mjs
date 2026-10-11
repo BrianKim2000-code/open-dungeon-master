@@ -112,8 +112,7 @@ await test("an accepted removal empties the sheet and says so; the next attempt 
   assert.equal(pending().length, 0);
 });
 
-await test("coin the purse cannot pay is refused; an accepted award says the new purse", async () => {
-  assert.match(offer("modify_gold", { delta: -50 }).error, /cannot lose 50 gp/);
+await test("an accepted award says the new purse, and the same sum again is refused", async () => {
   const made = offer("modify_gold", { delta: 7, reason: "the purse's coin" });
   assert.equal(made.ok, true, made.error);
   const row = lastPending();
@@ -191,6 +190,26 @@ await test("the DM's game state lists what waits and what was settled, and the t
   const settledInPrompt = rendered.filter((message) => message.role === "user" && message.content.includes("[An offer was settled by the player's own answer"));
   assert.ok(settledInPrompt.length >= 5, `the settled offers reach the DM as the player's own answers (${settledInPrompt.length})`);
   assert.ok(!rendered.some((message) => message.content.includes(OFFER_NOTE_PREFIX)), "the stored prefix is not sent raw");
+});
+
+await test("an offer that lapses unanswered is told to the table as lapsed, once", async () => {
+  const made = offer("grant_item", { name: "Candle" });
+  assert.equal(made.ok, true, made.error);
+  const row = lastPending();
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  getDatabase().prepare("UPDATE item_proposals SET created_at = ? WHERE id = ?").run(new Date(Date.now() - 25 * 3_600_000).toISOString(), row.id);
+  assert.ok(!pending().some((entry) => entry.id === row.id), "the read expires it");
+  assert.equal(proposals.getItemProposal(row.id).status, "expired");
+  assert.equal(settledLine(), "The offer lapsed unanswered: Give Candle to Nysa. Nothing changed.");
+  const count = () => messages.listRecentMessages(world.campaignId, 50).filter((line) => line.content.includes("Give Candle to Nysa")).length;
+  const before = count();
+  pending();
+  assert.equal(count(), before, "a second read says nothing more");
+  assert.ok(offerLinesForPrompt(world.campaignId, sheetsById()).some((line) => line.status === "expired" && line.summary === "Give Candle to Nysa"));
+  // The lapsed loot may be offered again.
+  const again = offer("grant_item", { name: "Candle" });
+  assert.equal(again.ok, true, again.error);
+  await answer(world.owner, lastPending().id, "cancel");
 });
 
 await test("with item offers off, a grant applies at once and nothing here runs", async () => {

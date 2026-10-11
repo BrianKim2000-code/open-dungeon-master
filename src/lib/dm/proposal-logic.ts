@@ -182,11 +182,22 @@ export type OfferSheet = {
   copper: number;
 };
 
+// The first row by that name, as removeItemMath takes it (an unidentified
+// twin sits in its own row and is not touched by a removal of the first).
 function heldQty(sheet: OfferSheet, name: string): number {
   const wanted = name.trim().toLowerCase();
-  return sheet.equipment
-    .filter((item) => item.name.trim().toLowerCase() === wanted)
-    .reduce((sum, item) => sum + Math.max(0, Number(item.qty) || 0), 0);
+  const row = sheet.equipment.find((item) => item.name.trim().toLowerCase() === wanted);
+  return row ? Math.max(0, Number(row.qty) || 0) : 0;
+}
+
+// The stored tool arguments, tolerant of a bad row.
+export function parseOfferArgs(raw: string): OfferArgs {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as OfferArgs) : {};
+  } catch {
+    return {};
+  }
 }
 
 export function purseWords(gold: number, copper: number): string {
@@ -199,18 +210,13 @@ export function purseWords(gold: number, copper: number): string {
   return `${gp} gp ${rest} cp`;
 }
 
-// Whether the offer could apply right now; an offer that could not is
-// refused before the player ever sees it, and the DM is told why. The full
-// check still reruns on approval (applyDmMutation); this is the part the
-// model needs to hear at once. `moveCp` is a modify_gold's amount in copper
-// when the caller resolved `coins`; null means take `delta` as gold.
-export function offerPrecheck(
-  toolName: string,
-  args: OfferArgs,
-  sheet: OfferSheet,
-  moveCp: number | null = null,
-): string | null {
-  const purseCp = Math.round(sheet.gold * 100 + sheet.copper);
+// Whether the offer could apply right now: a removal or a sale of what the
+// character does not carry is refused before the player ever sees it, and
+// the DM is told why. Coin is not checked here: modify_gold floors at zero
+// by its own contract and a purchase is priced by the shelf, not the call,
+// so both are left to applyDmMutation on approval (a failure there is told
+// to the table as one).
+export function offerPrecheck(toolName: string, args: OfferArgs, sheet: OfferSheet): string | null {
   const qty = Math.max(1, Math.floor(Number(args.qty ?? 1) || 1));
   if (toolName === "remove_item") {
     const name = String(args.name ?? "").trim();
@@ -223,28 +229,14 @@ export function offerPrecheck(
     }
     return null;
   }
-  if (toolName === "modify_gold") {
-    const delta = Number(args.delta ?? 0) || 0;
-    const moved = moveCp === null ? Math.round(delta * 100) : moveCp;
-    if (moved < 0 && purseCp + moved < 0) {
-      return `${sheet.name}'s purse holds ${purseWords(sheet.gold, sheet.copper)}; it cannot lose ${purseWords(0, -moved)}. No offer was made.`;
-    }
-    return null;
-  }
-  if (toolName === "purchase") {
+  if (toolName === "purchase" && args.action === "sell") {
     const item = String(args.item ?? args.name ?? "").trim();
-    const costCp = Math.round((Number(args.price ?? 0) || 0) * qty * 100);
-    if (args.action === "buy" && costCp > purseCp) {
-      return `${sheet.name} cannot afford ${item}: it costs ${purseWords(0, costCp)} and the purse holds ${purseWords(sheet.gold, sheet.copper)}. No offer was made.`;
+    const held = heldQty(sheet, item);
+    if (!held) {
+      return `${sheet.name} does not carry "${item}" to sell. No offer was made.`;
     }
-    if (args.action === "sell") {
-      const held = heldQty(sheet, item);
-      if (!held) {
-        return `${sheet.name} does not carry "${item}" to sell. No offer was made.`;
-      }
-      if (qty > held) {
-        return `${sheet.name} carries only ${held} ${item} to sell. No offer was made.`;
-      }
+    if (qty > held) {
+      return `${sheet.name} carries only ${held} ${item} to sell. No offer was made.`;
     }
   }
   return null;
@@ -276,15 +268,6 @@ export type RecentOffer = {
   resolvedAt: string | null;
 };
 
-function parseArgs(raw: string): OfferArgs {
-  try {
-    const parsed = JSON.parse(raw || "{}");
-    return parsed && typeof parsed === "object" ? (parsed as OfferArgs) : {};
-  } catch {
-    return {};
-  }
-}
-
 // The same offer again, while the first still waits or just after it was
 // accepted, is refused with the reason: the loot is claimed or the answer
 // is still coming. `additional: true` says this is another of the same from
@@ -305,7 +288,7 @@ export function duplicateOfferProblem(
     if (offer.characterId !== character.id || offer.toolName !== toolName) {
       continue;
     }
-    if (offerKey(offer.toolName, parseArgs(offer.argsJson)) !== key) {
+    if (offerKey(offer.toolName, parseOfferArgs(offer.argsJson)) !== key) {
       continue;
     }
     if (offer.status === "pending" && !proposalExpired(offer.createdAt, new Date(nowMs))) {
@@ -376,10 +359,12 @@ export function resolutionNote(input: {
   characterName: string;
   // The lead answered for the player.
   byLead?: boolean;
+  // Who withdrew it, when not the lead (a trade's own proposer may).
+  withdrawnBy?: string;
   // What applying it did, or why it could not be applied.
   outcome?: string;
 }): string {
-  const { status, summary, characterName, byLead = false, outcome = "" } = input;
+  const { status, summary, characterName, byLead = false, withdrawnBy = "", outcome = "" } = input;
   const tail = outcome ? ` ${outcome}` : "";
   switch (status) {
     case "approved":
@@ -391,7 +376,7 @@ export function resolutionNote(input: {
         ? `The lead declined the offer for ${characterName}: ${summary}. Nothing changed.`
         : `${characterName} declined the offer: ${summary}. Nothing changed.`;
     case "cancelled":
-      return `The lead withdrew the offer: ${summary}. Nothing changed.`;
+      return `${withdrawnBy || "The lead"} withdrew the offer: ${summary}. Nothing changed.`;
     case "expired":
       return `The offer lapsed unanswered: ${summary}. Nothing changed.`;
     case "failed":

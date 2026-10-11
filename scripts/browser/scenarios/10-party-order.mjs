@@ -9,6 +9,10 @@ export default {
   viewports: ["desktop", "phone"],
   async run(t) {
     const { page, root, ids, api, base } = t;
+    // Viewports share one seeded world: start from the table's own order,
+    // whatever an earlier run left on the lead's membership.
+    const cleared = await api.patch(`${base}/api/campaigns/${ids.campaignId}/members/me`, { data: { partyOrder: [] } });
+    check(cleared.ok(), `clearing the lead's saved order answered ${cleared.status()}`);
     await t.open(`/campaigns/${ids.campaignId}`);
     const cards = () => page.locator(`${root}[data-party-card]`).locator("visible=true");
     const shown = async () => {
