@@ -31,6 +31,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
+import { COMMANDED } from "@/lib/dm/maneuver-rules";
 
 const holds = (sheet: CharacterSheet, fragment: string) =>
   sheet.features.some((feature) => feature.name.toLowerCase().includes(fragment));
@@ -170,6 +171,27 @@ export function reactionCards(
     }
   }
 
+  // The Battle Master's reactions (src/lib/dm/maneuver-reactions.ts): Parry
+  // against a melee hit, Riposte against a melee miss, each a die.
+  const knows = (name: string) => sheet.features.some((entry) => /^maneuver:/i.test(entry.name) && entry.name.toLowerCase().includes(name));
+  const dice = sheet.resources.sub_superiority_dice;
+  if (dice && dice.max > dice.used) {
+    if (mine && mine.source === "attack" && !mine.ranged && knows("parry")) {
+      feature(mine, "Parry", what(mine, "you"), "A superiority die plus your Dexterity modifier off the melee hit.");
+    }
+    const missed = hits.find((hit) => hit.characterId === sheet.id && !hit.hit && hit.source === "attack" && !hit.ranged && hit.attackerId);
+    if (missed && knows("riposte")) {
+      feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed you`, "A melee attack back with your reaction, the die on its hit.", "enemy");
+    }
+  }
+  // A Battle Master directed this character to strike (Commander's Strike).
+  if (sheet.conditions.some((entry) => entry.trim().toLowerCase() === COMMANDED)) {
+    const card = base("commanders-strike", "Commander's Strike", "Directed to strike", "enemy", { card: "reaction", feature: "Commander's Strike" }, {
+      rules: "One weapon attack now with your reaction, the superiority die on its hit.",
+    });
+    cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, "Commander's Strike")));
+  }
+
   // An ally's hit: Cutting Words from a Lore bard, Protection from a
   // protector with a shield. The engine checks the reach and the holder.
   for (const hit of hits) {
@@ -271,6 +293,10 @@ export function reactionAim(
   sheetId: string,
   party: Array<Pick<CharacterSheet, "id" | "name">>,
 ): { id: string; name: string; kind: "enemy" | "ally" } | null {
+  // Commander's Strike's target is the player's pick.
+  if (card.target === "enemy" && card.id === "reaction:commanders-strike") {
+    return null;
+  }
   if (card.target === "enemy") {
     const mine = hits.find((hit) => hit.characterId === sheetId && hit.attackerId);
     return mine?.attackerId ? { id: mine.attackerId, name: mine.attacker, kind: "enemy" } : null;

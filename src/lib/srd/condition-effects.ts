@@ -303,6 +303,15 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     consumedBy: "hit",
   },
   {
+    id: "superiority_strike",
+    match: ["superiority strike"],
+    summary:
+      "A Battle Master's Superiority Die (Riposte, Brace, Commander's Strike) rides this reaction attack: added to its damage on a hit, and spent by it.",
+    paramOnHitDice: true,
+    weaponOnly: true,
+    consumedBy: "hit",
+  },
+  {
     id: "armor_of_agathys",
     match: ["armor of agathys"],
     summary:
@@ -948,8 +957,10 @@ export function conditionOnHitDice(
   const typed: Array<{ dice: string; type: string }> = [];
   const hitSpent: string[] = [];
   for (const { row, condition } of activeConditionEffects(conditions)) {
-    const carried = row.paramOnHitDice ? /\((\d+d\d+)\s+([a-z]+)\)/i.exec(condition) : null;
-    const onHitDice = row.onHitDice ?? (carried ? { dice: carried[1], type: carried[2].toLowerCase() } : null);
+    // The type is optional: a die that adds to the weapon's own damage
+    // carries none ("superiority strike (1d8)").
+    const carried = row.paramOnHitDice ? /\((\d+d\d+)(?:\s+([a-z]+))?\)/i.exec(condition) : null;
+    const onHitDice = row.onHitDice ?? (carried ? { dice: carried[1], type: carried[2]?.toLowerCase() ?? "" } : null);
     if (!onHitDice) {
       continue;
     }

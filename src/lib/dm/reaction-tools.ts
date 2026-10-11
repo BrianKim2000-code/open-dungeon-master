@@ -45,6 +45,7 @@ import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
 import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
+import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 // For the counter reactions' spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { matchResource } from "@/lib/srd/class-resources";
@@ -492,6 +493,12 @@ export function handleUseReaction(
       sheets,
       sheetsById,
     ).result;
+  }
+  // Parry, Riposte and Brace, and the ally's side of Maneuvering Attack and
+  // Commander's Strike (src/lib/dm/maneuver-reactions.ts).
+  const maneuver = maneuverReaction(ctx);
+  if (maneuver) {
+    return maneuver;
   }
   if (/uncanny dodge/.test(lowered)) {
     return uncannyDodge(ctx);

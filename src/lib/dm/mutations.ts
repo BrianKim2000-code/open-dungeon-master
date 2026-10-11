@@ -48,6 +48,7 @@ import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, PRONE, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
+import { channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse } from "@/lib/dm/item-use";
@@ -73,6 +74,7 @@ import {
   computePurchase,
   computeUseItem,
   computeUseResource,
+  parseFontOfMagic,
   rollHealing,
 } from "@/lib/dm/resource-tools";
 import { resourceTools } from "@/lib/dm/resource-tool-defs";
@@ -1159,9 +1161,30 @@ export function applyDmMutation(
       if (reacting && "error" in reacting) {
         return { result: reacting };
       }
+      // An option of a pool whose options cost different things (Channel
+      // Divinity's, Psionic Energy's, a maneuver's) costs its own part of
+      // the turn (src/lib/dm/option-costs.ts); a Font of Magic conversion is
+      // a bonus action. A Channel Divinity in a fight names its option.
+      const fighting = (() => {
+        const live = getActiveEncounter(campaign.id);
+        return Boolean(live && (live.kind ?? "fight") === "fight");
+      })();
+      const option = optionCost(counter?.id, `${args.variant ?? ""} ${resourceName}`, fighting);
+      if (option && "refused" in option) {
+        return { result: { error: option.refused } };
+      }
+      if (!option && counter?.id === "channel_divinity" && fighting) {
+        const held = channelOptionsHeld(sheet);
+        return {
+          result: {
+            error: `Channel Divinity in a fight is one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Nothing was spent.`,
+          },
+        };
+      }
+      const optionCharge = option?.cost ?? (counter?.id === "sorcery_points" && parseFontOfMagic(args.variant) ? "bonus" : undefined);
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
-      const charge = prepareResourceCharge(campaign, sheet, resourceName);
+      const charge = prepareResourceCharge(campaign, sheet, resourceName, optionCharge);
       if ("error" in charge) {
         return { result: charge };
       }

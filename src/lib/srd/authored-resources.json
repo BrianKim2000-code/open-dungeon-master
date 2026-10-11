@@ -26,7 +26,7 @@
     ]
    ],
    "recharge": "short",
-   "guidance": "Spent on a maneuver attached to an attack: Trip, Disarm, Riposte, Precision, Menacing, Commander's Strike and the rest. The die is added to the damage or to the roll the maneuver names, and its save DC is 8 + proficiency + Strength or Dexterity."
+   "guidance": "A maneuver that rides a weapon attack (Trip, Disarming, Precision, Menacing, Feinting, Quick Toss, Grappling Strike, Maneuvering and the rest) is named in pc_attack's maneuver: the die goes to the damage or the roll it names, its save DC is 8 + proficiency + Strength or Dexterity, and Feinting Attack and Quick Toss take the bonus action. Parry, Riposte and Brace are reactions: use_reaction. Rally and Commander's Strike are use_resource with variant 'rally' or 'commander's strike' and the ally's targetCharacterId (each takes the bonus action; Commander's Strike also forgoes one attack). A maneuver that rides a check or a move (Ambush, Bait and Switch, Commanding Presence, Evasive Footwork, Tactical Assessment) is a plain spend with that variant."
   },
   {
    "id": "sub_psionic_energy",
@@ -40,7 +40,7 @@
    "ability": null,
    "proficiency": 2,
    "recharge": "long",
-   "guidance": "The shared pool behind every psionic feature of this subclass. One die returns on a short rest; the rest on a long rest. The die size grows with level: d6, then d8 at 5th, d10 at 11th and d12 at 17th."
+   "guidance": "The shared pool behind every psionic feature of this subclass. Name the use in variant: Telekinetic Movement and Psychic Whispers take an action, Psychic Teleportation a bonus action; Psionic Strike and Psi-Bolstered Knack ride a hit or a check already made; Protective Field is a reaction (use_reaction). One die returns on a short rest; the rest on a long rest. The die size grows with level: d6, then d8 at 5th, d10 at 11th and d12 at 17th."
   },
   {
    "id": "sub_fighting_spirit",

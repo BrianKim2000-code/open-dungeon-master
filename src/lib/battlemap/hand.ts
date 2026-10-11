@@ -6,6 +6,8 @@
 // a card never promises something pc_attack or the cast tools would refuse.
 // Pure and database-free: scripts/test-hand.mjs drives every branch. What a
 // card says once it is played lives next door in hand-play.ts.
+import { optionCards } from "@/lib/battlemap/hand-options";
+import { maneuverDieFor, maneuverUse, type ManeuverUse } from "@/lib/dm/maneuver-rules";
 import { ragingMeleeBonus, weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
 import { dualWields, offHandProblem } from "@/lib/dm/attack-rules";
 import { magicWeaponOfRow, type WeaponGear } from "@/lib/dm/gear-attack";
@@ -217,12 +219,17 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
 
 // ---- riders ----
 
-// Battle Master die by fighter level; the engine's own table is in
-// src/lib/dm/pc-attack.ts, which cannot be imported here (it reaches the
-// database).
-function superiorityDie(level: number): string {
-  return level >= 18 ? "d12" : level >= 10 ? "d10" : "d8";
-}
+// What a maneuver riding the swing asks beyond its die, on its card
+// (src/lib/dm/maneuver-rules.ts). The maneuvers that are not part of a swing
+// are dealt elsewhere: Parry and Riposte as reactions (hand-react.ts), Rally
+// and Commander's Strike as bonus actions (hand-options.ts).
+const SWING_RULES: Partial<Record<ManeuverUse, string>> = {
+  swing: "A superiority die rides this attack.",
+  feint: "Feint at a creature within 5 feet first, for your bonus action: advantage on this attack, and the die on its hit.",
+  bonus_swing: "A thrown weapon, as your bonus action, the die on its hit.",
+  grapple: "On a melee hit, grapple the target as your bonus action; the die goes on the Athletics check.",
+  ally_move: "On a hit, an ally may move half its speed with its reaction, drawing no opportunity attack from the target.",
+};
 
 function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders): HandCard[] {
   const standing = standingGate(sheet, turn, "attack");
@@ -267,29 +274,35 @@ function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
   }
   const pool = sheet.resources.sub_superiority_dice;
   if (pool) {
-    const fighter = sheet.classes.find((entry) => entry.id.toLowerCase() === "fighter")?.level ?? sheet.level;
-    const die = `1${superiorityDie(fighter)}`;
+    const die = `1${maneuverDieFor(sheet)}`;
     const picks = sheet.features
       .map((feature) => /^maneuver:\s*(.+)$/i.exec(feature.name)?.[1]?.trim())
       .filter((name): name is string => Boolean(name));
     const left = pool.max - pool.used;
     for (const name of picks.length ? picks : ["Maneuver"]) {
+      const use = maneuverUse(name);
+      const rules = picks.length ? SWING_RULES[use] : "Name the maneuver when you play it.";
+      if (!rules) continue;
+      // Feinting Attack and Quick Toss take the bonus action with the swing;
+      // Grappling Strike's grapple needs it after.
+      const bonus = use === "feint" || use === "bonus_swing" || use === "grapple";
       cards.push(
         gated(
           {
             ...base,
             id: `rider:${spellKey(name)}`,
             name,
-            dice: `+${die}`,
-            rules: picks.length ? "A superiority die rides this attack." : "Name the maneuver when you play it.",
+            dice: use === "grapple" ? `+${die} Athletics` : `+${die}`,
+            rules,
             resource: `Dice ${left}/${pool.max}`,
             icon: { kind: "feature", key: name, family: "class-fighter" },
-            damage: die,
+            damage: use === "grapple" ? null : die,
             damageType: "",
             intent: { card: "rider", rider: name },
           },
           standing,
           left > 0 ? null : { reason: "No superiority dice left until a rest.", spent: true },
+          bonus ? costGate("bonus", turn, sheet, name) : null,
         ),
       );
     }
@@ -443,6 +456,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...riderCards(sheet, turn, riders),
     ...spells,
     ...features,
+    ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
     ...subclassSpendCards(sheet, turn, taken),
     ...kiCards(sheet, turn),

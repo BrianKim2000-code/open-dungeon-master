@@ -323,7 +323,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "long",
     effect: { kind: "narrative" },
     guidance:
-      "Sorcery points buy Metamagic on a spell being cast (spend with amount), or convert to and from spell slots: call use_resource with variant like 'create a 2nd-level slot' (costs 2/3/5/6/7 points for levels 1-5) or 'convert my 3rd-level slot into points' and the server moves the points and slots. Created slots vanish on a long rest. Quickened Spell: call use_resource with variant 'Quickened Spell' before the cast; the server spends 2 points and the next spell of one action this turn takes the bonus action. The spell itself still goes through use_spell_slot or cast_at_enemy as normal.",
+      "Sorcery points buy Metamagic on a spell being cast (spend with amount), or convert to and from spell slots: call use_resource with variant like 'create a 2nd-level slot' (costs 2/3/5/6/7 points for levels 1-5) or 'convert my 3rd-level slot into points' and the server moves the points and slots. Either conversion is a bonus action on their turn in a fight. Created slots vanish on a long rest. Quickened Spell: call use_resource with variant 'Quickened Spell' before the cast; the server spends 2 points and the next spell of one action this turn takes the bonus action. The spell itself still goes through use_spell_slot or cast_at_enemy as normal.",
   },
   // ---- the feats' counters (src/lib/srd/feat-combat.ts) ----
   {
@@ -415,7 +415,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "short",
     effect: { kind: "narrative" },
     guidance:
-      "Divine power channelled into a subclass effect. Pass variant to have the server resolve it: 'turn undead' (every undead within 30 feet makes a WIS save against the spell DC; a failure is turned for a minute, and from cleric 5 an undead at or under the Destroy Undead CR is destroyed instead), 'sacred weapon' (Oath of Devotion: +CHA to weapon attack rolls for a minute), 'preserve life' (Life Domain: heals up to 5 x cleric level split among targetCharacterIds, none past half their maximum). Never apply turned or frightened by hand: the save decides it.",
+      "Divine power channelled into a subclass effect. In a fight, name the option in variant: each costs what its own text says (most an action; Vow of Enmity, Champion Challenge, Turn the Tide, Emissary of Peace, Peerless Athlete and Inspiring Smite a bonus action; War God's Blessing and Rebuke the Violent a reaction; Guided Strike, Destructive Wrath and Touch of Death nothing more than the roll they ride; Artisan's Blessing is an hour's ritual). The server resolves these itself: 'turn undead' (every undead within 30 feet makes a WIS save against the spell DC; a failure is turned for a minute, and from cleric 5 an undead at or under the Destroy Undead CR is destroyed instead), 'sacred weapon' (Oath of Devotion: +CHA to weapon attack rolls for a minute), 'preserve life' (Life Domain: heals up to 5 x cleric level split among targetCharacterIds, none past half their maximum). Never apply turned or frightened by hand: the save decides it.",
   },
   {
     id: "bardic_inspiration",

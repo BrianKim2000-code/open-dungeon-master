@@ -5,6 +5,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { casterStateProblem, componentProblem, focusProblem, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
+import { psionicOptions } from "@/lib/dm/option-costs";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
@@ -331,6 +332,8 @@ const FEATURE_COST: Record<string, HandCost> = {
 function featureCost(def: ResourceDef): HandCost {
   const named = FEATURE_COST[def.id];
   if (named) return named;
+  // The cost the engine charges (ResourceDef.action), when the counter has one.
+  if (def.action) return def.action === "none" ? "free" : def.action;
   if (/bonus action/i.test(def.guidance)) return "bonus";
   if (/\breaction\b/i.test(def.guidance)) return "reaction";
   return "action";
@@ -345,7 +348,10 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     // Ki is spent through its techniques, each a card of its own (hand-class.ts
     // Flurry of Blows, and the bonus-action moves in hand.ts).
     // A feat's pour-in (Inner Resilience's ki) lives under the class counter's id, never its own card.
+    // Channel Divinity and Psionic Energy are one card per option, each at its
+    // own cost (hand-options.ts).
     if (!def || def.passive || def.into || id === "sub_superiority_dice" || id === "ki" || def.effect.kind === "recover_slots") continue;
+    if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     const level = resourceLevel(def, sheet);
     const effect = def.effect;
     const left = state.max - state.used;

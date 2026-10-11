@@ -34,12 +34,14 @@ export function spendAttackEconomy(input: {
   budget: TurnBudget | null;
   options: AttackOptions;
   grantedBonusAction: BuiltAttack["grantedBonusAction"];
+  // A swing that is itself the bonus action (Quick Toss), by its name.
+  bonusSwing?: string;
   encounterId: string;
   enemyId: string;
 }):
   | { budget: TurnBudget | null; spendNote: string | undefined; notes: string[] }
   | { refused: string } {
-  const { sheet, args, profile, kind, atRange, weaponAttack, options, grantedBonusAction, encounterId, enemyId } = input;
+  const { sheet, args, profile, kind, atRange, weaponAttack, options, grantedBonusAction, bonusSwing, encounterId, enemyId } = input;
   let budget = input.budget;
   // Notes the spends leave before the roll's situation is known.
   const notes: string[] = [];
@@ -65,7 +67,7 @@ export function spendAttackEconomy(input: {
   }
   if (budget) {
     const usesAttackAction =
-      !grantedBonusAction && !args.offHand && !options.bonusAttack && !options.hordeBreaker && kind !== "spell" && !multiattack;
+      !grantedBonusAction && !bonusSwing && !args.offHand && !options.bonusAttack && !options.hordeBreaker && kind !== "spell" && !multiattack;
     if (usesAttackAction) {
       const loading = loadingProblem({ who: sheet.name, profile, budget, feats: sheet.feats, campaignId: sheet.campaignId });
       // A new action (Action Surge, Haste) reloads; only a swing that would
@@ -79,6 +81,8 @@ export function spendAttackEconomy(input: {
       ? { ok: true as const, budget: multiattack.budget, note: multiattack.note }
       : grantedBonusAction
       ? spendAction(budget, "bonus", `the ${profile.weapon} attack`, sheet.name)
+      : bonusSwing
+      ? spendAction(budget, "bonus", bonusSwing, sheet.name)
       : options.bonusAttack
         ? spendAction(
             budget,

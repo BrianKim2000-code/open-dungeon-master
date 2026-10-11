@@ -230,6 +230,12 @@ const CHARGED_ELSEWHERE = {
   ki: "each use (Flurry, Patient Defense, Step of the Wind) costs its own",
   sorcery_points: "Metamagic and slot conversion cost different things",
   luck_points: "spent on a roll, no action",
+  // Each option costs its own, charged by use_resource from the option's
+  // name (src/lib/dm/option-costs.ts), pc_attack (a maneuver on the swing)
+  // or use_reaction (Parry, Riposte, Brace, Protective Field).
+  channel_divinity: "each option costs its own",
+  sub_psionic_energy: "each use costs its own",
+  sub_superiority_dice: "each maneuver costs its own",
   cyberpunk_surge_momentum: "the cantrip's cast is the cost",
   horror_the_rite_remembers: "the cantrip's cast is the cost",
   post_apocalyptic_surge_of_change: "the cantrip's cast is the cost",
