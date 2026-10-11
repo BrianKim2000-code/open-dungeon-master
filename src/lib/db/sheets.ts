@@ -462,6 +462,19 @@ export function deleteSheetForUser(campaignId: string, userId: string): Characte
   return existing;
 }
 
+// One named sheet of the player's, for a lobby edit that replaces the copy
+// of the character it edited rather than whichever sheet the seat is on: at
+// a table where a player fields several, those differ.
+export function deleteSheetById(campaignId: string, userId: string, sheetId: string): CharacterSheet | null {
+  const existing = getSheetById(sheetId);
+  if (!existing || existing.campaignId !== campaignId || existing.userId !== userId) {
+    return null;
+  }
+  getDatabase().prepare(`DELETE FROM character_sheets WHERE id = ?`).run(existing.id);
+  touchCampaign(campaignId);
+  return existing;
+}
+
 // All campaign copies of a library character; used to land the auto-generated
 // portrait on sheets cloned before the render finished.
 export function listSheetsForLibraryCharacter(libraryCharacterId: string): CharacterSheet[] {

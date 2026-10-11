@@ -312,6 +312,52 @@ await test("a rewind restores quest and structured-scene progress, and its safet
   assert.equal(safetyPayload.campaign.scene_tracker_json, JSON.stringify(advanced.tracker));
 });
 
+await test("a rewind takes the shops, factions, calendar, attributes, pins and beats of the discarded timeline with it", async () => {
+  const { world, freeze, rewind } = await chapter();
+  const shops = await import("../src/lib/db/shops.ts");
+  const factions = await import("../src/lib/db/factions.ts");
+  const calendar = await import("../src/lib/db/calendar-events.ts");
+  const attributes = await import("../src/lib/db/entity-attributes.ts");
+  const pins = await import("../src/lib/db/pins.ts");
+  const beats = await import("../src/lib/db/dm-beats.ts");
+  const messages = await import("../src/lib/db/messages.ts");
+  const shelf = [{ itemName: "Rope", qty: 3, priceCp: 100, note: "" }];
+  const shop = shops.insertShop(world.campaignId, { name: "The Brass Anvil", stock: shelf });
+  const guild = factions.insertFaction(world.campaignId, { name: "Lamplighters", attitude: "neutral", power: 3 });
+  const fair = calendar.insertCalendarEvent({ campaignId: world.campaignId, atInstant: 1_000, title: "Midsummer fair" });
+  const lamp = { key: "oil", label: "Oil", type: "number", value: 4, group: "", visible: false };
+  attributes.saveAttributes(world.campaignId, "campaign", "campaign", [lamp]);
+  const keptSeq = campaigns.allocateSeq(world.campaignId);
+  const kept = messages.insertCampaignMessage({ campaignId: world.campaignId, seq: keptSeq, authorType: "dm", speech: [], content: "The fair is a week away." });
+  const keptPin = pins.createPin({ campaignId: world.campaignId, messageId: kept.id, text: kept.content, isFullMessage: true, pinnedByUserId: world.owner.id });
+  freeze();
+
+  // The discarded timeline: the party buys out the rope, offends the guild,
+  // the fair comes and goes, the oil runs low, and a later line is pinned and
+  // marked as a beat.
+  shops.updateShop(shop.id, { stock: [] });
+  factions.updateFaction(guild.id, { attitude: "hostile", power: 5 });
+  calendar.markCalendarEventFired(fair.id, 1_000, keptSeq + 1);
+  attributes.saveAttributes(world.campaignId, "campaign", "campaign", [{ ...lamp, value: 1 }]);
+  const laterSeq = campaigns.allocateSeq(world.campaignId);
+  const later = messages.insertCampaignMessage({ campaignId: world.campaignId, seq: laterSeq, authorType: "dm", speech: [], content: "The fair burns." });
+  pins.createPin({ campaignId: world.campaignId, messageId: later.id, text: later.content, isFullMessage: true, pinnedByUserId: world.owner.id });
+  beats.insertDmBeat({ campaignId: world.campaignId, seq: laterSeq, messageId: later.id, authorUserId: world.owner.id, kind: "scene", source: "typed", body: "The fair burns." });
+  shops.insertShop(world.campaignId, { name: "A later stall", stock: shelf });
+  factions.insertFaction(world.campaignId, { name: "A later cult" });
+
+  await rewind();
+
+  assert.deepEqual(shops.listShops(world.campaignId).map((row) => [row.name, row.stock.length]), [["The Brass Anvil", 1]]);
+  assert.deepEqual(factions.listFactions(world.campaignId).map((row) => [row.name, row.attitude, row.power]), [["Lamplighters", "neutral", 3]]);
+  const [event] = calendar.listCalendarEvents(world.campaignId, true);
+  assert.equal(event.id, fair.id);
+  assert.equal(event.firedAt, -1, "an event fired in the discarded timeline is due again");
+  assert.deepEqual(attributes.getAttributes(world.campaignId, "campaign", "campaign").map((row) => row.value), [4]);
+  assert.deepEqual(pins.listPins(world.campaignId).map((row) => row.id), [keptPin.id], "a pin on a deleted line goes with it");
+  assert.deepEqual(beats.listDmBeats(world.campaignId), [], "a beat past the boundary goes with its line");
+});
+
 await test("a rewind to a moment mid fight restores the fight with the sheets", async () => {
   const { world, hero, freeze, rewind } = await chapter();
   await world.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [hero.id]: 20 } });

@@ -142,14 +142,10 @@ export function AdminHarnessSection({
         setError(body?.error ?? "Could not save.");
         return;
       }
-      onConfig({
-        harness: body.config.harness,
-        ...(useAsDefault
-          ? { text: { provider: "harness" as const } }
-          : textProvider === "harness"
-            ? { text: { provider: "" as const } }
-            : {}),
-      });
+      // Only what this save changed goes into the panel's draft (PR 221):
+      // the harness block and the storyteller choice, as the server now holds
+      // them. Unsaved edits in the other sections stay as typed.
+      onConfig({ harness: body.config.harness, text: { provider: body.config.text.provider } });
       setData((current) => (current ? { ...current, config: body.config.harness } : current));
       setDraft(body.config.harness);
       setDefaultOverride(null);

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
-const { CHRONICLE_ENTRIES, FOLLOW_SLACK_PX, atBottom, chronicleSignature, chronicleWindow } = await import(
+const { CHRONICLE_ENTRIES, FOLLOW_SLACK_PX, atBottom, chronicleSignature, chronicleSystemLine, chronicleWindow } = await import(
   "../src/lib/chronicle-logic.ts"
 );
 
@@ -66,3 +66,10 @@ test("the reader follows within the slack and is left alone above it", () => {
 });
 
 console.log(`test-chronicle: ${passed} passed`);
+
+test("a system line is shown whole, with the transcript's card prefixes as words", () => {
+  const long = "The goblin swings twice. ".repeat(12).trim();
+  assert.equal(chronicleSystemLine(long), long);
+  assert.equal(chronicleSystemLine("[Party lead direction] Take the north door."), "Party lead: Take the north door.");
+  assert.equal(chronicleSystemLine("[New adventurer] Mira joins the party."), "Mira joins the party.");
+});

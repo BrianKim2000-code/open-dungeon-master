@@ -39,7 +39,7 @@ const { setHouseRules } = await import("../src/lib/db/rules.ts");
 const { createCharacter, getCharacter, syncProgressToLibrary } = await import(
   "../src/lib/db/characters.ts"
 );
-const { createSheet, getSheetForUser } = await import("../src/lib/db/sheets.ts");
+const { createSheet, getSheetForUser, listSheetsForUser } = await import("../src/lib/db/sheets.ts");
 const { getRollTable } = await import("../src/lib/db/roll-tables.ts");
 const { getPackDraft, savePackDraft } = await import("../src/lib/db/world-pack-drafts.ts");
 const { worldPackDraftSchema } = await import("../src/lib/worlds/draft.ts");
@@ -367,6 +367,23 @@ await test("a lobby replacement keeps the new sheet selected when the player own
   assert.equal(getSheetForUser(campaignId, player.id).id, replaced.json.sheet.id);
   const reloaded = succeeded(await call(sheetRoute, "GET", undefined, { campaignId }));
   assert.equal(reloaded.json.sheet.id, replaced.json.sheet.id);
+});
+
+await test("a lobby replacement leaves a player seated on another of their sheets where they are", async () => {
+  const { library, campaignId } = await joinWith(PLAYED, 8, 8);
+  updateGameSettings(campaignId, { multiCharacter: "all_active" });
+  const siblingLibrary = createCharacter(player.id, 8, { ...PLAYED, name: "Older sibling" });
+  const sibling = createSheet(campaignId, player.id, 8, siblingLibrary.sheet, siblingLibrary.id);
+  setMemberActiveCharacter(campaignId, player.id, sibling.id);
+
+  const result = builderEdit(getCharacter(library.id).sheet, 8);
+  const replaced = succeeded(
+    await call(sheetRoute, "PUT", { editLibraryCharacterId: library.id, sheet: result.sheet }, { campaignId }),
+  );
+  assert.notEqual(replaced.json.sheet.id, sibling.id);
+  assert.equal(getSheetForUser(campaignId, player.id).id, sibling.id, "the seat stays on the sheet the player was playing");
+  const mine = listSheetsForUser(campaignId, player.id).map((sheet) => sheet.id).sort();
+  assert.deepEqual(mine, [replaced.json.sheet.id, sibling.id].sort(), "the edited copy was replaced and the sibling kept (it used to be the sibling that went)");
 });
 
 await test("a lobby edit keeps what play granted and what play set on the gear", async () => {
