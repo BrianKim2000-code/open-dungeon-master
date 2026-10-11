@@ -2,6 +2,7 @@
 // (issues 212 and 213). Pure: scripts/test-chronicle.mjs.
 import type { CampaignMessage } from "@/lib/db/messages";
 import { JOIN_NOTE_PREFIX, LEAD_NOTE_PREFIX } from "@/lib/campaign-types";
+import { OFFER_NOTE_PREFIX } from "@/lib/dm/proposal-logic";
 
 // The newest entries the scroll holds. It held 14 beside a short board; the
 // pane now runs the full height of the fight stage (issue 213), so it holds
@@ -52,6 +53,11 @@ export function chronicleSystemLine(content: string): string {
   }
   if (content.startsWith(JOIN_NOTE_PREFIX)) {
     return content.slice(JOIN_NOTE_PREFIX.length);
+  }
+  // A settled offer (issue 239): the words say who answered and how; the
+  // marker is for the DM.
+  if (content.startsWith(OFFER_NOTE_PREFIX)) {
+    return content.slice(OFFER_NOTE_PREFIX.length);
   }
   return content;
 }

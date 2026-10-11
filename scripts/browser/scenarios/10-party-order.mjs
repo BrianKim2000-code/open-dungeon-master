@@ -15,7 +15,23 @@ export default {
       const list = await cards().evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-party-card")));
       return list;
     };
-    await eventually(async () => (await cards().count()) >= 2, { timeoutMs: 30_000, label: "two party cards" });
+    // A desktop opens on the roster; a phone tabs the panel away behind its
+    // bottom bar (the Party tab, or Battle while the board is staged), and
+    // the party rail opens it where there is one.
+    const openParty = async () => {
+      await eventually(() => page.locator(`${root}.cine-stage`).count(), { timeoutMs: 30_000, label: "the table's stage" });
+      await sleep(1_500);
+      for (const selector of [`${root}[data-tour="tab-party"]`, `${root}[data-tour="tab-battle"]`, `${root}.cine-party button`]) {
+        if ((await cards().count()) >= 2) break;
+        const door = page.locator(selector).locator("visible=true").first();
+        if (await door.count()) {
+          await t.tap(door);
+          await sleep(800);
+        }
+      }
+      await eventually(async () => (await cards().count()) >= 2, { timeoutMs: 30_000, label: "two party cards" });
+    };
+    await openParty();
     const start = await shown();
     check(start[0] === ids.tavi && start[1] === ids.brann, `the table's own order first: Tavi then Brann (${start.join(", ")})`);
 
@@ -63,7 +79,7 @@ export default {
     await t.tap(page.getByRole("button", { name: /^move tavi lockwhisper down$/i }).locator("visible=true").first());
     await eventually(async () => (await shown())[0] === ids.brann, { label: "Brann first before the reload" });
     await t.open(`/campaigns/${ids.campaignId}`);
-    await eventually(async () => (await cards().count()) >= 2, { timeoutMs: 30_000, label: "the cards after the reload" });
+    await openParty();
     const kept = await shown();
     check(kept[0] === ids.brann && kept[1] === ids.tavi, `the order kept across a reload (${kept.join(", ")})`);
     check((await page.locator(`${root}.party-grip`).count()) === 0, "arranging is off again after a reload; the cards are plain");
