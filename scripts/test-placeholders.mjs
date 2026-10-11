@@ -36,7 +36,12 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // painted-square ceiling and bring the set to 17.51 MiB, so neither ceiling
 // moved for them; the next batch of family plates will need the total raised
 // or the plates downsized.
-const BUDGET_TOTAL_BYTES = 18 * 1024 * 1024;
+// The second batch adds 96 more family plates and 13 enemy NPC role plates
+// (109 files, 512 px, 36 to 106 KiB each, 7.68 MiB together) at the same
+// quality, every one under the 128 KiB painted-square ceiling. That brings
+// the set to 25.19 MiB, so the total moves from 18 MiB to 26 MiB: the new
+// total plus a little headroom, not room for another batch.
+const BUDGET_TOTAL_BYTES = 26 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 192 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 128 * 1024;
@@ -180,6 +185,55 @@ expectPlate("unknown creature", R.monsterPlaceholder("beast", { cr: 1, genre: "h
 expectPlate("custom enemy", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", slug: "custom", name: "Bandit Captain's Second" }), "humanoid");
 // A family word inside a longer name is not the family.
 expectPlate("name containing a family", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", name: "Troll Hunter" }), "humanoid");
+
+// The second batch. A dragon of any age shares its colour's young plate,
+// and an ancient one (CR 23) beats the boss override like the lich does.
+expectPlate("ancient black dragon", R.monsterPlaceholder("dragon", { cr: 21, genre: "high_fantasy", slug: "ancient-black-dragon", name: "Ancient Black Dragon" }), "young-black-dragon");
+expectPlate("silver wyrmling", R.monsterPlaceholder("dragon", { cr: 2, genre: "high_fantasy", slug: "silver-dragon-wyrmling", name: "Silver Dragon Wyrmling" }), "young-silver-dragon");
+// Green and red keep the plates they already had.
+expectPlate("young green dragon", R.monsterPlaceholder("dragon", { cr: 8, genre: "high_fantasy", slug: "young-green-dragon", name: "Young Green Dragon" }), "dragon");
+expectPlate("swarm of wasps", R.monsterPlaceholder("beast", { cr: 0.5, genre: "high_fantasy", slug: "swarm-of-wasps", name: "Swarm of Wasps" }), "swarm-of-insects");
+expectPlate("reef shark", R.monsterPlaceholder("beast", { cr: 0.5, genre: "", slug: "reef-shark", name: "Reef Shark" }), "giant-shark");
+expectPlate("will-o'-wisp by name", R.monsterPlaceholder("undead", { cr: 2, genre: "high_fantasy", name: "Will-o'-Wisp 2" }), "will-o-wisp");
+expectPlate("hydra", R.monsterPlaceholder("monstrosity", { cr: 8, genre: "dark_fantasy", slug: "hydra", name: "The Marsh Mother" }), "hydra");
+// Enemy NPC roles, from the stat block and from the name.
+for (const [slug, plate] of [
+  ["bandit", "bandit"], ["bandit-captain", "bandit"], ["thug", "executioner"],
+  ["cultist", "cultist"], ["cult-fanatic", "cultist"], ["assassin", "assassin"], ["spy", "assassin"],
+  ["knight", "dark-knight"], ["scout", "archer"], ["gladiator", "gladiator"], ["druid", "battle-shaman"],
+  ["archmage", "tyrant"],
+]) {
+  expectPlate(`npc stat block ${slug}`, R.monsterPlaceholder("humanoid", { cr: 2, genre: "high_fantasy", slug, name: titleCase(slug) }), plate);
+}
+expectPlate("archmage over boss", R.monsterPlaceholder("humanoid", { cr: 12, genre: "high_fantasy", slug: "archmage", name: "Archmage" }), "tyrant");
+for (const [name, plate] of [
+  ["Necromancer", "necromancer"], ["Pirate Captain", "pirate"], ["Corsair 3", "pirate"], ["Houndmaster", "houndmaster"],
+  ["Alchemist", "alchemical-saboteur"], ["Torturer", "executioner"], ["Death Knight", "dark-knight"],
+]) {
+  expectPlate(`npc name ${name}`, R.monsterPlaceholder("humanoid", { cr: 3, genre: "high_fantasy", slug: "custom", name }), plate);
+}
+// A mage or a veteran is not one of the roles; it keeps the humanoid plate.
+expectPlate("mage stays humanoid", R.monsterPlaceholder("humanoid", { cr: 6, genre: "high_fantasy", slug: "mage", name: "Mage" }), "humanoid");
+expectPlate("veteran stays humanoid", R.monsterPlaceholder("humanoid", { cr: 3, genre: "high_fantasy", slug: "veteran", name: "Veteran" }), "humanoid");
+// The reskin guard covers the new entries: a cyberpunk bandit called a
+// ganger and a cyberpunk archmage called something else keep the genre's
+// plates, while a plain "Bandit" there is still a bandit.
+for (const genre of ["cyberpunk", "steampunk", "post_apocalyptic", "horror", "mystery"]) {
+  const ganger = R.monsterPlaceholder("humanoid", { cr: 0.125, genre, slug: "bandit", name: "Chrome Ganger" });
+  const boss = R.monsterPlaceholder("humanoid", { cr: 12, genre, slug: "archmage", name: "The Chairman" });
+  const hydra = R.monsterPlaceholder("monstrosity", { cr: 8, genre, slug: "hydra", name: "The Many-Mouthed" });
+  for (const [label, url] of [["bandit", ganger], ["archmage", boss], ["hydra", hydra]]) {
+    if (/\/monster\/(bandit|tyrant|hydra)\.webp$/.test(url)) {
+      failures.push(`${genre} reskinned ${label} drew the fantasy plate ${url}`);
+    }
+  }
+}
+// Cyberpunk's Arena Champion fights as a gladiator; the fantasy arena plate
+// is not its picture.
+if (R.monsterPlaceholder("humanoid", { cr: 5, genre: "cyberpunk", slug: "gladiator", name: "Arena Champion" }).endsWith("/gladiator.webp")) {
+  failures.push("cyberpunk Arena Champion drew the fantasy gladiator");
+}
+expectPlate("cyberpunk plain bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "cyberpunk", slug: "bandit", name: "Bandit 2" }), "bandit");
 
 for (const genre of GENRES) {
   for (const seed of ["", "abc", "a-campaign-id", "zzzz"]) {
