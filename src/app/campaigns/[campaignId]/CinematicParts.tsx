@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { EyeOff } from "lucide-react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import type { CampaignMember } from "@/lib/campaign-types";
@@ -19,6 +19,9 @@ import { TokenFace } from "@/app/campaigns/[campaignId]/BoardChrome";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
 import { ROLL_KIND_LABELS, rollChronicleLead, rollToastLead } from "@/lib/roll-labels";
+import { LengthNote } from "@/components/ui/LengthNote";
+import { atBottom, chronicleSignature, chronicleWindow } from "@/lib/chronicle-logic";
+import { textLength } from "@/lib/text-limits";
 
 // The cinematic table ("ODM World Concepts", round 3b): the scene's own
 // painting fills the screen, the chrome shrinks to its edges, and the fight
@@ -395,7 +398,71 @@ export function TabletopOrder({
 // typed here is lost when the board closes). Roll markers in a passage
 // become notes when the roll is in hand and vanish otherwise.
 const ROLL_MARKER = /\[roll:([0-9a-f-]{36})\]/g;
-const CHRONICLE_ENTRIES = 14;
+
+// Keeps a scroll on its newest line while the reader is there, and leaves a
+// reader who scrolled back where they are (issue 212). Follows whatever
+// `signature` says changed, a resize of the pane, and a resize of what it
+// holds (a roll card, a font arriving), so it never waits on an entry count.
+// `away` is whether the reader has scrolled back; `unseen` whether something
+// new arrived since.
+function useFollowBottom(signature: string) {
+  const logRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  const lastTop = useRef(0);
+  const [away, setAway] = useState(false);
+  const [unseen, setUnseen] = useState(false);
+  const toEnd = useCallback((behavior: ScrollBehavior = "instant") => {
+    const log = logRef.current;
+    if (log) log.scrollTo({ top: log.scrollHeight, behavior });
+  }, []);
+  // Before paint, so a new passage never flashes in below the fold first.
+  useLayoutEffect(() => {
+    if (following.current) {
+      toEnd();
+    } else {
+      setUnseen(true);
+    }
+  }, [signature, toEnd]);
+  useEffect(() => {
+    const log = logRef.current;
+    const flow = flowRef.current;
+    if (!log || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (following.current) toEnd();
+    });
+    observer.observe(log);
+    if (flow) observer.observe(flow);
+    return () => observer.disconnect();
+  }, [toEnd]);
+  // Only the reader scrolling UP leaves the end. A pane that shrinks (or a
+  // scroll event read mid-resize) also opens a gap below, and taking that
+  // for the reader leaving stranded the newest line under the fold.
+  const onScroll = useCallback(() => {
+    const log = logRef.current;
+    if (!log) return;
+    const bottom = atBottom(log);
+    if (bottom) {
+      following.current = true;
+    } else if (log.scrollTop < lastTop.current - 1) {
+      following.current = false;
+    }
+    lastTop.current = log.scrollTop;
+    setAway(!following.current);
+    if (following.current) {
+      setUnseen(false);
+      if (!bottom) toEnd();
+    }
+  }, [toEnd]);
+  const jump = useCallback(() => {
+    following.current = true;
+    lastTop.current = 0;
+    setAway(false);
+    setUnseen(false);
+    toEnd("smooth");
+  }, [toEnd]);
+  return { logRef, flowRef, onScroll, away, unseen, jump };
+}
 
 export function TabletopChronicle({
   messages,
@@ -412,6 +479,8 @@ export function TabletopChronicle({
   inputBlocked,
   placeholder,
   onSubmit,
+  maxChars,
+  onShowStory,
   composer = true,
 }: {
   messages: ReadonlyArray<CampaignMessage>;
@@ -428,19 +497,20 @@ export function TabletopChronicle({
   inputBlocked: boolean;
   placeholder: string;
   onSubmit: (event: FormEvent) => void;
+  // The mode's limit (src/lib/text-limits.ts), the same as the desk's.
+  maxChars: number;
+  // Opens the story view, where everything older than the window is.
+  onShowStory?: () => void;
   // False on the fight stage, where the desk sits right under the board.
   composer?: boolean;
 }) {
   const rollsById = useMemo(() => new Map(rolls.map((roll) => [roll.id, roll])), [rolls]);
-  const recent = useMemo(
-    () => messages.filter((message) => message.authorType !== "system" || !message.dmTurnId).slice(-CHRONICLE_ENTRIES),
-    [messages],
-  );
-  const logRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const log = logRef.current;
-    if (log) log.scrollTop = log.scrollHeight;
-  }, [recent.length]);
+  const { recent, earlier } = useMemo(() => chronicleWindow(messages), [messages]);
+  const signature = useMemo(() => chronicleSignature(recent, rolls.length), [recent, rolls.length]);
+  const { logRef, flowRef, onScroll, away, unseen, jump } = useFollowBottom(signature);
+  const noteId = useId();
+  const length = textLength(input);
+  const tooLong = length > maxChars;
   const nameOf = (message: CampaignMessage) =>
     sheets.find((sheet) => sheet.id === message.characterId)?.name ??
     sheets.find((sheet) => sheet.userId === message.userId)?.name ??
@@ -455,7 +525,18 @@ export function TabletopChronicle({
       <span className="cine-chronicle-roller" aria-hidden="true" />
       <div className="cine-chronicle-page">
         <span className="cine-chronicle-eyebrow">The chronicle</span>
-        <div ref={logRef} className="cine-chronicle-log">
+        <div className="cine-chronicle-scroll">
+        <div ref={logRef} onScroll={onScroll} className="cine-chronicle-log">
+          <div ref={flowRef} className="cine-chronicle-flow">
+          {earlier > 0 ? (
+            onShowStory ? (
+              <button type="button" onClick={onShowStory} className="cine-chronicle-earlier">
+                {earlier === 1 ? "1 earlier entry" : `${earlier} earlier entries`}: read them in the story
+              </button>
+            ) : (
+              <p className="cine-chronicle-earlier">The last {recent.length} entries; the story holds the rest.</p>
+            )
+          ) : null}
           {recent.length === 0 ? <p className="cine-chronicle-quiet">The tale has not begun.</p> : null}
           {recent.map((message) => {
             if (message.authorType === "dm") {
@@ -493,6 +574,22 @@ export function TabletopChronicle({
               </p>
             );
           })}
+          </div>
+        </div>
+        {/* Always drawn so it can rise in and sink away; out of reach while
+            hidden. */}
+        <button
+          type="button"
+          onClick={jump}
+          data-shown={away ? "" : undefined}
+          data-unseen={unseen ? "" : undefined}
+          aria-hidden={away ? undefined : true}
+          tabIndex={away ? undefined : -1}
+          aria-label={unseen ? "New entries below: jump to the latest" : "Jump to the latest entry"}
+          className="cine-chronicle-latest"
+        >
+          {unseen ? "New below" : "Latest"} <span aria-hidden="true">&#8595;</span>
+        </button>
         </div>
         {composer ? (
         <form onSubmit={onSubmit} className="cine-chronicle-desk">
@@ -511,7 +608,7 @@ export function TabletopChronicle({
               </button>
             ))}
           </div>
-          <div className="cine-chronicle-well">
+          <div className="cine-chronicle-well" data-over={tooLong ? "" : undefined}>
             <DictateField
               label="Your move"
               disabled={inputBlocked}
@@ -531,13 +628,16 @@ export function TabletopChronicle({
                 disabled={inputBlocked}
                 placeholder={placeholder}
                 aria-label="Your move"
+                aria-describedby={noteId}
+                aria-invalid={tooLong || undefined}
                 className="cine-chronicle-input"
               />
             </DictateField>
-            <button type="submit" disabled={sending || !input.trim() || inputBlocked} className="cine-chronicle-send" aria-label="Send">
+            <button type="submit" disabled={sending || !input.trim() || inputBlocked || tooLong} className="cine-chronicle-send" aria-label="Send">
               Send <span aria-hidden="true">&#10230;</span>
             </button>
           </div>
+          <LengthNote id={noteId} length={length} max={maxChars} from={0.8} />
         </form>
         ) : null}
       </div>

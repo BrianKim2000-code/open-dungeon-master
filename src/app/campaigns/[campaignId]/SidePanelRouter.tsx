@@ -37,7 +37,7 @@ import type { DmWhisper, InboxWhisper } from "@/lib/db/dm-whispers";
 import type { SideThread } from "@/lib/db/side-chat";
 import type { PlayerMapView } from "@/lib/battlemap/view";
 import type { MapPing } from "@/lib/dm/board-logic";
-import { companionSlotsFree, resolveCompanionMode } from "@/lib/schemas/game-settings";
+import { companionSlotsFree, lastingCompanionBlock, resolveCompanionMode } from "@/lib/schemas/game-settings";
 import { hasHumanDm, partySlotCount } from "@/lib/dm/viewer";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { LeadPanel as LeadPanelComponent } from "@/app/campaigns/[campaignId]/LeadPanel";
@@ -161,6 +161,9 @@ export type SidePanelRouterProps = {
   // the chat, so the panels with animation loops (the region map's pulse,
   // the board's weather) rest on this rather than on document.hidden alone.
   visible?: boolean;
+  // Switches the side panel to another tab (SidePanel's rail), for a panel
+  // that points somewhere else: the Party panel's way to the Setup tab.
+  onOpenTab?: (tab: PanelTab) => void;
 };
 
 // Which panel the active tab shows. Every PanelTab has an explicit branch;
@@ -227,6 +230,7 @@ export function SidePanelRouter({
   questsVersion,
   relationshipsEnabled,
   visible = true,
+  onOpenTab,
   adjudicates,
   messages,
   dmIntents,
@@ -422,6 +426,17 @@ export function SidePanelRouter({
                         .length < campaign.gameSettings.maxCompanions
                     : false
                 }
+                companionBlock={
+                  campaign?.gameSettings
+                    ? lastingCompanionBlock(
+                        campaign.gameSettings,
+                        partySize,
+                        sheets.filter((sheet) => sheet.isCompanion && sheet.companionKind !== "guest").length,
+                        humanDmTable,
+                      )
+                    : null
+                }
+                onOpenSettings={onOpenTab ? () => onOpenTab("settings") : undefined}
                 humanDmTable={humanDmTable}
                 companionGenre={campaign?.gameSettings?.genre}
                 companionLevel={(() => {
