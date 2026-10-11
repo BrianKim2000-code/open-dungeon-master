@@ -195,9 +195,11 @@ const claimSchema = z.discriminatedUnion("kind", [
     kind: z.literal("roll_ask"),
     character: z.string().min(1).max(120),
     check: z.enum(ROLL_ASK_CHECKS),
-    skill: z.string().max(40).optional(),
-    ability: z.enum(ABILITIES).optional(),
-    dc: z.number().int().min(1).max(40).optional(),
+    // A model writes null for a field it leaves empty: the ask still counts,
+    // as if the field were left out (checkClaims).
+    skill: z.string().max(40).nullable().optional(),
+    ability: z.enum(ABILITIES).nullable().optional(),
+    dc: z.number().int().min(1).max(40).nullable().optional(),
     quote: quoteField,
   }),
   z.object({ kind: z.literal("speaker"), ref: z.string().min(1).max(120), quote: quoteField }),
@@ -324,7 +326,10 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
         if ((claim.check === "ability" || claim.check === "save") && !claim.ability) {
           break;
         }
-        kept.push(claim);
+        // Only the fields the reader filled go on: a null DC would otherwise
+        // reach request_roll as one (rolls.ts rollAsksFromClaims).
+        const { skill, ability, dc, ...ask } = claim;
+        kept.push({ ...ask, ...(skill ? { skill } : {}), ...(ability ? { ability } : {}), ...(dc ? { dc } : {}) });
         break;
       }
       case "speaker": {

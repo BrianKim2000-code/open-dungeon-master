@@ -166,6 +166,17 @@ await test("A cantrip cast, an unknown skill or a save with no ability is droppe
   assert.deepEqual(kept, [{ kind: "roll_ask", character: "all", check: "skill", skill: "perception", quote: "roll Perception" }]);
 });
 
+await test("A roll ask whose empty fields the reader wrote as null is kept as if they were left out.", () => {
+  const text = "Mira, roll Perception. Mira, make a Wisdom saving throw, DC 13.";
+  const ctx = context(text, ALL);
+  const skill = { kind: "roll_ask", character: mira.id, check: "skill", skill: "perception", quote: "Mira, roll Perception." };
+  const save = { kind: "roll_ask", character: mira.id, check: "save", ability: "wis", dc: 13, quote: "make a Wisdom saving throw, DC 13" };
+  assert.deepEqual(checkClaims([{ ...skill, ability: null, dc: null }], ctx), [skill]);
+  assert.deepEqual(checkClaims([{ ...save, skill: null }], ctx), [save]);
+  // Null is no skill: a skill check still needs one.
+  assert.deepEqual(checkClaims([{ ...skill, skill: null }], ctx), []);
+});
+
 await test("A speaker claim acts only on a quoted line, a known ref, and a person the prose itself names.", () => {
   const text = "Marla alza lo sguardo. «Sei tornato», dice. Una figura incappucciata sussurra: «Non fidarti di lei.»";
   const ctx = context(text, ALL);
