@@ -259,6 +259,10 @@ export const claudeAdapter: HarnessAdapter = {
   signInHint: "claude auth login",
   lockdown: "removed",
   paints: false,
+  // The system prompt is a file (start below), split at the cache boundary
+  // into two cached blocks: the older transcript in the second block is
+  // written again only when a chunk of it closes.
+  settledTranscript: true,
   async probe(binary, env) {
     const version = await runProgram(binary, ["--version"], env, 15_000);
     const installed = version.code === 0;

@@ -21,14 +21,14 @@ const { renderTurn, renderFollowUp, renderCompletion, toMcpTools, toolNames, HAR
   "../src/lib/harness/render.ts"
 );
 const { buildChildEnv, leaksServerSecret } = await import("../src/lib/harness/child-env.ts");
-const { claudeArgs, CLAUDE_ENV, CLAUDE_MCP_PREFIX, withCacheBoundary } = await import(
+const { claudeAdapter, claudeArgs, CLAUDE_ENV, CLAUDE_MCP_PREFIX, withCacheBoundary } = await import(
   "../src/lib/harness/adapters/claude.ts"
 );
-const { codexArgs, ignoredCodexSettings, userCodexMcpServers } = await import("../src/lib/harness/adapters/codex.ts");
-const { opencodeConfig, OPENCODE_SESSION_RULES, parseOpencodeModels } = await import(
+const { codexAdapter, codexArgs, ignoredCodexSettings, userCodexMcpServers } = await import("../src/lib/harness/adapters/codex.ts");
+const { opencodeAdapter, opencodeConfig, OPENCODE_SESSION_RULES, parseOpencodeModels } = await import(
   "../src/lib/harness/adapters/opencode.ts"
 );
-const { grokArgs, grokAgentProfile, GROK_ENV } = await import("../src/lib/harness/adapters/grok.ts");
+const { grokAdapter, grokArgs, grokAgentProfile, GROK_ENV } = await import("../src/lib/harness/adapters/grok.ts");
 const { sniffImage, imageSize, acceptImage, MAX_HARNESS_IMAGE_BYTES } = await import("../src/lib/harness/images.ts");
 const { maskAccount } = await import("../src/lib/harness/status.ts");
 const { knownInstallDirs } = await import("../src/lib/harness/discover.ts");
@@ -359,7 +359,7 @@ test("a chat model reads the turn-to-turn state after the transcript, the same t
 // What Claude Code caches as its second system block: everything after the
 // boundary marker in the system prompt file it is given.
 function blockTwo(state, history = []) {
-  return withCacheBoundary(renderTurn(buildDmMessages(state, history)).system).split(CACHE_BOUNDARY)[1];
+  return withCacheBoundary(renderTurn(buildDmMessages(state, history), { settledTranscript: true }).system).split(CACHE_BOUNDARY)[1];
 }
 
 test("an agent program reads the turn-to-turn state after the transcript, and the rest stays put", () => {
@@ -390,7 +390,7 @@ test("an agent program reads the turn-to-turn state after the transcript, and th
   assert.notEqual(blockTwo({ ...state, encounter: null }, history), block, "the fight ended");
 });
 
-test("an agent program reads the older transcript in whole chunks of twenty in its system prompt, every line once, in order", () => {
+test("Claude Code reads the older transcript in whole chunks of twenty in its system prompt, every line once, in order", () => {
   const lines = (count) =>
     Array.from({ length: count }, (_, at) => ({
       id: `m${at + 1}`,
@@ -401,7 +401,8 @@ test("an agent program reads the older transcript in whole chunks of twenty in i
       intent: null,
     }));
   const state = () => ({ ...fightingState(), contextLimitTokens: 131_072 });
-  const { system, prompt } = renderTurn(buildDmMessages(state(), lines(45)));
+  assert.equal(claudeAdapter.settledTranscript, true, "Claude Code reads its system prompt from a file and caches it in blocks");
+  const { system, prompt } = renderTurn(buildDmMessages(state(), lines(45)), { settledTranscript: true });
   for (let at = 1; at <= 45; at += 1) {
     const line = `Line ${String(at).padStart(3, "0")}:`;
     assert.equal(count(system, line) + count(prompt, line), 1, line);
@@ -411,6 +412,32 @@ test("an agent program reads the older transcript in whole chunks of twenty in i
   const block = blockTwo(state(), lines(45));
   assert.equal(blockTwo(state(), lines(41)), block, "the same chunk: block 2 stays as it was");
   assert.notEqual(blockTwo(state(), lines(61)), block, "a chunk closed: block 2 is written again");
+});
+
+test("every other program gets the whole transcript in its opening message, as before: opencode takes its system prompt through an environment variable, which Linux caps at 128 KiB", () => {
+  const lines = (count) =>
+    Array.from({ length: count }, (_, at) => ({
+      id: `m${at + 1}`,
+      seq: at + 1,
+      authorType: at % 2 ? "dm" : "player",
+      characterId: at % 2 ? null : "sheet-1",
+      content: `Line ${String(at + 1).padStart(3, "0")}: the bell tolls.`,
+      intent: null,
+    }));
+  for (const adapter of [codexAdapter, opencodeAdapter, grokAdapter]) {
+    assert.notEqual(adapter.settledTranscript, true, `${adapter.id} keeps its transcript in the opening message`);
+  }
+  const state = { ...fightingState(), contextLimitTokens: 131_072 };
+  const { system, prompt } = renderTurn(buildDmMessages(state, lines(45)));
+  assert.ok(!system.includes("<table_transcript_earlier>"), "no transcript in the system prompt");
+  for (let at = 1; at <= 45; at += 1) {
+    const line = `Line ${String(at).padStart(3, "0")}:`;
+    assert.equal(count(system, line), 0, line);
+    assert.equal(count(prompt, line), 1, line);
+  }
+  assert.ok(prompt.indexOf("Line 001:") < prompt.indexOf("Line 045:"));
+  // The turn-to-turn state still follows the transcript there.
+  assert.ok(prompt.indexOf("</table_transcript>") < prompt.indexOf(THIS_MOMENT_HEADING));
 });
 
 test("Claude Code gets its cache boundary where the heading was, once, and every other prompt untouched", () => {

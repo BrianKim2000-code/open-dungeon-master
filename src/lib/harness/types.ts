@@ -130,6 +130,12 @@ export type HarnessAdapter = {
   lockdown: Lockdown;
   // Whether the program has its own image tool.
   paints: boolean;
+  // Whether the older transcript may join the system prompt in whole chunks
+  // (src/lib/harness/render.ts renderTurn): only a program that reads its
+  // system prompt from a file and caches it in blocks gains by it, and only
+  // such a program can take one that long. Off, the whole transcript goes in
+  // the opening message, as before.
+  settledTranscript?: boolean;
   probe(binary: string, env: Record<string, string>): Promise<Omit<HarnessStatus, "id" | "label" | "availability" | "checkedAt" | "path" | "installHint" | "signInHint" | "lockdown" | "lockdownProven" | "nativeImages"> & { lockdownProven?: boolean }>;
   start(options: HarnessStartOptions): Promise<HarnessSession>;
 };
