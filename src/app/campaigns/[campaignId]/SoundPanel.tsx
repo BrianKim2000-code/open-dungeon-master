@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { Music, VolumeX } from "lucide-react";
+import { Check, Loader2, Music, VolumeX } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useAmbienceInstall } from "@/app/admin/useAmbienceInstall";
 import type { AmbienceAudio } from "@/app/campaigns/[campaignId]/useAmbienceAudio";
 import { HeaderGlyph } from "@/app/campaigns/[campaignId]/SessionGlyph";
 import { headerButtonClass } from "@/app/campaigns/[campaignId]/headerButton";
@@ -252,17 +252,10 @@ function Pickers({ ambience, steering }: { ambience: AmbienceAudio; steering: So
 function LibraryNote({ ambience, steering }: { ambience: AmbienceAudio; steering: SoundSteering }) {
   const counts = ambience.counts;
   if (!ambience.installed) {
-    return (
-      <p className="sound-note">
-        This server has no sound library yet, so every cue is silence.{" "}
-        {steering.isAdmin ? (
-          <Link href="/admin#admin-ambience" className="text-amber-200 underline-offset-2 hover:underline">
-            Install it from the admin panel.
-          </Link>
-        ) : (
-          "The server admin can install it from the admin panel."
-        )}
-      </p>
+    return steering.isAdmin ? (
+      <LibraryInstall ambience={ambience} />
+    ) : (
+      <p className="sound-note">This server has no sound library yet, so every cue is silence. The server admin can install it from the admin panel.</p>
     );
   }
   if (!counts || !steering.canSteer) {
@@ -273,6 +266,41 @@ function LibraryNote({ ambience, steering }: { ambience: AmbienceAudio; steering
       This server has audio for {counts.bed.installed} of {counts.bed.total} rooms, {counts.music.installed} of{" "}
       {counts.music.total} moods and {counts.sting.installed} of {counts.sting.total} sounds.
     </p>
+  );
+}
+
+// The library missing, seen by an admin: the apps ship without it to stay
+// small, so the download is offered here, where the silence is noticed,
+// and the table hears the first cue the moment it lands.
+function LibraryInstall({ ambience }: { ambience: AmbienceAudio }) {
+  const { status, error, installing, percent, install } = useAmbienceInstall();
+  const landed = status?.status === "ready";
+  useEffect(() => {
+    if (landed) {
+      ambience.refresh();
+    }
+  }, [landed, ambience]);
+  return (
+    <div className="sound-note">
+      <p>
+        This server has no sound library yet, so every cue is silence. The rooms, music and sounds are a download of about 150 MB, kept across
+        updates and credited on the licenses page.
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => install()} disabled={!status || installing} className={ui.btnSmall}>
+          {installing ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+          {installing ? `Downloading ${percent}%` : "Download the sound library"}
+        </button>
+        {landed && status.result ? (
+          <span className="inline-flex items-center gap-1 text-emerald-300">
+            <Check className="size-4" aria-hidden="true" />
+            {status.result.installed} tracks installed
+          </span>
+        ) : null}
+        {status?.status === "error" ? <span className="text-red-300">{status.error}</span> : null}
+        {error ? <span className="text-red-300">{error}</span> : null}
+      </div>
+    </div>
   );
 }
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
 import {
@@ -48,8 +48,12 @@ export async function buildPack(entries: PackEntry[]): Promise<Buffer> {
 
 // Opens a pack and checks every name before anything is written: a zip is
 // untrusted input even when it came from a release, and a path in it must
-// never reach past the library folder.
-export async function readPack(buffer: Buffer): Promise<PackEntry[]> {
+// never reach past the library folder. Each entry's bytes are read only
+// when asked for, so installing a 145 MB pack on a phone holds the zip and
+// one track at a time, not the zip and every track together.
+export type PackTrack = { file: string; credit: TrackCredit; read: () => Promise<Buffer> };
+
+export async function openPack(buffer: Buffer): Promise<PackTrack[]> {
   if (buffer.length > PACK_MAX_BYTES) {
     throw new Error("That file is too large to be a sound pack.");
   }
@@ -64,7 +68,7 @@ export async function readPack(buffer: Buffer): Promise<PackEntry[]> {
       credits = {};
     }
   }
-  const entries: PackEntry[] = [];
+  const tracks: PackTrack[] = [];
   for (const [name, file] of Object.entries(zip.files)) {
     if (file.dir || name === CREDITS_FILE) {
       continue;
@@ -75,14 +79,9 @@ export async function readPack(buffer: Buffer): Promise<PackEntry[]> {
       // installs what this server can use.
       continue;
     }
-    const data = await file.async("nodebuffer");
-    if (!data.length || data.length > TRACK_MAX_BYTES) {
-      continue;
-    }
     const credit = credits[name] ?? {};
-    entries.push({
+    tracks.push({
       file: name,
-      data,
       credit: {
         title: typeof credit.title === "string" ? credit.title : name,
         author: typeof credit.author === "string" ? credit.author : "Sound pack",
@@ -90,31 +89,53 @@ export async function readPack(buffer: Buffer): Promise<PackEntry[]> {
         license: typeof credit.license === "string" ? credit.license : "Sound pack",
         origin: "pack",
       },
+      read: () => file.async("nodebuffer"),
     });
   }
-  if (!entries.length) {
+  if (!tracks.length) {
     throw new Error("That pack holds no tracks this catalog knows.");
+  }
+  return tracks;
+}
+
+// Every track of a pack in memory at once: what the pack builder's tests
+// want, and small packs. The installer below reads one at a time.
+export async function readPack(buffer: Buffer): Promise<PackEntry[]> {
+  const entries: PackEntry[] = [];
+  for (const track of await openPack(buffer)) {
+    const data = await track.read();
+    if (!data.length || data.length > TRACK_MAX_BYTES) {
+      continue;
+    }
+    entries.push({ file: track.file, data, credit: track.credit });
   }
   return entries;
 }
 
 // Writes the pack's tracks into the library, credits them in the lock and
 // rebuilds the manifest. A file already there is kept unless `replace`:
-// an operator's own take of a cue outranks the pack's.
+// an operator's own take of a cue outranks the pack's. The folder is made
+// if it is missing: the desktop and Android apps ship without it, and this
+// is how they get one.
 export async function installPack(buffer: Buffer, { replace = false } = {}): Promise<{ installed: number; kept: number; playable: number }> {
-  const entries = await readPack(buffer);
+  const tracks = await openPack(buffer);
   const root = libraryRoot();
+  mkdirSync(root, { recursive: true });
   const lock = readLock();
   let installed = 0;
   let kept = 0;
-  for (const entry of entries) {
-    const target = path.join(/*turbopackIgnore: true*/ root, entry.file);
+  for (const track of tracks) {
+    const target = path.join(/*turbopackIgnore: true*/ root, track.file);
     if (existsSync(target) && !replace) {
       kept += 1;
       continue;
     }
-    writeFileSync(target, entry.data);
-    lock[entry.file] = entry.credit;
+    const data = await track.read();
+    if (!data.length || data.length > TRACK_MAX_BYTES) {
+      continue;
+    }
+    writeFileSync(target, data);
+    lock[track.file] = track.credit;
     installed += 1;
   }
   writeLock(lock);

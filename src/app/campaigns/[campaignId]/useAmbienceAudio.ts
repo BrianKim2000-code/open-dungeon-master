@@ -66,6 +66,10 @@ export type AmbienceAudio = {
   // of each layer that covers.
   tracks: AmbienceTracks;
   counts: AmbienceCounts | null;
+  // Asks the server again which cues it can play: the Sound panel calls
+  // this once an admin's pack install lands, so the table hears it without
+  // a reload.
+  refresh: () => void;
   // What the server says is playing, held layers included.
   state: AmbienceState;
   // What this browser is actually doing with it.
@@ -122,14 +126,17 @@ export function useAmbienceAudio(
     };
   }, []);
 
-  // Which cues this install can actually play. One fetch per mount; a table
-  // with no library gets an empty map and the whole hook goes quiet.
+  // Which cues this install can actually play. One fetch per mount, and one
+  // more per refresh(); a table with no library gets an empty map and the
+  // whole hook goes quiet.
+  const [generation, setGeneration] = useState(0);
+  const refresh = useCallback(() => setGeneration((value) => value + 1), []);
   useEffect(() => {
     if (!enabled) {
       return;
     }
     let cancelled = false;
-    fetch("/api/ambience")
+    fetch("/api/ambience", generation ? { cache: "no-store" } : undefined)
       .then((response) => (response.ok ? response.json() : { tracks: {} }))
       .then((data) => {
         if (!cancelled) {
@@ -145,7 +152,7 @@ export function useAmbienceAudio(
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, generation]);
 
   // The account copy of the prefs, applied over localStorage unless the
   // user touched a control first (src/lib/audio-prefs.ts).
@@ -219,6 +226,7 @@ export function useAmbienceAudio(
       installed,
       tracks: tracks ?? {},
       counts,
+      refresh,
       state: ambience,
       playing,
       setMuted,
@@ -229,6 +237,6 @@ export function useAmbienceAudio(
       skip,
       setDucked,
     }),
-    [muted, volume, bedLevel, musicLevel, unlocked, installed, tracks, counts, ambience, playing, setMuted, setVolume, setBedLevel, setMusicLevel, unlock, skip, setDucked],
+    [muted, volume, bedLevel, musicLevel, unlocked, installed, tracks, counts, refresh, ambience, playing, setMuted, setVolume, setBedLevel, setMusicLevel, unlock, skip, setDucked],
   );
 }

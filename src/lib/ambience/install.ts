@@ -1,3 +1,9 @@
+import { createWriteStream } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { installedCounts, installedTracks, rebuildManifest } from "@/lib/ambience/library";
 import { installPack, packAssetUrl, PACK_MAX_BYTES } from "@/lib/ambience/pack";
 
@@ -56,7 +62,11 @@ export function ambienceLibraryStatus(version: string): AmbienceLibraryStatus {
   };
 }
 
-async function download(url: string, onProgress: (loaded: number, total: number) => void): Promise<Buffer> {
+// Downloads the pack to a temporary file, counting bytes as they land. The
+// pack is 145 MB and a phone hosts the server too, so it is never held as
+// a list of chunks to be joined: the file is read back once, whole, when
+// the zip is opened.
+async function download(url: string, onProgress: (loaded: number, total: number) => void): Promise<string> {
   const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(10 * 60_000) });
   if (!response.ok) {
     throw new Error(`${new URL(url).host} answered ${response.status}.`);
@@ -65,26 +75,38 @@ async function download(url: string, onProgress: (loaded: number, total: number)
   if (total > PACK_MAX_BYTES) {
     throw new Error("That file is too large to be a sound pack.");
   }
-  const chunks: Buffer[] = [];
-  let loaded = 0;
-  const reader = response.body?.getReader();
-  if (!reader) {
+  if (!response.body) {
     throw new Error("The download had no body.");
   }
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
+  const dir = await mkdtemp(path.join(os.tmpdir(), "odm-ambience-"));
+  const file = path.join(dir, "ambience-pack.zip");
+  let loaded = 0;
+  const count = async function* (source: AsyncIterable<Uint8Array>) {
+    for await (const chunk of source) {
+      loaded += chunk.byteLength;
+      if (loaded > PACK_MAX_BYTES) {
+        throw new Error("That file is too large to be a sound pack.");
+      }
+      onProgress(loaded, total);
+      yield chunk;
     }
-    loaded += value.byteLength;
-    if (loaded > PACK_MAX_BYTES) {
-      await reader.cancel();
-      throw new Error("That file is too large to be a sound pack.");
-    }
-    chunks.push(Buffer.from(value));
-    onProgress(loaded, total);
+  };
+  try {
+    await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream<Uint8Array>), count, createWriteStream(file));
+  } catch (error) {
+    await rm(dir, { recursive: true, force: true });
+    throw error;
   }
-  return Buffer.concat(chunks);
+  return file;
+}
+
+async function downloadAndInstall(url: string, onProgress: (loaded: number, total: number) => void) {
+  const file = await download(url, onProgress);
+  try {
+    return await installPack(await readFile(file));
+  } finally {
+    await rm(path.dirname(file), { recursive: true, force: true });
+  }
 }
 
 // Starts the download (or reports the one running) and returns at once.
@@ -99,11 +121,10 @@ export function installAmbiencePack(url: string, version: string): AmbienceLibra
   current.error = "";
   current.url = url;
   current.result = null;
-  download(url, (loaded, total) => {
+  downloadAndInstall(url, (loaded, total) => {
     current.loaded = loaded;
     current.total = total;
   })
-    .then((buffer) => installPack(buffer))
     .then((result) => {
       current.status = "ready";
       current.result = { installed: result.installed, kept: result.kept };
