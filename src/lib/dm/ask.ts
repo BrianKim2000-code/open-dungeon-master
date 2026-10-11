@@ -308,12 +308,13 @@ function threadMessages(campaignId: string, userId: string): ChatMessage[] {
 // server itself made (the shared-host policy, src/lib/shared-host.ts) is
 // said in its own words, since retrying would not change it.
 async function modelFailure(error: Response): Promise<string> {
-  if (error.status === 403) {
-    const payload = (await error.json().catch(() => null)) as { error?: string } | null;
-    if (payload?.error) {
-      return payload.error;
-    }
+  const payload = (await error.json().catch(() => null)) as { error?: string } | null;
+  if (error.status === 403 && payload?.error) {
+    return payload.error;
   }
+  // The table reads one line; the log keeps what the backend actually
+  // said, so a blip can be told from a server that is down.
+  console.error(`[ask] the model call failed (${error.status}): ${payload?.error ?? "no detail"}`);
   return "The model is unavailable; try again shortly.";
 }
 

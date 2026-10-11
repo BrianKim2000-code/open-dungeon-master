@@ -999,7 +999,7 @@ export async function requestLocalMessage(
   const requestTimeout = createRequestTimeout(timeoutMs);
   let upstream: Response;
   try {
-    upstream = await fetch(`${baseUrl}/api/chat`, {
+    upstream = await fetchBackend(`${baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestPayload),

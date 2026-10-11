@@ -137,6 +137,12 @@ export async function fakeModel() {
       );
     });
   });
+  // Node closes an idle keep-alive socket after five seconds; a test that
+  // sets up a fight between two requests can take that long, and a request
+  // written onto the socket as it closes fails before any reply. The
+  // backend fetch retries that once, and this server never closes idle
+  // sockets, so the suites do not depend on the timing either way.
+  server.keepAliveTimeout = 0;
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
   // A context window stated up front, so no request goes to probe one.
