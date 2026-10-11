@@ -44,7 +44,9 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // The 22 genre enemy tokens (monster/<genre>-<enemy>.webp, 512 px, 37 to
 // 115 KiB each, 1.41 MiB together) bring the set to 26.60 MiB, so the total
 // moves again, from 26 MiB to 27 MiB: just past the new total.
-const BUDGET_TOTAL_BYTES = 27 * 1024 * 1024;
+// Then 28 MiB, to leave room for #246's board-token repaints of eight type
+// plates (+0.45 MiB, about 27.05 MiB with this set), whichever lands first.
+const BUDGET_TOTAL_BYTES = 28 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 192 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 128 * 1024;
