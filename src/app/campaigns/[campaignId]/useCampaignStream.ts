@@ -1079,6 +1079,26 @@ const STREAM_PROBE_MS = 8_000;
 
 export const INITIAL_CAMPAIGN_STATE: CampaignState = initialState;
 
+// The events after which this seat fetches its fogged board again.
+// encounter_updated too: the map exists the moment start_encounter lands,
+// before any battle_map_updated ping. floor_changed as well: the reachable
+// tiles and "your turn" on the board follow the floor, and went stale
+// without this. roster_updated: Play as changes whose token is "mine", whose
+// reach the board draws and whose turn it shows; the projection is built per
+// active character on the server (view.ts). sheet_updated while a board is
+// up: the reach is the sheet's speed, which a dropped pack, a condition or
+// exhaustion changes, and the board kept the old reach until a reload
+// (issue #214). With no board there is nothing to redraw.
+export function refreshesBattleMap(eventType: string, boardUp: boolean): boolean {
+  return (
+    eventType === "battle_map_updated" ||
+    eventType === "encounter_updated" ||
+    eventType === "floor_changed" ||
+    eventType === "roster_updated" ||
+    (eventType === "sheet_updated" && boardUp)
+  );
+}
+
 export function useCampaignStream(campaignId: string) {
   const [state, dispatch] = useReducer(campaignReducer, initialState);
   // The SSE handlers are registered once, so they cannot close over `state`.
@@ -1094,6 +1114,11 @@ export function useCampaignStream(campaignId: string) {
   useEffect(() => {
     lastSeqRef.current = state.lastSeq;
   }, [state.lastSeq]);
+  // Whether a board is up, for the handlers (refreshesBattleMap).
+  const boardUpRef = useRef(Boolean(state.battleMap));
+  useEffect(() => {
+    boardUpRef.current = Boolean(state.battleMap);
+  }, [state.battleMap]);
 
   // Loads the snapshot and returns its latestSeq so the event stream can
   // start exactly where the snapshot left off. `quiet` is the stream probe:
@@ -1420,19 +1445,7 @@ export function useCampaignStream(campaignId: string) {
           if (eventType === "facts_updated") {
             void refreshFacts();
           }
-          // encounter_updated too: the map exists the moment
-          // start_encounter lands, before any battle_map_updated ping.
-          // floor_changed as well: the reachable tiles and "your turn" on
-          // the board follow the floor, and went stale without this.
-          // roster_updated: Play as changes whose token is "mine", whose
-          // reach the board draws and whose turn it shows; the projection
-          // is built per active character on the server (view.ts).
-          if (
-            eventType === "battle_map_updated" ||
-            eventType === "encounter_updated" ||
-            eventType === "floor_changed" ||
-            eventType === "roster_updated"
-          ) {
+          if (refreshesBattleMap(eventType, boardUpRef.current)) {
             void refreshBattleMap();
           }
 
