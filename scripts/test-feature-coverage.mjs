@@ -25,6 +25,7 @@ const { matchResource, populateResources, RESOURCE_DEFS } = await import(
 );
 const AUTHORED_ROWS = (await import("../src/lib/srd/authored-effects.ts")).authoredRows();
 const { COUNTER_REACTION_IDS } = await import("../src/lib/dm/reaction-kinds.ts");
+const { BONUS_ATTACK_COUNTERS } = await import("../src/lib/dm/feature-bonus-attacks.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -452,8 +453,10 @@ test("a counter with mechanical wording carries a typed effect or is deliberatel
       mechanical.test(def.guidance) &&
       !NARRATIVE_WITH_DICE.has(def.id) &&
       !spentByAuthored.has(def.id) &&
-      // Rolled and applied by src/lib/dm/reaction-counters.ts (issue 233).
-      !COUNTER_REACTION_IDS.includes(def.id),
+      // Rolled and applied by src/lib/dm/reaction-counters.ts, or spent by
+      // the bonus attack they buy (feature-bonus-attacks.ts) (issue 233).
+      !COUNTER_REACTION_IDS.includes(def.id) &&
+      !BONUS_ATTACK_COUNTERS.includes(def.id),
   ).map((def) => def.id);
   assert.deepEqual(
     offenders,

@@ -33,6 +33,9 @@ import {
 import { spellNames } from "@/lib/battlemap/hand-spells";
 import { COMMANDED } from "@/lib/dm/maneuver-rules";
 
+// A Battle Master maneuver's card wears its painting.
+const MANEUVER_ICON = (name: string): HandCard["icon"] => ({ kind: "option", key: `Maneuver: ${name}`, family: "option-maneuver" });
+
 const holds = (sheet: CharacterSheet, fragment: string) =>
   sheet.features.some((feature) => feature.name.toLowerCase().includes(fragment));
 
@@ -119,7 +122,7 @@ export function reactionCards(
   const cards: HandCard[] = [];
   const answered = (hit: PublicLastHit, name: string) =>
     hit.answered.some((entry) => entry.toLowerCase() === name.toLowerCase());
-  const feature = (hit: PublicLastHit, name: string, prompt: string, rules: string, target: HandTarget = "none") => {
+  const feature = (hit: PublicLastHit, name: string, prompt: string, rules: string, target: HandTarget = "none", icon?: HandCard["icon"]) => {
     if (answered(hit, name)) return;
     const card = base(
       `${spellKey(name).replace(/\s+/g, "-")}:${hit.characterId}`,
@@ -130,7 +133,7 @@ export function reactionCards(
         card: "reaction",
         feature: name,
       },
-      { rules },
+      { rules, ...(icon ? { icon } : {}) },
     );
     cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, name)));
   };
@@ -177,17 +180,18 @@ export function reactionCards(
   const dice = sheet.resources.sub_superiority_dice;
   if (dice && dice.max > dice.used) {
     if (mine && mine.source === "attack" && !mine.ranged && knows("parry")) {
-      feature(mine, "Parry", what(mine, "you"), "A superiority die plus your Dexterity modifier off the melee hit.");
+      feature(mine, "Parry", what(mine, "you"), "A superiority die plus your Dexterity modifier off the melee hit.", "none", MANEUVER_ICON("Parry"));
     }
     const missed = hits.find((hit) => hit.characterId === sheet.id && !hit.hit && hit.source === "attack" && !hit.ranged && hit.attackerId);
     if (missed && knows("riposte")) {
-      feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed you`, "A melee attack back with your reaction, the die on its hit.", "enemy");
+      feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed you`, "A melee attack back with your reaction, the die on its hit.", "enemy", MANEUVER_ICON("Riposte"));
     }
   }
   // A Battle Master directed this character to strike (Commander's Strike).
   if (sheet.conditions.some((entry) => entry.trim().toLowerCase() === COMMANDED)) {
     const card = base("commanders-strike", "Commander's Strike", "Directed to strike", "enemy", { card: "reaction", feature: "Commander's Strike" }, {
       rules: "One weapon attack now with your reaction, the superiority die on its hit.",
+      icon: MANEUVER_ICON("Commander's Strike"),
     });
     cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, "Commander's Strike")));
   }

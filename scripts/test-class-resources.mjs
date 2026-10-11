@@ -246,13 +246,13 @@ const CHARGED_ELSEWHERE = {
   mystery_general_strike: "the reactions named are the party's attacks",
   horror_adrenaline_surge: "take_action's bonus route charges the bonus action and spends the use",
   mystery_vanish: "take_action's bonus route charges the bonus action and spends the use",
-  // The bonus attack is pc_attack's to charge, which does not offer these
-  // three yet (authored-economy.ts authoredBonusAttackProblem knows none).
+  // The bonus attack is pc_attack's to charge, and it spends the use
+  // (src/lib/dm/feature-bonus-attacks.ts).
   sub_war_priest: "the bonus attack, not the use, costs the bonus action",
   race_hungry_jaws: "the bonus attack, not the use, costs the bonus action",
   sub_unwavering_mark: "the bonus attack, not the use, costs the bonus action",
   sub_telekinetic_master: "the slotless cast, then pc_attack's bonus attack",
-  sub_embodiment_of_the_law: "the enchantment spell's cast is the cost",
+  sub_embodiment_of_the_law: "the enchantment spell's cast is the cost (the use marks it for the bonus action)",
 };
 
 test("every feature whose text names a cost carries it", () => {

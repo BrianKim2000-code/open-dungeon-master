@@ -8,6 +8,7 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { channelOptions, psionicOptions, type HeldOption } from "@/lib/dm/option-costs";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
+import { iconPath, isPainted, type IconRef } from "@/lib/icons";
 import {
   costGate,
   gated,
@@ -33,7 +34,7 @@ function card(
   sheet: CharacterSheet,
   turn: HandTurn,
   pool: { id: string; label: string },
-  option: { name: string; cost: HandCost; rules: string; target?: HandTarget; dice?: string; ritual?: boolean },
+  option: { name: string; cost: HandCost; rules: string; target?: HandTarget; dice?: string; ritual?: boolean; icon?: IconRef },
 ): HandCard {
   const state = sheet.resources[pool.id];
   const left = state ? state.max - state.used : 0;
@@ -49,7 +50,12 @@ function card(
     rules: option.rules,
     resource: state ? `${pool.label} ${left}/${state.max}` : "",
     condition: "",
-    icon: { kind: "feature", key: option.name, family: `class-${primaryClass(sheet)}` },
+    // The option's own painting, else its pool's, else the class emblem.
+    icon: option.icon ?? {
+      kind: "feature",
+      key: isPainted(iconPath("feature", option.name)) ? option.name : pool.label,
+      family: `class-${primaryClass(sheet)}`,
+    },
     target: option.target ?? "none",
     toHit: null,
     damage: null,
@@ -120,6 +126,7 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
           rules: "A companion gains temporary hit points: the die plus your Charisma modifier.",
           target: "ally",
           dice: `${die} temp hp`,
+          icon: { kind: "option", key: "Maneuver: Rally", family: "option-maneuver" },
         }),
       );
     }
@@ -131,6 +138,7 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
           rules: "Forgo one attack: a companion strikes now with their reaction, the die added to its damage.",
           target: "ally",
           dice: `+${die}`,
+          icon: { kind: "option", key: "Maneuver: Commander's Strike", family: "option-maneuver" },
         }),
       );
     }

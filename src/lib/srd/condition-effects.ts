@@ -271,6 +271,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       abilityToDamage: true,
       ranged: true,
       bonusAction: true,
+      withActivation: 100,
     },
   },
   {
@@ -656,6 +657,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       abilityToDamage: false,
       ranged: false,
       bonusAction: true,
+      withActivation: 10,
     },
   },
   {
@@ -724,6 +726,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       abilityToDamage: true,
       ranged: false,
       bonusAction: true,
+      withActivation: 10,
       upcast: { baseLevel: 2, every: 2, dice: "1d8" },
     },
   },

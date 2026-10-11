@@ -46,9 +46,10 @@ import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, PRONE, SUFFOCATING } from "@/lib/dm/vitals-logic";
-import { prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
+import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse } from "@/lib/dm/item-use";
@@ -1169,6 +1170,15 @@ export function applyDmMutation(
         const live = getActiveEncounter(campaign.id);
         return Boolean(live && (live.kind ?? "fight") === "fight");
       })();
+      // War Priest, Unwavering Mark and Hungry Jaws are spent by the attack
+      // they buy (src/lib/dm/feature-bonus-attacks.ts).
+      if (counter && BONUS_ATTACK_COUNTERS.includes(counter.id)) {
+        return {
+          result: {
+            error: `${counter.displayName} is spent by its bonus-action attack: pc_attack with bonusAttack "feature"${counter.id === "race_hungry_jaws" ? ' and weapon "bite"' : ""}. Nothing was spent.`,
+          },
+        };
+      }
       const option = optionCost(counter?.id, `${args.variant ?? ""} ${resourceName}`, fighting);
       if (option && "refused" in option) {
         return { result: { error: option.refused } };
@@ -1182,6 +1192,12 @@ export function applyDmMutation(
         };
       }
       const optionCharge = option?.cost ?? (counter?.id === "sorcery_points" && parseFontOfMagic(args.variant) ? "bonus" : undefined);
+      // Embodiment of the Law and the genre surges move the next spell to
+      // the bonus action (src/lib/dm/resource-turn.ts castMarkCharge).
+      const castMark = castMarkCharge(campaign, sheet, counter?.id);
+      if (castMark && "error" in castMark) {
+        return { result: castMark };
+      }
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
       const charge = prepareResourceCharge(campaign, sheet, resourceName, optionCharge);
@@ -1210,6 +1226,9 @@ export function applyDmMutation(
       }
       patchSheet(sheet.id, outcome.patch);
       Object.assign(outcome.result, charge.commit());
+      if (castMark) {
+        Object.assign(outcome.result, castMark.apply());
+      }
       if (reacting) {
         Object.assign(outcome.result, reacting.apply());
       }

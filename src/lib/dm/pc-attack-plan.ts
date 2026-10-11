@@ -127,6 +127,8 @@ export type AttackExtras = {
   hurl: boolean;
   // The weapon carries a coat of basic poison.
   poison: boolean;
+  // Temporary hit points the hit gives the attacker (Hungry Jaws).
+  tempHp?: { amount: number; feature: string };
   // The reaction attack is Giant Killer's.
   giantKiller: boolean;
 };
@@ -332,6 +334,12 @@ export function planPcAttack(input: {
     return { refused: { error: checked.refused } };
   }
   const options = checked.options;
+  // A feature bonus attack's extra damage (Unwavering Mark: half the fighter
+  // level).
+  if (options.featureBonus?.damage) {
+    profile = { ...profile, damageExpression: `${profile.damageExpression}+${options.featureBonus.damage}` };
+    featNotes.push(`${options.featureBonus.feature}: +${options.featureBonus.damage} damage on a hit`);
+  }
   // Polearm Master's butt end strikes for 1d4 bludgeoning; Charger's attack
   // after a 10-foot straight run deals 5 more (the player says they ran
   // straight: charged).
@@ -359,6 +367,7 @@ export function planPcAttack(input: {
     budget,
     options,
     grantedBonusAction,
+    grantedWithActivation: built.grantedWithActivation,
     bonusSwing: maneuver?.use === "bonus_swing" ? "Quick Toss" : undefined,
     encounterId: encounter.id,
     enemyId: enemy.id,
@@ -450,6 +459,10 @@ export function planPcAttack(input: {
     advantage = mergeAdvantage([advantage, "advantage"]);
     context.notes.push("Feinting Attack: advantage on this attack, for their bonus action");
   }
+  if (options.featureBonus?.advantage) {
+    advantage = mergeAdvantage([advantage, "advantage"]);
+    context.notes.push(`${options.featureBonus.feature}: advantage on this attack`);
+  }
   // Powerful Attacker's trade: the roll at disadvantage (feat-combat.ts).
   if (powerDisadvantage) {
     advantage = mergeAdvantage([advantage, "disadvantage"]);
@@ -519,7 +532,8 @@ export function planPcAttack(input: {
     castsSpell: spell.castsSpell,
     spellSlotLevel: spell.spellSlotLevel,
     weaponAttack,
-    ammo,
+    // Curving Shot's reroll is the same arrow.
+    ammo: options.featureBonus?.noAmmo ? null : ammo,
     typedRiders: [...folded.typedRiders, ...gear.typed, ...(curse ? [curse] : [])],
     droppedRiders,
     effectiveAc: geometry.effectiveAc,
@@ -555,6 +569,7 @@ export function planPcAttack(input: {
       luck: args.luck === true && luckPointsLeft(sheet.resources) > 0,
       poison: carriesPoison(sheet, weaponAttack, profile.damageType),
       giantKiller,
+      ...(options.featureBonus?.tempHpOnHit ? { tempHp: { amount: options.featureBonus.tempHpOnHit, feature: options.featureBonus.feature } } : {}),
     },
   };
 }

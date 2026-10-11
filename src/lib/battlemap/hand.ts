@@ -6,6 +6,7 @@
 // a card never promises something pc_attack or the cast tools would refuse.
 // Pure and database-free: scripts/test-hand.mjs drives every branch. What a
 // card says once it is played lives next door in hand-play.ts.
+import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { optionCards } from "@/lib/battlemap/hand-options";
 import { maneuverDieFor, maneuverUse, type ManeuverUse } from "@/lib/dm/maneuver-rules";
 import { ragingMeleeBonus, weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
@@ -129,10 +130,11 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   }
 
   const carried = carriedWeapons(sheet);
-  const build = (name: string, srd: SrdWeapon | null, offHand: boolean, gear: WeaponGear | null = null): HandCard => {
+  const build = (name: string, srd: SrdWeapon | null, offHand: boolean, gear: WeaponGear | null = null, natural = false): HandCard => {
     const profile = weaponAttackProfile(
       derived,
-      profs,
+      // A natural weapon is always proficient, as the engine swings it.
+      natural ? [...profs, "simple", name.toLowerCase()] : profs,
       { displayName: name, srd, unarmed: srd === null, ...(gear ? { gear } : {}) },
       { riders, offHand, martialArts },
     );
@@ -197,6 +199,13 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   };
 
   for (const weapon of carried) cards.push(build(weapon.name, weapon.srd, false, weapon.gear));
+  // A lineage's bite or claws (src/lib/srd/racial-weapons.ts), proficient.
+  for (const term of ["bite", "claws"]) {
+    const natural = racialNaturalWeapon(sheet.features, term);
+    if (natural && !carried.some((weapon) => spellKey(weapon.name) === spellKey(natural.srd.name))) {
+      cards.push(build(natural.srd.name, natural.srd, false, null, true));
+    }
+  }
   cards.push(build("Unarmed strike", null, false));
   // The bonus-action strikes a feature grants (Martial Arts, Frenzy).
   cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd }))));

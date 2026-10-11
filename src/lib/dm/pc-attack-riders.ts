@@ -3,10 +3,12 @@
 // conditions a rider can leave on the target. Split from pc-attack.ts, which
 // decides the attack these belong to.
 
+import { CURVING_SHOT } from "@/lib/srd/authored-economy";
+import { storeBudget } from "@/lib/dm/turn-budget";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { PendingAttack } from "@/lib/db/dm-turns";
-import { getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { resourceLeft } from "@/lib/dm/attack-rules";
 import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
@@ -121,6 +123,7 @@ export type ParkedAttack = PendingAttack & {
     openHand?: { choice: "prone" | "push" | "no reactions"; dc: number };
     hurl?: boolean;
     poison?: boolean;
+    tempHp?: { amount: number; feature: string };
   };
 };
 
@@ -222,6 +225,39 @@ function markAttacker(campaign: Campaign, characterId: string, condition: string
   if (updated) {
     publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
   }
+}
+
+// An Arcane Archer's arrow missed: Curving Shot may reroll it at another
+// creature with the bonus action, this turn (authored-economy.ts).
+export function openCurvingShot(campaignId: string, sheet: CharacterSheet, enemyId: string, weapon: string): string | null {
+  const holds = sheet.features.some((feature) => feature.name.trim().toLowerCase() === "curving shot");
+  if (!holds || !/bow\b/i.test(weapon)) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget;
+  if (!encounter || !budget || budget.ownerId !== sheet.id || budget.bonusUsed) {
+    return null;
+  }
+  storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn.filter((key) => !key.startsWith(CURVING_SHOT)), `${CURVING_SHOT}${enemyId}`] });
+  return "Curving Shot: the bonus action may reroll this arrow at a different creature within 60 feet of this one (pc_attack bonusAttack \"feature\" at it)";
+}
+
+// Temporary hit points a hit gives the attacker (Hungry Jaws): they do not
+// stack, so the better of the two stays.
+export function gainTempHp(campaign: Campaign, sheetId: string, amount: number, feature: string): string {
+  const sheet = getSheetById(sheetId);
+  if (!sheet) {
+    return "";
+  }
+  if (amount <= (sheet.tempHp ?? 0)) {
+    return `${feature}: ${sheet.name} keeps their ${sheet.tempHp} temporary hit points, more than the ${amount} the bite gives.`;
+  }
+  const updated = patchSheet(sheet.id, { tempHp: amount });
+  if (updated) {
+    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  }
+  return `${feature}: ${sheet.name} gains ${amount} temporary hit points.`;
 }
 
 // Stunning Strike's save, once the ki is paid: CON against the monk's ki DC,

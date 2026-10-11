@@ -1,3 +1,4 @@
+import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, saveEncounter } from "@/lib/db/encounters";
@@ -318,6 +319,19 @@ function spendPcAttack(plan: AttackPlan) {
   const { campaign, turn, encounter, sheet, sheets, sheetsById, budget, ammo, context } = plan;
   if (budget) {
     storeBudget(encounter, budget);
+  }
+  // A feature bonus attack's use, and the mark that opened it
+  // (src/lib/dm/feature-bonus-attacks.ts).
+  const featureBonus = plan.options.featureBonus;
+  if (featureBonus?.counter && spendFeatureUse(campaign, sheet.id, featureBonus.counter, featureBonus.feature)) {
+    context.notes.push(`${featureBonus.feature}: one use spent`);
+  }
+  if (featureBonus?.consume) {
+    const now = getSheetById(sheet.id);
+    if (now) {
+      const cleared = removeConditions(now.conditions, now.conditionMeta, [featureBonus.consume]);
+      patchSheet(now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+    }
   }
   if (plan.castsSpell) {
     castAttackSpell(plan);

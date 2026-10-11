@@ -203,7 +203,7 @@
    "uses": 1,
    "ability": "wis",
    "recharge": "long",
-   "guidance": "A bonus-action weapon attack after taking the Attack action. Resolve it with pc_attack."
+   "guidance": "A bonus-action weapon attack after taking the Attack action, made with pc_attack (bonusAttack \"feature\"); the attack spends the use."
   },
   {
    "id": "sub_eyes_of_the_grave",
@@ -297,6 +297,18 @@
     "kind": "teleport",
     "feet": 60
    }
+  },
+  {
+   "id": "sub_eldritch_cannon",
+   "displayName": "Eldritch Cannon",
+   "match": [
+    "eldritch cannon"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "long",
+   "action": "action",
+   "guidance": "An action creates the cannon for an hour (once a long rest; a spell slot buys another). A bonus action activates it: 'Activate Cannon' with variant flamethrower or protector, or the Force Ballista through pc_attack."
   },
   {
    "id": "sub_spirit_totem",
@@ -420,7 +432,12 @@
    "ability": null,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action granting a minute of free command castings, with listeners unable to attack the bard while charmed."
+   "guidance": "A bonus action for a minute of majesty (concentration): each turn the bard may cast command as a bonus action with no slot (the cast tools charge it that way while the mantle holds), and a creature charmed by the bard cannot attack them.",
+   "fx": {
+    "kind": "buff",
+    "condition": "mantle of majesty",
+    "rounds": 10
+   }
   },
   {
    "id": "sub_unbreakable_majesty",
@@ -1528,7 +1545,17 @@
    "ability": null,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A minute of transformation from 3rd level: spectral wings granting flight, and extra radiant damage once per turn."
+   "guidance": "A bonus action from 3rd level for a minute of transformation (MotM): pass variant heavenly wings (a flying speed equal to the walking speed), inner radiance (bright light; each creature within 10 feet takes radiant damage equal to the proficiency bonus at the end of each of the aasimar's turns) or necrotic shroud (creatures within 10 feet make a Charisma save or are frightened until the end of the aasimar's next turn). Once on each turn, one target of the aasimar's attack or spell takes extra damage equal to the proficiency bonus: radiant, or necrotic for the shroud (damage_enemy).",
+   "fx": {
+    "kind": "buff",
+    "condition": "celestial revelation: heavenly wings",
+    "rounds": 10,
+    "variants": [
+     "celestial revelation: heavenly wings",
+     "celestial revelation: inner radiance",
+     "celestial revelation: necrotic shroud"
+    ]
+   }
   },
   {
    "id": "race_hidden_step",
@@ -1578,11 +1605,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "A bonus-action bite that, on a hit, also grants temporary hit points equal to the lizardfolk's Constitution modifier.",
-   "fx": {
-    "kind": "temp_hp",
-    "dice": "con"
-   }
+   "guidance": "A bonus-action bite, made with pc_attack (weapon \"bite\", bonusAttack \"feature\"): on a hit the lizardfolk also gains temporary hit points equal to their Constitution modifier (minimum 1). The attack spends the use."
   },
   {
    "id": "race_genasi_magic",
@@ -1733,7 +1756,7 @@
    "uses": 1,
    "ability": "wis",
    "recharge": "long",
-   "guidance": "Casting an enchantment spell of 1st level or higher as a bonus action instead of an action. Spend it with use_resource, then cast the spell with its own tool."
+   "guidance": "Casting an enchantment spell of 1st level or higher as a bonus action instead of an action. Spend it with use_resource on their turn; the next such spell they cast this turn then takes the bonus action."
   },
   {
    "id": "sub_cauterizing_flames",
@@ -1757,7 +1780,7 @@
    "uses": 1,
    "ability": "str",
    "recharge": "long",
-   "guidance": "The bonus-action attack against a marked creature that attacked someone else; the mark itself the server lays on every melee hit."
+   "guidance": "The bonus-action melee attack against a marked creature that damaged someone else, on the fighter's next turn: pc_attack bonusAttack \"feature\" at that creature, with advantage and +half the fighter level damage; the attack spends the use. The mark itself the server lays on every melee hit."
   },
   {
    "id": "sub_bulwark_of_force",

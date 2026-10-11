@@ -56,6 +56,9 @@ import {
   reactionSpellOnOwnTurn,
   turnCharge,
   withOpenCast,
+  bonusCastOf,
+  MANTLE_OF_MAJESTY,
+  type BonusCast,
   type SlotPlan,
 } from "@/lib/dm/cast-rules";
 import type { TurnBudget } from "@/lib/dm/action-budget";
@@ -173,6 +176,12 @@ type TurnPlan =
   // use_reaction spent the reaction; the cast only marks the caster's own turn.
   | { kind: "mark"; budget: TurnBudget };
 
+// The feature that lets this one-action spell take the bonus action
+// (cast-rules.ts bonusCastOf), with the spell's school from the pack.
+function bonusCastFor(sheet: CharacterSheet, facts: SpellFacts | null, spell: string): BonusCast | null {
+  return bonusCastOf(sheet, facts, facts ? spellSchoolFor(facts.runsAs ?? facts.name ?? spell) : null);
+}
+
 function planTurn(
   sheet: CharacterSheet,
   encounter: Encounter | null,
@@ -217,6 +226,7 @@ function planTurn(
     inFight: true,
     budget,
     reactionSpent: false,
+    bonusCast: bonusCastFor(sheet, facts, spell),
   });
   if ("error" in charge) {
     return charge;
@@ -380,12 +390,18 @@ export function castSpell(
   // spends its once-a-day counter instead of a slot while one is left
   // (src/lib/srd/feat-spells.ts); with the counter spent, a slot pays.
   const freeCast = input.ritual || signature ? null : freeCastCounter(sheet, spell, facts, input.level);
+  // Mantle of Majesty's Command costs no slot while the mantle holds.
+  const mantled =
+    !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
+    sheet.conditions.some((entry) => entry.trim().toLowerCase().startsWith(MANTLE_OF_MAJESTY));
   const slot: SlotPlan | { error: string } = input.ritual
     ? { kind: "none", note: `${name} cast as a ritual: no slot spent.` }
     : signature
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
+        : mantled
+          ? { kind: "none", note: `${name} is cast through Mantle of Majesty: no slot spent.` }
         : // A slot the player marked spent by hand for this cast pays for it.
           paidByManualTick(sheet, slotPlan(sheet, spell, facts, input.level), input.level ?? facts?.level, facts?.level, Boolean(input.dryRun));
   if ("error" in slot) {
