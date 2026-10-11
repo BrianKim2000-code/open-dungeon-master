@@ -22,7 +22,6 @@ import { matchWeapon, type SrdWeapon } from "@/lib/srd/weapons";
 
 import {
   FRESH_TURN,
-  HAND_FAN_CAP,
   attackGate,
   addFlat,
   costGate,
@@ -476,25 +475,9 @@ export function spellsToLookUp(sheet: CharacterSheet): string[] {
   return spellNames(sheet);
 }
 
-// Nine in the fan; the rest wait behind the "more" spine in the same order.
-// A playable card is never pushed behind the spine by an unplayable one.
-export function splitHand(cards: HandCard[], cap = HAND_FAN_CAP): { fan: HandCard[]; more: HandCard[] } {
-  if (cards.length <= cap) return { fan: cards, more: [] };
-  const end = cards.find((card) => card.id === "basic:end-turn");
-  const rest = cards.filter((card) => card !== end);
-  // A bare fist gives its seat up too when there is steel to swing.
-  const armed = rest.some((card) => card.intent.card === "attack" && card.id !== "attack:unarmed strike");
-  // Escape and Stand up are dealt only while something holds the character
-  // or they lie prone, which is when they matter most: they keep a seat.
-  const situational = (card: HandCard) => card.id === "basic:escape" || card.id === "basic:stand-up";
-  const rank = (card: HandCard) =>
-    card.disabled ? 2 : situational(card) ? -1 : armed && card.id === "attack:unarmed strike" ? 1 : 0;
-  const ranked = [...rest].sort((a, b) => rank(a) - rank(b));
-  const keep = new Set(ranked.slice(0, end ? cap - 1 : cap));
-  const fan = rest.filter((card) => keep.has(card));
-  if (end) fan.push(end);
-  return { fan, more: rest.filter((card) => !keep.has(card)) };
-}
+// Nine in the fan, the rest behind the "more" spine; a player's own
+// arrangement of the fan is hand-layout.ts (issue 231).
+export { splitHand } from "@/lib/battlemap/hand-layout";
 
 // Swings the Attack action grants this character (1 + Extra Attack), which
 // is what afterCommit needs to know when the action closes.
