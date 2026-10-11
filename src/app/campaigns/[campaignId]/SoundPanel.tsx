@@ -283,7 +283,7 @@ function LibraryInstall({ ambience }: { ambience: AmbienceAudio }) {
   return (
     <div className="sound-note">
       <p>
-        This server has no sound library yet, so every cue is silence. The rooms, music and sounds are a download of about 150 MB, kept across
+        This server has no sound library yet, so every cue is silence. The rooms, music and sounds are a download of about 75 MB, kept across
         updates and credited on the licenses page.
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2">

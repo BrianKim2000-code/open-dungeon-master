@@ -22,7 +22,7 @@ import {
 
 export const PACK_FILE = "ambience-pack.zip";
 const CREDITS_FILE = "credits.json";
-// A pack is a few dozen minute-long mp3s; anything past this is not one.
+// A pack is some ninety Opus tracks, 76 MB; anything past this is not one.
 export const PACK_MAX_BYTES = 400 * 1024 * 1024;
 const TRACK_MAX_BYTES = 40 * 1024 * 1024;
 

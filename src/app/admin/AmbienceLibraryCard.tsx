@@ -31,7 +31,7 @@ export function AmbienceLibraryCard() {
       id="admin-ambience"
       heading="Sound library"
       glyph="tab-ambience"
-      intro="The rooms, music and one-shot sounds every table can play: public-domain and Creative Commons recordings, credited on the licenses page. A server set up from the source has the library already; the desktop and phone apps leave it out to stay small, and one tap here downloads it (about 150 MB, kept across updates). The server can fetch more (docs/configuration.md)."
+      intro="The rooms, music and one-shot sounds every table can play: public-domain and Creative Commons recordings, credited on the licenses page. A server set up from the source has the library already; the desktop and phone apps leave it out to stay small, and one tap here downloads it (about 75 MB, kept across updates). The server can fetch more (docs/configuration.md)."
     >
       <div className="space-y-4">
         {status ? (
