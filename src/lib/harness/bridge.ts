@@ -643,7 +643,7 @@ async function startSession(
   state().byConversation.set(messages as object, session);
   session.seen = [...messages];
 
-  const rendered = renderTurn(messages);
+  const rendered = renderTurn(messages, { settledTranscript: adapter.settledTranscript === true });
   const result = session.next(messages, options, timeoutMs);
   try {
     const program = await adapter.start({

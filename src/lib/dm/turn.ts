@@ -470,7 +470,13 @@ export async function startDmTurn(campaignId: string) {
       ),
       recentRolls: listRecentRolls(campaignId, 5),
       storySummary: summary,
-      summaryCoveredSeq: coveredCount ? listMessagesPage(campaignId, coveredCount - 1, 1)[0].seq : null,
+      // The newest message the summaries cover, by the compaction watermark's
+      // own offset semantics. A watermark past the transcript (a hand-edited
+      // or imported database) covers everything there is, and a turn is
+      // never lost to it.
+      summaryCoveredSeq: coveredCount
+        ? (listMessagesPage(campaignId, coveredCount - 1, 1)[0]?.seq ?? history.at(-1)?.seq ?? null)
+        : null,
       momentAfterHistory: campaign.settings.textProvider !== "harness",
       currentLocation: currentLocation
         ? {

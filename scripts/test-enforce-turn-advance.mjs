@@ -1200,7 +1200,10 @@ await test("A new database gets no column for the enemies a DM turn acted, and o
 // ---- the DM turn a pass wakes is told which enemies are due ----
 
 const model = await fakeModel();
-const gameState = (request) => request.messages.find((message) => message.role === "system").content;
+// Everything the model was given: a chat model reads GAME STATE's turn-to-turn
+// part (the fight, and so the enemies due) after the history, as its own user
+// message (src/lib/dm/prompt.ts momentAfterHistory).
+const gameState = (request) => request.messages.map((message) => message.content ?? "").join("\n\n");
 const WAITING = (name) =>
   `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`;
 const DUE = (enemies, name, round) => {

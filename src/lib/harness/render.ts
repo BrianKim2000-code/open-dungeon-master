@@ -111,6 +111,16 @@ export type RenderedTurn = {
   prompt: string;
 };
 
+export type RenderTurnOptions = {
+  // Whether the older transcript may join the system prompt in whole chunks
+  // (HarnessAdapter.settledTranscript). Only for a program that caches its
+  // system prompt in blocks and takes one of any size: the whole older
+  // transcript can run to hundreds of kilobytes, past what a program that
+  // reads its system prompt from an environment variable or a command line
+  // can be started with (Linux caps one at 128 KiB).
+  settledTranscript?: boolean;
+};
+
 // How many transcript lines join the system prompt at once. Each chunk that
 // closes writes the system prompt's second part again, so a chunk trades one
 // rewrite of that part for a turn-by-turn rewrite of its lines; at twenty
@@ -123,7 +133,7 @@ const TRANSCRIPT_CHUNK = 20;
 // one opening message: the transcript so far, then the instruction to take
 // the turn. A turn resumed after dice carries its own tool calls and results,
 // which are written as engine lines so the program sees what was resolved.
-export function renderTurn(messages: readonly RenderMessage[]): RenderedTurn {
+export function renderTurn(messages: readonly RenderMessage[], options: RenderTurnOptions = {}): RenderedTurn {
   const systemParts: string[] = [];
   const lines: string[] = [];
   const toolNamesById = new Map<string, string>();
@@ -165,7 +175,9 @@ export function renderTurn(messages: readonly RenderMessage[]): RenderedTurn {
   // The transcript's older part, in whole chunks, joins the system prompt
   // after the standing state: it is written again only when a chunk closes,
   // not on every turn. The newest line always stays in the opening message.
-  const settled = Math.floor(Math.max(0, lines.length - 1) / TRANSCRIPT_CHUNK) * TRANSCRIPT_CHUNK;
+  const settled = options.settledTranscript
+    ? Math.floor(Math.max(0, lines.length - 1) / TRANSCRIPT_CHUNK) * TRANSCRIPT_CHUNK
+    : 0;
   const earlier = settled
     ? `\n\n<table_transcript_earlier>\n${lines.slice(0, settled).join("\n\n")}\n</table_transcript_earlier>`
     : "";
