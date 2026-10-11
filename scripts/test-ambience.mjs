@@ -131,7 +131,7 @@ console.log(`ambience: ${passed} tests passed`);
 // ---- the library on disk, the fetch gates, the pack and the player ----
 
 const { nextTrackFile, parseManifest, parseTrackFile } = await import("../src/lib/ambience/library.ts");
-const { buildPack, readPack } = await import("../src/lib/ambience/pack.ts");
+const { buildPack, installPack, readPack } = await import("../src/lib/ambience/pack.ts");
 const { AmbiencePlayer, CROSSFADE_MS, DUCK } = await import("../src/lib/ambience/player.ts");
 const { acceptLicense, admit, durationOk, redistributable, relevant, spokenWord } = await import("./lib/ambience-gate.mjs");
 const { packable } = await import("../src/lib/ambience/pack.ts");
@@ -269,6 +269,35 @@ await (async () => {
   const entriesBack = await readPack(await stray.generateAsync({ type: "nodebuffer" }));
   assert.deepEqual(entriesBack.map((entry) => entry.file), ["cave.mp3"]);
   await assert.rejects(readPack(await new JSZip().file("README.txt", "x").generateAsync({ type: "nodebuffer" })), /no tracks/);
+  passed += 1;
+})();
+
+// An app's server has no public/ambience at all (the payload leaves the
+// library out); installing the pack must make it, write the tracks, credit
+// them in the lock and leave a manifest the API can read.
+await (async () => {
+  const { mkdtempSync, existsSync, readFileSync, rmSync } = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const home = process.cwd();
+  const dir = mkdtempSync(path.join(os.tmpdir(), "odm-pack-"));
+  process.chdir(dir);
+  try {
+    const zip = await buildPack([
+      { file: "cave.mp3", data: Buffer.from("drip"), credit: { title: "Drips", author: "Someone", license: "CC0", origin: "fetched" } },
+    ]);
+    const result = await installPack(zip);
+    assert.deepEqual(result, { installed: 1, kept: 0, playable: 1 });
+    assert.equal(readFileSync(path.join(dir, "public", "ambience", "cave.mp3"), "utf8"), "drip");
+    const manifest = JSON.parse(readFileSync(path.join(dir, "public", "ambience", "manifest.json"), "utf8"));
+    assert.equal(manifest.tracks.cave[0].title, "Drips");
+    assert.ok(existsSync(path.join(dir, "data", "ambience-lock.json")), "the credit is locked");
+    // A second install keeps what is there.
+    assert.deepEqual(await installPack(zip), { installed: 0, kept: 1, playable: 1 });
+  } finally {
+    process.chdir(home);
+    rmSync(dir, { recursive: true, force: true });
+  }
   passed += 1;
 })();
 

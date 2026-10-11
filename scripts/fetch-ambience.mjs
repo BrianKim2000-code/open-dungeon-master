@@ -646,25 +646,29 @@ function probe(file) {
 // The size the pack and every phone that installs it can live with. A WAV
 // is ten times the same sound as Ogg; a 320 kbps catalogue mp3 is three
 // times a 128; and a ten-minute field recording of a place loops as well
-// at four. Re-encoded to Ogg Vorbis, and a bed past four minutes cut there
-// with a fade and credited as an excerpt. Nothing happens without ffmpeg.
+// at four. Everything is re-encoded to Opus at 64 kbps (the shipped library
+// went from 146 MB of Vorbis and mp3 to 76 MB this way, with no change a
+// table would hear under narration), any video track an archive left in
+// the file is dropped, and a bed past four minutes is cut there with a fade
+// and credited as an excerpt. Nothing happens without ffmpeg.
 const BED_MAX_SECONDS = 240;
+const OPUS_KBPS = 64;
 
 function normalise(file, layer) {
-  const { seconds, kbps } = probe(file);
+  const { seconds } = probe(file);
   const extension = path.extname(file).toLowerCase();
   const trim = layer === "bed" && seconds > BED_MAX_SECONDS + 15;
-  const reencode = extension === ".wav" || kbps > 200 || extension === ".ogg" && kbps > 200;
+  const reencode = extension !== ".opus";
   if (!trim && !reencode) {
     return { file, excerpt: false };
   }
-  const target = `${file.replace(/\.[a-z0-9]+$/i, "")}.ogg`;
-  const temp = `${target}.tmp.ogg`;
-  const args = ["-loglevel", "error", "-y", "-i", file];
+  const target = `${file.replace(/\.[a-z0-9]+$/i, "")}.opus`;
+  const temp = `${target}.tmp.opus`;
+  const args = ["-loglevel", "error", "-y", "-i", file, "-vn", "-map_metadata", "-1"];
   if (trim) {
     args.push("-t", String(BED_MAX_SECONDS), "-af", `afade=t=out:st=${BED_MAX_SECONDS - 3}:d=3`);
   }
-  args.push("-codec:a", "libvorbis", "-q:a", "4", temp);
+  args.push("-codec:a", "libopus", "-b:a", `${OPUS_KBPS}k`, "-application", "audio", temp);
   try {
     execFileSync("ffmpeg", args, { stdio: "inherit" });
     unlinkSync(file);

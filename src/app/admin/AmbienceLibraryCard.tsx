@@ -1,78 +1,28 @@
 "use client";
 
 import { Check, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useAmbienceInstall, type AmbienceCounts } from "@/app/admin/useAmbienceInstall";
 import { PageSection } from "@/components/PageShell";
 import { ui } from "@/lib/ui";
 
 // The sound library in the admin panel: how much of the catalog has audio,
 // one button that installs the release's sound pack, and a rescan for files
 // dropped into public/ambience by hand. Polls while a pack comes down, the
-// way the built-in speech card does.
+// way the built-in speech card does. The desktop and phone apps ship
+// without the library (it would triple the download), so for them this
+// card, and the same button in the table's Sound panel, is how it arrives.
 
-type Counts = Record<"bed" | "music" | "sting", { installed: number; total: number; files: number }>;
-
-type Status = {
-  counts: Counts;
-  files: number;
-  packUrl: string;
-  status: "idle" | "installing" | "ready" | "error";
-  progress: number;
-  error: string;
-  result: { installed: number; kept: number } | null;
-};
-
-async function request(method: "GET" | "POST", body?: Record<string, unknown>): Promise<Status | string> {
-  try {
-    const response = await fetch("/api/admin/ambience", {
-      method,
-      cache: "no-store",
-      ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
-    });
-    const data = (await response.json()) as Status & { error?: string };
-    if (!response.ok) {
-      return data.error ?? `The server answered ${response.status}.`;
-    }
-    return data;
-  } catch {
-    return "The server could not be reached.";
-  }
-}
-
-const LAYER: Array<{ key: keyof Counts; label: string }> = [
+const LAYER: Array<{ key: keyof AmbienceCounts; label: string }> = [
   { key: "bed", label: "Rooms" },
   { key: "music", label: "Music" },
   { key: "sting", label: "Sounds" },
 ];
 
 export function AmbienceLibraryCard() {
-  const [status, setStatus] = useState<Status | null>(null);
-  const [error, setError] = useState("");
+  const { status, error, installing, percent, install, rescan } = useAmbienceInstall();
   const [url, setUrl] = useState("");
 
-  const apply = useCallback((result: Status | string) => {
-    if (typeof result === "string") {
-      setError(result);
-    } else {
-      setError("");
-      setStatus(result);
-    }
-  }, []);
-
-  useEffect(() => {
-    void request("GET").then(apply);
-  }, [apply]);
-
-  const installing = status?.status === "installing";
-  useEffect(() => {
-    if (!installing) {
-      return;
-    }
-    const timer = window.setInterval(() => void request("GET").then(apply), 1500);
-    return () => window.clearInterval(timer);
-  }, [installing, apply]);
-
-  const percent = Math.round((status?.progress ?? 0) * 100);
   const total = status ? LAYER.reduce((sum, layer) => sum + status.counts[layer.key].total, 0) : 0;
   const have = status ? LAYER.reduce((sum, layer) => sum + status.counts[layer.key].installed, 0) : 0;
 
@@ -81,7 +31,7 @@ export function AmbienceLibraryCard() {
       id="admin-ambience"
       heading="Sound library"
       glyph="tab-ambience"
-      intro="The rooms, music and one-shot sounds every table can play: public-domain and Creative Commons recordings, credited on the licenses page. The library ships with the game; a newer sound pack from a release can be installed here, and the server can fetch more (docs/configuration.md)."
+      intro="The rooms, music and one-shot sounds every table can play: public-domain and Creative Commons recordings, credited on the licenses page. A server set up from the source has the library already; the desktop and phone apps leave it out to stay small, and one tap here downloads it (about 75 MB, kept across updates). The server can fetch more (docs/configuration.md)."
     >
       <div className="space-y-4">
         {status ? (
@@ -112,14 +62,14 @@ export function AmbienceLibraryCard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => void request("POST", { action: "install", ...(url.trim() ? { url: url.trim() } : {}) }).then(apply)}
+            onClick={() => install(url)}
             disabled={!status || installing}
             className={ui.btnPrimary}
           >
             {installing ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {installing ? `Installing ${percent}%` : have && have === total ? "Reinstall the sound pack" : "Install a sound pack"}
+            {installing ? `Installing ${percent}%` : have && have === total ? "Reinstall the sound pack" : have ? "Install a sound pack" : "Download the sound library"}
           </button>
-          <button type="button" onClick={() => void request("POST", { action: "rescan" }).then(apply)} disabled={!status || installing} className={ui.btnSecondary}>
+          <button type="button" onClick={rescan} disabled={!status || installing} className={ui.btnSecondary}>
             Rescan the folder
           </button>
           {status?.status === "ready" && status.result ? (
