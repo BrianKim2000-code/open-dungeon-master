@@ -63,7 +63,7 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import { markToolError } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
-import { personRunsTable } from "@/lib/dm/enemies-due";
+import { enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
 import { intentAnswered, intentCorrection, intentNeedsTool, type MessageIntent } from "@/lib/dm/intent-logic";
 import { handleCompleteBeat } from "@/lib/dm/arc";
 import { tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
@@ -259,6 +259,7 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
     return null;
   }
   const enemies = listEnemies(encounter.id);
+  const due = enemiesOwedTurn(encounter);
   const staged = new Set(
     encounter.order
       .filter((entry) => entry.kind === "pc")
@@ -279,6 +280,14 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
     turnBudget: encounter.turnBudget ? describeBudget(encounter.turnBudget) : null,
     movementLeft: encounter.orderReady ? movementLeft(campaignId, encounter, sheets) : null,
     awaitingPlayer: characterAwaitingPlayer(campaignId)?.name ?? null,
+    ...(due.length
+      ? {
+          enemiesDue: {
+            before: encounter.order[encounter.turnIndex].name,
+            enemies: due.map((enemy) => ({ enemyId: enemy.id, name: enemy.displayName })),
+          },
+        }
+      : {}),
     enemies: enemies.map((enemy) => ({
       enemyId: enemy.id,
       name: enemy.displayName,
