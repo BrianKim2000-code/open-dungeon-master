@@ -31,6 +31,11 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // reviewed WebP bytes: 13.76 MiB plus the existing race/class portraits.
 // Allow 18 MiB total, with separate scene and painted-square ceilings;
 // race/class portraits retain their 48 KiB ceiling.
+// The 24 painted creature-family plates (monster/<srd-slug>.webp, 512 px,
+// 47 to 97 KiB each, 1.70 MiB together) sit under the existing 128 KiB
+// painted-square ceiling and bring the set to 17.51 MiB, so neither ceiling
+// moved for them; the next batch of family plates will need the total raised
+// or the plates downsized.
 const BUDGET_TOTAL_BYTES = 18 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 192 * 1024;
@@ -111,11 +116,70 @@ for (const file of ["high-fantasy", "dark-fantasy", "cyberpunk", "horror", "myst
   const entries = JSON.parse(readFileSync(path.join(ROOT, `src/lib/bestiary/${file}.json`), "utf8")).entries;
   for (const entry of entries) {
     check(
-      R.monsterPlaceholder(entry.type, { cr: entry.cr, genre: file, seed: entry.slug }),
+      R.monsterPlaceholder(entry.type, { cr: entry.cr, genre: file, seed: entry.slug, slug: entry.slug, name: entry.name }),
       `${file}/${entry.slug}`,
     );
+    // The bare type answer (a caller with no slug) still resolves too.
+    check(R.monsterPlaceholder(entry.type, { cr: entry.cr, genre: file, seed: entry.slug }), `${file}/${entry.slug} by type`);
   }
 }
+
+// Creature families: every family key and alias, by slug and by its own SRD
+// name, in every genre, at a mook's cr and a boss's. This is what makes each
+// painted family plate reachable for the reverse check below; three of them
+// (animated-armor, brown-bear, rust-monster) are in no fantasy bestiary and
+// are only met through the content pack or a homebrew name.
+const titleCase = (key) => key.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+for (const [key, plate] of Object.entries(R.MONSTER_FAMILIES)) {
+  if (!existsSync(path.join(SET_DIR, "monster", `${plate}.webp`))) {
+    failures.push(`MONSTER_FAMILIES ${key} -> ${plate} has no plate on disk`);
+  }
+  for (const genre of GENRES) {
+    for (const cr of [1, 20]) {
+      check(R.monsterPlaceholder("monstrosity", { cr, genre, slug: key, name: titleCase(key) }), `family ${key}/${genre}/${cr}`);
+      check(R.monsterPlaceholder("monstrosity", { cr, genre, name: titleCase(key) }), `family by name ${key}/${genre}/${cr}`);
+    }
+  }
+}
+
+// The lookup order, case by case.
+const expectPlate = (label, url, plate) => {
+  checked += 1;
+  if (!url.endsWith(`/monster/${plate}.webp`)) {
+    failures.push(`${label} drew ${url}, expected monster/${plate}`);
+  }
+};
+// Family hit: an owlbear is an owlbear, not a monstrosity.
+expectPlate("family hit", R.monsterPlaceholder("monstrosity", { cr: 3, genre: "high_fantasy", slug: "owlbear", name: "Owlbear" }), "owlbear");
+// Family hit from the name alone (a homebrew monster with no slug), numbered
+// the way an encounter numbers a run.
+expectPlate("family by name", R.monsterPlaceholder("undead", { cr: 1, genre: "high_fantasy", name: "Ghoul 2" }), "ghoul");
+// Alias hit: a ghast shares the ghoul's plate, a polar bear the brown bear's.
+expectPlate("alias ghast", R.monsterPlaceholder("undead", { cr: 2, genre: "high_fantasy", slug: "ghast", name: "Ghast" }), "ghoul");
+expectPlate("alias polar bear", R.monsterPlaceholder("beast", { cr: 2, genre: "", slug: "polar-bear", name: "Polar Bear" }), "brown-bear");
+// The lich (CR 21) beats the boss override, in fantasy and dark fantasy.
+expectPlate("lich over boss", R.monsterPlaceholder("undead", { cr: 21, genre: "high_fantasy", slug: "lich", name: "Lich" }), "lich");
+expectPlate("dark-fantasy lich", R.monsterPlaceholder("undead", { cr: 21, genre: "dark_fantasy", slug: "lich", name: "The Hollow Saint" }), "lich");
+// ...but a CR 21 with no family is still the boss.
+expectPlate("boss without family", R.monsterPlaceholder("undead", { cr: 21, genre: "high_fantasy", slug: "dracolich", name: "Dracolich" }), "high-fantasy-boss");
+// Reskin guard: a cyberpunk Sump Rat fights as a giant-rat but is not a
+// fantasy rat; it keeps the type plate. Likewise the reskinned lich keeps the
+// cyberpunk boss, and a horror werewolf called The Good Doctor gives nothing
+// away.
+expectPlate("cyberpunk sump rat", R.monsterPlaceholder("beast", { cr: 0.125, genre: "cyberpunk", seed: "giant-rat", slug: "giant-rat", name: "Sump Rat" }), "beast");
+expectPlate("wasteland rad-rat", R.monsterPlaceholder("beast", { cr: 0.125, genre: "post_apocalyptic", seed: "giant-rat", slug: "giant-rat", name: "Rad-Rat" }), "post-apocalyptic-rad-swarm");
+expectPlate("cyberpunk reskinned lich", R.monsterPlaceholder("undead", { cr: 21, genre: "cyberpunk", slug: "lich", name: "The Uploaded Founder" }), "cyberpunk-boss");
+const goodDoctor = R.monsterPlaceholder("humanoid", { cr: 3, genre: "horror", slug: "werewolf", name: "The Good Doctor" });
+if (goodDoctor.includes("/werewolf.")) {
+  failures.push(`horror's The Good Doctor drew ${goodDoctor}, giving the werewolf away`);
+}
+// ...while the SRD creature under its own name still draws its plate there.
+expectPlate("cyberpunk plain troll", R.monsterPlaceholder("giant", { cr: 5, genre: "cyberpunk", slug: "troll", name: "Troll 1" }), "troll");
+// Unknown creature: falls back to its type.
+expectPlate("unknown creature", R.monsterPlaceholder("beast", { cr: 1, genre: "high_fantasy", slug: "axe-beak", name: "Axe Beak" }), "beast");
+expectPlate("custom enemy", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", slug: "custom", name: "Bandit Captain's Second" }), "humanoid");
+// A family word inside a longer name is not the family.
+expectPlate("name containing a family", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", name: "Troll Hunter" }), "humanoid");
 
 for (const genre of GENRES) {
   for (const seed of ["", "abc", "a-campaign-id", "zzzz"]) {
