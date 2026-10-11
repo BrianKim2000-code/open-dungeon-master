@@ -1,6 +1,7 @@
 // What the Chronicle beside the battle map shows, and when it moves
 // (issues 212 and 213). Pure: scripts/test-chronicle.mjs.
 import type { CampaignMessage } from "@/lib/db/messages";
+import { JOIN_NOTE_PREFIX, LEAD_NOTE_PREFIX } from "@/lib/campaign-types";
 
 // The newest entries the scroll holds. It held 14 beside a short board; the
 // pane now runs the full height of the fight stage (issue 213), so it holds
@@ -38,4 +39,19 @@ export function atBottom(
   slack = FOLLOW_SLACK_PX,
 ): boolean {
   return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= slack;
+}
+
+// A system line as the scroll shows it, whole (PR 232: it used to be cut at
+// 200 characters, so an enemy turn naming two attacks showed one). The
+// transcript draws the lead's direction and a joiner as cards from their
+// stored prefixes (src/lib/campaign-types.ts); the scroll has no cards, so
+// the prefixes become words.
+export function chronicleSystemLine(content: string): string {
+  if (content.startsWith(LEAD_NOTE_PREFIX)) {
+    return `Party lead: ${content.slice(LEAD_NOTE_PREFIX.length)}`;
+  }
+  if (content.startsWith(JOIN_NOTE_PREFIX)) {
+    return content.slice(JOIN_NOTE_PREFIX.length);
+  }
+  return content;
 }

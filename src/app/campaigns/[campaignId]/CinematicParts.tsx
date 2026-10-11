@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { campaignPlaceholder, characterPlaceholder, monsterPlaceholder, npcPlaceholder } from "@/lib/placeholders";
 import type { CampaignCover } from "@/lib/campaign-types";
 import type { CampaignMessage } from "@/lib/db/messages";
-import { clipRecap } from "@/lib/recap";
+import { recapParagraphs } from "@/lib/recap";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { StoredRoll } from "@/lib/db/rolls";
@@ -20,7 +20,7 @@ import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
 import { ROLL_KIND_LABELS, rollChronicleLead, rollToastLead } from "@/lib/roll-labels";
 import { LengthNote } from "@/components/ui/LengthNote";
-import { atBottom, chronicleSignature, chronicleWindow } from "@/lib/chronicle-logic";
+import { atBottom, chronicleSignature, chronicleSystemLine, chronicleWindow } from "@/lib/chronicle-logic";
 import { textLength } from "@/lib/text-limits";
 
 // The cinematic table ("ODM World Concepts", round 3b): the scene's own
@@ -549,14 +549,15 @@ export function TabletopChronicle({
                       const roll = rollsById.get(part);
                       return roll ? <ChronicleRoll key={`${message.id}-${index}`} roll={roll} sheets={sheets} /> : null;
                     }
-                    const text = clipRecap(part, 900);
-                    if (!text) return null;
-                    return (
-                      <p key={`${message.id}-${index}`} className="cine-chronicle-text">
-                        {dropcap && index === 0 ? <span className="cine-chronicle-cap">{text.charAt(0)}</span> : null}
-                        {dropcap && index === 0 ? text.slice(1) : text}
-                      </p>
-                    );
+                    return recapParagraphs(part).map((text, paragraph) => {
+                      const cap = dropcap && index === 0 && paragraph === 0;
+                      return (
+                        <p key={`${message.id}-${index}-${paragraph}`} className="cine-chronicle-text">
+                          {cap ? <span className="cine-chronicle-cap">{text.charAt(0)}</span> : null}
+                          {cap ? text.slice(1) : text}
+                        </p>
+                      );
+                    });
                   })}
                 </div>
               );
@@ -570,7 +571,7 @@ export function TabletopChronicle({
             }
             return (
               <p key={message.id} className="cine-chronicle-system">
-                {clipRecap(message.content, 200)}
+                {chronicleSystemLine(message.content)}
               </p>
             );
           })}
