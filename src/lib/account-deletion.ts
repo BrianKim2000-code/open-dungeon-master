@@ -137,6 +137,8 @@ export function purgeAccount(userId: string) {
     db.prepare(`UPDATE campaign_messages SET user_id = NULL WHERE user_id = ?`).run(userId);
     // The usage ledger too: counts stay, the name goes.
     forgetUsageFor(userId);
+    // And the record of who made each stored file (src/lib/media-access.ts).
+    db.prepare(`UPDATE media_files SET user_id = NULL WHERE user_id = ?`).run(userId);
 
     // Things only this person could act on.
     for (const table of [

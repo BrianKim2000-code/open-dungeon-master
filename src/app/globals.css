@@ -1471,6 +1471,17 @@ html[data-theme="light"] .kit-switch .kit-switch-knob { background: #a59877; }
     height 340ms var(--ease-spring),
     opacity var(--dur-quick) var(--ease-snap);
 }
+.rail-mark[data-on] {
+  opacity: 1;
+}
+/* A mark placed for the first time fades in as it springs to size, however
+   fast its rail mounted: a rail that mounts with its tab already chosen (the
+   WorldForge views) would otherwise light it at full strength at once. */
+@starting-style {
+  .rail-mark[data-on] {
+    opacity: 0;
+  }
+}
 .rail-mark-v {
   top: 0;
   right: -2px;

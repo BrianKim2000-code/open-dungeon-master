@@ -11,6 +11,7 @@ import { NumberStepper } from "@/components/ui/NumberStepper";
 import { AdminInvitesSection } from "@/app/admin/AdminInvitesSection";
 import { AdminNetworkSections } from "@/app/admin/AdminNetworkSections";
 import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
+import { AdminStorageSection } from "@/app/admin/AdminStorageSection";
 import { BackendProbe } from "@/app/admin/BackendProbe";
 import { AdminImagesSection } from "@/app/admin/AdminImagesSection";
 import { AdminSpeechSection } from "@/app/admin/AdminSpeechSection";
@@ -39,6 +40,7 @@ const STOPS: Array<{ id: string; label: string; glyph: string; server?: boolean 
   { id: "admin-voice", label: "Voice chat", glyph: "cue-horn", server: true },
   { id: "admin-discord", label: "Discord", glyph: "system-share", server: true },
   { id: "admin-backup", label: "Backup", glyph: "tab-handout", server: true },
+  { id: "admin-storage", label: "Storage", glyph: "tab-journal" },
 ];
 
 function jumpTo(id: string) {
@@ -494,6 +496,10 @@ export function AdminSettingsPanel() {
           <AdminBackupSection />
         </PageSection>
       )}
+
+      <PageSection id="admin-storage" heading="Storage" glyph="tab-journal">
+        <AdminStorageSection />
+      </PageSection>
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={save} disabled={saving} aria-busy={saving} className={ui.btnPrimary}>

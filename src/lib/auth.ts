@@ -1,5 +1,5 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { enterUsageScope } from "@/lib/usage/scope";
+import { fillUsageScope, openUsageScope, type UsageScope } from "@/lib/usage/scope";
 import { cookies, headers } from "next/headers";
 import {
   deleteSession,
@@ -179,7 +179,11 @@ export async function currentSessionTokenHash(): Promise<string | null> {
 
 // Returns the logged-in user, or null. Route handlers that require auth
 // should 401 on null. Accepts the browser cookie or a bearer token.
-export async function currentUser(): Promise<User | null> {
+//
+// The usage scope is opened here, before the first await, and filled in
+// once the account is known (src/lib/usage/scope.ts openUsageScope);
+// requireMember passes the one it opened.
+export async function currentUser(scope: UsageScope = openUsageScope()): Promise<User | null> {
   const token = await requestToken();
   if (!token) {
     return null;
@@ -187,8 +191,9 @@ export async function currentUser(): Promise<User | null> {
   const user = getSessionUser(hashToken(token));
   if (user) {
     // Work this request does outside any campaign (a library portrait,
-    // dictation) is the account's in the usage ledger.
-    enterUsageScope({ userId: user.id });
+    // dictation, an upload) is the account's in the usage ledger and its
+    // record of who made which file.
+    fillUsageScope(scope, { userId: user.id });
   }
   return user;
 }

@@ -2275,6 +2275,21 @@ function ensureSchema(db: SqliteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_usage_events_campaign ON usage_events(campaign_id, at);
     CREATE INDEX IF NOT EXISTS idx_usage_events_user ON usage_events(user_id, at);
 
+    -- Who a stored picture or document was made for (src/lib/media-access.ts):
+    -- the account that uploaded or asked for it and the campaign or workshop
+    -- it was made in, so it can be shown before any row names it (a portrait
+    -- previewed before the sheet is saved). Plain columns: the file can
+    -- outlive both.
+    CREATE TABLE IF NOT EXISTS media_files (
+      path TEXT PRIMARY KEY,
+      user_id TEXT,
+      campaign_id TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- The campaigns one account belongs to, asked on every picture it opens.
+    CREATE INDEX IF NOT EXISTS idx_campaign_members_user ON campaign_members(user_id);
+
     -- Where a row of prep came from (src/lib/db/content-origins.ts): the
     -- campaign or workshop it was copied out of and the row it was copied
     -- from, or 'bundle' and the portable key it arrived under. It is what
@@ -2297,6 +2312,9 @@ function ensureSchema(db: SqliteDatabase) {
   // Databases that created player_webhooks before receivers could carry
   // their own Authorization value or extra headers (docs/player-webhooks.md).
   addColumns("player_webhooks", [["authorization_header", `TEXT`], ["extra_headers", `TEXT`]]);
+  // How many calls a row stands for: one, until the retention pass merges
+  // old rows into one per month (src/lib/ops/retention.ts).
+  addColumns("usage_events", [["calls", `INTEGER NOT NULL DEFAULT 1`]]);
 }
 
 // Widens battle_tokens.kind to accept the DM's own board furniture.
@@ -2885,6 +2903,11 @@ export function closeDatabaseForRestore(): void {
   }
 }
 
+// The database file, for the storage panel's sizes and free-space check.
+export function databaseFilePath(): string {
+  return dbPath;
+}
+
 export function getDatabase() {
   const maintenance = maintenanceState();
   if (maintenance) {
@@ -2912,8 +2935,9 @@ export function getDatabase() {
       `[db] ${db.engine} SQLite engine cannot encrypt; ${dbPath} is stored unencrypted.`,
     );
   }
+  let tables = 0;
   try {
-    db.prepare("SELECT count(*) FROM sqlite_master").get();
+    tables = Number(Object.values(db.prepare("SELECT count(*) FROM sqlite_master").get() as object)[0]) || 0;
   } catch {
     db.close();
     throw new Error(
@@ -2923,6 +2947,12 @@ export function getDatabase() {
         : `Could not open ${dbPath}: it is encrypted and the ${db.engine} SQLite engine has no cipher. ` +
             "Set ODM_SQLITE_DRIVER=native on a host with the native module.",
     );
+  }
+  // A new database hands the pages its deletes free back to the disk a
+  // little at a time (src/lib/ops/retention.ts). Only possible before the
+  // first table; an older file switches when the admin compacts it.
+  if (tables === 0) {
+    db.pragma("auto_vacuum = INCREMENTAL");
   }
   db.pragma("journal_mode = WAL");
   // Under WAL, NORMAL only fsyncs at checkpoints, so a persisted event no
