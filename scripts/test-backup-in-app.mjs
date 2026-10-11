@@ -41,10 +41,12 @@ const warnings = [];
 const warn = console.warn;
 console.warn = (...args) => warnings.push(args.join(" "));
 
+// Read the way src/lib/ops/backup.ts reads it: Windows tar ends its lines
+// with CRLF.
 const listing = (name) =>
   execFileSync("tar", ["-tzf", path.join(root, "backups", name)], { encoding: "utf8" })
-    .split("\n")
-    .map((line) => line.replace(/^\.\//, ""))
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^\.\//, ""))
     .filter(Boolean);
 
 let first;
@@ -56,10 +58,10 @@ await test("a backup holds the snapshot once, the media, and no models unless as
   clearInterval(beat);
   assert.ok(ticks > 0, "the event loop kept running");
   const files = listing(first.name);
-  assert.ok(files.includes("data/local-roleplay.sqlite"));
+  assert.ok(files.includes("data/local-roleplay.sqlite"), files.join(","));
   assert.equal(files.filter((file) => file.endsWith("local-roleplay.sqlite")).length, 1);
   assert.ok(!files.some((file) => /-(wal|shm)$/.test(file)), files.join(","));
-  assert.ok(files.includes("public/uploads/face.png"));
+  assert.ok(files.includes("public/uploads/face.png"), files.join(","));
   assert.ok(!files.some((file) => file.startsWith("models")), "models left out");
   assert.equal(warnings.filter((line) => /backup/.test(line)).length, 0, warnings.join("\n"));
 });
