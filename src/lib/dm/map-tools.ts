@@ -142,20 +142,20 @@ export const teleportTokenTool: ToolDef = {
   function: {
     name: "teleport_token",
     description:
-      "Move a combatant to a tile WITHOUT walking: Misty Step, Dimension Door, Thunder Step, a trap door, a portal. It is the spell or the hazard that does it: pass spell with casterId for a character's spell (the server casts it, spending the slot and the casting time, and refuses a jump past the spell's range) or with casterEnemyId for a spell or ability on the enemy's block, or cause 'hazard' for a trap door or a portal. A teleport with none of these is refused. The tile must be open floor with nobody on it.",
+      "Move a combatant to a tile WITHOUT walking: Misty Step, Dimension Door, Thunder Step, a trap door, a portal. It is the spell or the hazard that does it: pass spell with casterId for a character's spell (the server casts it, spending the slot and the casting time, and refuses a jump past the spell's range) or with casterEnemyId for a spell or ability on the enemy's block, or cause 'hazard'. A teleport with none of these is refused. The tile must be open floor with nobody on it.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         tokenName: {
           type: "string",
-          description: "Character or enemy name or id, exactly as shown on the battle map.",
+          description: "Character or enemy name or id, exactly as shown on the battle map in GAME STATE.",
         },
         x: { type: "integer", description: "Destination column." },
         y: { type: "integer", description: "Destination row." },
-        spell: { type: "string", description: "The teleport spell or ability, e.g. Misty Step." },
-        casterId: { type: "string", description: "The character casting it (characterId)." },
-        casterEnemyId: { type: "string", description: "The enemy using it (enemyId)." },
+        spell: { type: "string", description: "The teleport spell or ability (Misty Step)." },
+        casterId: { type: "string", description: "The character casting it: exact characterId from GAME STATE." },
+        casterEnemyId: { type: "string", description: "The enemy using it: exact enemyId from GAME STATE." },
         cause: {
           type: "string",
           enum: ["hazard"],
@@ -184,7 +184,7 @@ export const setMovementTool: ToolDef = {
       type: "object",
       additionalProperties: false,
       properties: {
-        tokenName: { type: "string", description: "Character or enemy name or id." },
+        tokenName: { type: "string", description: "Character or enemy name or id, exactly as shown on the battle map in GAME STATE." },
         movement: { type: "string", enum: ["walk", "fly", "burrow"] },
         reason: { type: "string" },
       },
@@ -377,7 +377,7 @@ export const moveTokenTool: ToolDef = {
         tokenName: {
           type: "string",
           description:
-            "Enemy name or enemyId, or character name or characterId, exactly as shown on the battle map in GAME STATE.",
+            "Character or enemy name or id, exactly as shown on the battle map in GAME STATE.",
         },
         x: { type: "integer", description: "Destination column." },
         y: { type: "integer", description: "Destination row." },

@@ -99,7 +99,7 @@ export function facesFor(
     return [npcPlaceholder(null, entry.name)];
   }
   const enemy = enemies?.find((candidate) => candidate.id === entry.id);
-  return [enemy ? monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name }) : null];
+  return [enemy ? monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name }) : null];
 }
 
 // ---- the initiative ribbon along the top ----

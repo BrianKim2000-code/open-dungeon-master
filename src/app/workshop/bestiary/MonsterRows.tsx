@@ -76,6 +76,7 @@ export function MonsterRows({
               cr={stats.cr}
               genre={genre}
               seed={monster.draft.name}
+              name={monster.draft.name}
               size="size-12"
             />
             <button
