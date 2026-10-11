@@ -34,6 +34,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The built server in a real Chromium: dialogs, scrolls, polls and
+      # preferences that no static render can exercise (scripts/browser).
+      - name: Browser scenarios
+        run: |
+          npx playwright-core install --with-deps chromium
+          npm run test:browser
+
       # A route's first-load JS and CSS against scripts/bundle-budget.json.
       - name: First-load size budgets
         run: node scripts/check-bundle-budget.mjs
