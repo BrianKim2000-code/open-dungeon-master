@@ -106,6 +106,16 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         kind: "boolean",
         help: "The lair acts on initiative 20 each round (Lair action).",
       },
+      {
+        name: "from",
+        label: "Enemies come from",
+        kind: "select",
+        options: [
+          { value: "ahead", label: "Ahead of the travel formation" },
+          { value: "behind", label: "Behind it" },
+        ],
+        help: "Ahead puts the front of the party's travel formation nearest them; behind, the rear. Blank: ahead.",
+      },
     ],
   },
   {
