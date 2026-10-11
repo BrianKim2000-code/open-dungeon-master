@@ -208,6 +208,18 @@ await test("a new library character edits in place and the edit survives a reloa
   assert.ok(reloaded.sheet.features.some((feature) => feature.name === "Blessing of the Raven Queen"));
   assert.equal(reloaded.sheet.notes, FIGHTER.notes);
   assert.equal(reloaded.sheet.portrait.url, FIGHTER.portrait.url);
+  // The gaming set the soldier picked answers "one gaming set": an edit
+  // keeps the pick and never writes the grant's own words back beside it.
+  assert.deepEqual([...reloaded.sheet.proficiencies.tools].map((tool) => tool.toLowerCase()).sort(), ["dice set", "vehicles (land)"]);
+  const again = succeeded(await save(library.id, builderEdit(reloaded.sheet, 1))).json.character;
+  assert.ok(!again.sheet.proficiencies.tools.some((tool) => /gaming set/i.test(tool) && !/dice/i.test(tool)), again.sheet.proficiencies.tools.join(", "));
+  // A sheet an earlier edit already wrote the words onto loses them here.
+  const marked = createCharacter(player.id, 1, {
+    ...FIGHTER,
+    proficiencies: { ...FIGHTER.proficiencies, tools: ["dice set", "one gaming set", "vehicles (land)"] },
+  });
+  const healed = succeeded(await save(marked.id, builderEdit(getCharacter(marked.id).sheet, 1))).json.character;
+  assert.deepEqual([...healed.sheet.proficiencies.tools].map((tool) => tool.toLowerCase()).sort(), ["dice set", "vehicles (land)"]);
 });
 
 await test("Duplicate and edit changes the copy and leaves the original as it was", async () => {

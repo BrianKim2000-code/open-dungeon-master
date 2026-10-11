@@ -1013,6 +1013,14 @@ const PERSISTED_EVENTS = [
   "handout_dismissed",
   "x_card",
   "safety_resumed",
+  // Each of these has a case above and was published for the table, but was
+  // never listened for, so it only showed after a reload: the party record
+  // (purse, pack, travel formation), a painted NPC portrait, the Director's
+  // arm (cleared when a turn spends the one-shot), and the DM's beat list.
+  "party_updated",
+  "npc_updated",
+  "director_armed",
+  "beat_recorded",
 ];
 const EPHEMERAL_EVENTS = [
   // A visual effect planned from a resolved outcome. Worthless after the
@@ -1059,6 +1067,9 @@ const EPHEMERAL_EVENTS = [
   "presence",
 ];
 const EPHEMERAL_EVENT_SET = new Set(EPHEMERAL_EVENTS);
+// Every type the stream listens for; an event outside it never reaches the
+// reducer, whatever case it has (scripts/test-campaign-reducer.mjs).
+export const STREAMED_EVENTS: readonly string[] = [...PERSISTED_EVENTS, ...EPHEMERAL_EVENTS];
 
 // The origin a reply really came from. Patched fetch inside the apps sends
 // root-relative calls to the host, so this is the world that answered, not
