@@ -41,7 +41,12 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // quality, every one under the 128 KiB painted-square ceiling. That brings
 // the set to 25.19 MiB, so the total moves from 18 MiB to 26 MiB: the new
 // total plus a little headroom, not room for another batch.
-const BUDGET_TOTAL_BYTES = 26 * 1024 * 1024;
+// The 22 genre enemy tokens (monster/<genre>-<enemy>.webp, 512 px, 37 to
+// 115 KiB each, 1.41 MiB together) bring the set to 26.60 MiB, so the total
+// moves again, from 26 MiB to 27 MiB: just past the new total.
+// Then 28 MiB, to leave room for #246's board-token repaints of eight type
+// plates (+0.45 MiB, about 27.05 MiB with this set), whichever lands first.
+const BUDGET_TOTAL_BYTES = 28 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 192 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 128 * 1024;
@@ -172,7 +177,9 @@ expectPlate("boss without family", R.monsterPlaceholder("undead", { cr: 21, genr
 // cyberpunk boss, and a horror werewolf called The Good Doctor gives nothing
 // away.
 expectPlate("cyberpunk sump rat", R.monsterPlaceholder("beast", { cr: 0.125, genre: "cyberpunk", seed: "giant-rat", slug: "giant-rat", name: "Sump Rat" }), "beast");
-expectPlate("wasteland rad-rat", R.monsterPlaceholder("beast", { cr: 0.125, genre: "post_apocalyptic", seed: "giant-rat", slug: "giant-rat", name: "Rad-Rat" }), "post-apocalyptic-rad-swarm");
+// (The wasteland's Rad-Rat is no longer a type plate: it is a four-legged
+// predator now, below with the genre tokens.)
+expectPlate("wasteland rad-rat", R.monsterPlaceholder("beast", { cr: 0.125, genre: "post_apocalyptic", seed: "giant-rat", slug: "giant-rat", name: "Rad-Rat" }), "post-apocalyptic-predator");
 expectPlate("cyberpunk reskinned lich", R.monsterPlaceholder("undead", { cr: 21, genre: "cyberpunk", slug: "lich", name: "The Uploaded Founder" }), "cyberpunk-boss");
 const goodDoctor = R.monsterPlaceholder("humanoid", { cr: 3, genre: "horror", slug: "werewolf", name: "The Good Doctor" });
 if (goodDoctor.includes("/werewolf.")) {
@@ -233,7 +240,106 @@ for (const genre of ["cyberpunk", "steampunk", "post_apocalyptic", "horror", "my
 if (R.monsterPlaceholder("humanoid", { cr: 5, genre: "cyberpunk", slug: "gladiator", name: "Arena Champion" }).endsWith("/gladiator.webp")) {
   failures.push("cyberpunk Arena Champion drew the fantasy gladiator");
 }
-expectPlate("cyberpunk plain bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "cyberpunk", slug: "bandit", name: "Bandit 2" }), "bandit");
+// A plain "Bandit" in cyberpunk is the genre's ganger (below), not the
+// fantasy roadside bandit; a plain "Troll" there has no genre token and is
+// still the troll.
+expectPlate("cyberpunk plain bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "cyberpunk", slug: "bandit", name: "Bandit 2" }), "cyberpunk-gang");
+
+// Genre enemy tokens. Every name in a genre's table draws its token there,
+// numbered like an encounter numbers a run and with or without "The"; the
+// same name in every other genre never draws it; and every stat block the
+// table maps draws it in its genre under a name the table does not know.
+const genreOfSlug = (genre) => genre.replace(/-/g, "_");
+for (const [genre, table] of Object.entries(R.GENRE_ENEMY_TOKENS)) {
+  for (const [plate, names] of Object.entries(table.names)) {
+    if (!plate.startsWith(`${genre}-`)) {
+      failures.push(`genre token ${plate} is filed under ${genre}`);
+    }
+    if (!existsSync(path.join(SET_DIR, "monster", `${plate}.webp`))) {
+      failures.push(`genre token ${plate} has no plate on disk`);
+    }
+    for (const name of names) {
+      for (const variant of [name, `${name} 2`, name.startsWith("The ") ? name.slice(4) : `The ${name}`]) {
+        for (const cr of [1, 20]) {
+          const url = R.monsterPlaceholder("humanoid", { cr, genre: genreOfSlug(genre), slug: "custom", name: variant });
+          check(url, `genre token ${genre}/${variant}`);
+          expectPlate(`genre token ${genre}/${variant}/${cr}`, url, plate);
+        }
+      }
+      for (const other of GENRES.filter((entry) => entry.replace(/_/g, "-") !== genre)) {
+        const url = R.monsterPlaceholder("humanoid", { cr: 1, genre: other, slug: "custom", name });
+        if (url.endsWith(`/${plate}.webp`)) {
+          failures.push(`${genre} token ${plate} leaked into ${other || "no genre"} for ${name}`);
+        }
+      }
+    }
+  }
+  for (const [slug, plate] of Object.entries(table.slugs)) {
+    expectPlate(`genre slug ${genre}/${slug}`, R.monsterPlaceholder("beast", { cr: 1, genre: genreOfSlug(genre), slug, name: "Something Renamed" }), plate);
+    for (const other of GENRES.filter((entry) => entry.replace(/_/g, "-") !== genre)) {
+      const url = R.monsterPlaceholder("beast", { cr: 1, genre: other, slug, name: "Something Renamed" });
+      if (url.endsWith(`/${plate}.webp`)) {
+        failures.push(`${genre} token ${plate} leaked into ${other || "no genre"} by stat block ${slug}`);
+      }
+    }
+  }
+}
+// Every bestiary entry, run in every genre: a genre token only ever shows in
+// the genre whose bestiary it was painted for.
+const tokenGenre = new Map();
+for (const [genre, table] of Object.entries(R.GENRE_ENEMY_TOKENS)) {
+  for (const plate of Object.keys(table.names)) {
+    tokenGenre.set(plate, genre);
+  }
+}
+for (const file of ["high-fantasy", "dark-fantasy", "cyberpunk", "horror", "mystery", "steampunk", "post-apocalyptic"]) {
+  const entries = JSON.parse(readFileSync(path.join(ROOT, `src/lib/bestiary/${file}.json`), "utf8")).entries;
+  for (const entry of entries) {
+    for (const genre of GENRES) {
+      const url = R.monsterPlaceholder(entry.type, { cr: entry.cr, genre, seed: entry.slug, slug: entry.slug, name: entry.name });
+      const plate = url.split("/").pop().replace(/\.webp$/, "");
+      const home = tokenGenre.get(plate);
+      if (home && home !== genre.replace(/_/g, "-")) {
+        failures.push(`${file}/${entry.slug} (${entry.name}) drew ${home}'s ${plate} in ${genre || "no genre"}`);
+      }
+    }
+  }
+}
+// The cases the backlog called out, by their bestiary names.
+for (const [genre, type, cr, slug, name, plate] of [
+  ["post_apocalyptic", "beast", 0.25, "wolf", "Waste Hound", "post-apocalyptic-predator"],
+  ["post_apocalyptic", "monstrosity", 1, "death-dog", "Two-Headed Coyote", "post-apocalyptic-predator"],
+  ["post_apocalyptic", "beast", 1, "panther", "Glow Cat", "post-apocalyptic-predator"],
+  ["post_apocalyptic", "monstrosity", 2, "ankheg", "Acid Burrower", "post-apocalyptic-burrower"],
+  ["post_apocalyptic", "monstrosity", 5, "bulette", "Road Shark", "post-apocalyptic-burrower"],
+  ["post_apocalyptic", "humanoid", 0.125, "bandit", "Road Raider", "post-apocalyptic-raider"],
+  ["post_apocalyptic", "undead", 0.25, "zombie", "Rad-Feral", "post-apocalyptic-stalker"],
+  ["post_apocalyptic", "plant", 5, "shambling-mound", "Compost Colossus", "post-apocalyptic-ambush-plant"],
+  // A plain Giant Rat in the wasteland is the predator, not the fantasy rat.
+  ["post_apocalyptic", "beast", 0.125, "giant-rat", "Giant Rat", "post-apocalyptic-predator"],
+  ["steampunk", "fiend", 13, "rakshasa", "The Colonial Magnate", "steampunk-magnate"],
+  ["steampunk", "undead", 21, "lich", "The Perpetual Chairman", "steampunk-magnate"],
+  ["steampunk", "humanoid", 2, "bandit-captain", "Sky Pirate Captain", "steampunk-sky-pirate"],
+  ["cyberpunk", "humanoid", 0.125, "guard", "Corpo Rent-a-Cop", "cyberpunk-corp-squad"],
+  ["cyberpunk", "monstrosity", 3, "doppelganger", "Face-Dancer", "cyberpunk-synth"],
+  ["mystery", "humanoid", 8, "assassin", "The Poisoner", "mystery-poisoner"],
+  ["mystery", "humanoid", 0.125, "cultist", "Secret Society Member", "mystery-occult-enforcer"],
+  ["mystery", "elemental", 6, "invisible-stalker", "The Unseen Burglar", "mystery-burglar"],
+  ["horror", "humanoid", 0.125, "cultist", "Smiling Neighbor", "horror-possessed"],
+  ["horror", "humanoid", 0, "commoner", "Possessed Villager", "horror-possessed"],
+  ["dark_fantasy", "humanoid", 2, "berserker", "Flagellant Champion", "dark-fantasy-penitent"],
+]) {
+  expectPlate(`${genre} ${name}`, R.monsterPlaceholder(type, { cr, genre, slug, name }), plate);
+}
+// ...and the ones that stay put. A horror commoner is only possessed when the
+// card says so; a horror cultist under another name is not; a magnate boss
+// in steampunk does not reach the giants; a dark-fantasy cultist is still the
+// fantasy cultist; the fantasy poisoner alias is the assassin outside mystery.
+expectPlate("horror commoner", R.monsterPlaceholder("humanoid", { cr: 0, genre: "horror", slug: "commoner", name: "Farmhand" }), "humanoid");
+expectPlate("horror cultist renamed", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "horror", slug: "cultist", name: "Hooded Figure" }), "humanoid");
+expectPlate("steampunk ironmaster", R.monsterPlaceholder("giant", { cr: 9, genre: "steampunk", slug: "fire-giant", name: "The Ironmaster" }), "giant");
+expectPlate("dark-fantasy cultist", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "dark_fantasy", slug: "cultist", name: "Cultist" }), "cultist");
+expectPlate("fantasy poisoner", R.monsterPlaceholder("humanoid", { cr: 8, genre: "high_fantasy", slug: "assassin", name: "The Poisoner" }), "assassin");
 
 for (const genre of GENRES) {
   for (const seed of ["", "abc", "a-campaign-id", "zzzz"]) {
