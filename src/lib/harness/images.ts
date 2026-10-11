@@ -203,7 +203,13 @@ export async function generateHarnessImage(options: {
         .catch((error) => finish(null, error instanceof Error ? error : new Error(String(error))));
     });
   } finally {
-    rmSync(cwd, { recursive: true, force: true });
+    try {
+      rmSync(cwd, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    } catch {
+      // On Windows the agent can briefly keep its working directory locked
+      // after close(). A leftover scratch folder is reclaimed by the OS; it
+      // must not turn an image we already received into a failed paint.
+    }
   }
   const accepted = acceptImage(captured);
   if (!accepted) {
