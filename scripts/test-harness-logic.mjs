@@ -390,6 +390,29 @@ test("an agent program reads the turn-to-turn state after the transcript, and th
   assert.notEqual(blockTwo({ ...state, encounter: null }, history), block, "the fight ended");
 });
 
+test("an agent program reads the older transcript in whole chunks of twenty in its system prompt, every line once, in order", () => {
+  const lines = (count) =>
+    Array.from({ length: count }, (_, at) => ({
+      id: `m${at + 1}`,
+      seq: at + 1,
+      authorType: at % 2 ? "dm" : "player",
+      characterId: at % 2 ? null : "sheet-1",
+      content: `Line ${String(at + 1).padStart(3, "0")}: the bell tolls.`,
+      intent: null,
+    }));
+  const state = () => ({ ...fightingState(), contextLimitTokens: 131_072 });
+  const { system, prompt } = renderTurn(buildDmMessages(state(), lines(45)));
+  for (let at = 1; at <= 45; at += 1) {
+    const line = `Line ${String(at).padStart(3, "0")}:`;
+    assert.equal(count(system, line) + count(prompt, line), 1, line);
+    assert.ok((at <= 40 ? system : prompt).includes(line), `${line} is in the ${at <= 40 ? "system prompt" : "opening message"}`);
+  }
+  assert.ok(system.indexOf("Line 001:") < system.indexOf("Line 040:") && prompt.indexOf("Line 041:") < prompt.indexOf("Line 045:"));
+  const block = blockTwo(state(), lines(45));
+  assert.equal(blockTwo(state(), lines(41)), block, "the same chunk: block 2 stays as it was");
+  assert.notEqual(blockTwo(state(), lines(61)), block, "a chunk closed: block 2 is written again");
+});
+
 test("Claude Code gets its cache boundary where the heading was, once, and every other prompt untouched", () => {
   const system = `rules\n\n${THIS_TURN_HEADING}\n\nstate\n\n${THIS_TURN_HEADING}`;
   assert.equal(withCacheBoundary(system), `rules\n\n${CACHE_BOUNDARY}\n\nstate\n\n${THIS_TURN_HEADING}`);
