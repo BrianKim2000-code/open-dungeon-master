@@ -245,6 +245,24 @@ if (R.monsterPlaceholder("humanoid", { cr: 5, genre: "cyberpunk", slug: "gladiat
 // still the troll.
 expectPlate("cyberpunk plain bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "cyberpunk", slug: "bandit", name: "Bandit 2" }), "cyberpunk-gang");
 
+// Codex's additions are deliberately name-only: do not turn every imp into
+// a microdrone, every spider into a clockwork machine, or every undead into
+// a galvanic corpse merely because its underlying stats match.
+expectPlate("cyberpunk Spy Microdrone", R.monsterPlaceholder("fiend", { genre: "cyberpunk", slug: "imp", name: "Spy Microdrone 2" }), "cyberpunk-microdrone");
+expectPlate("steampunk Galvanic Revenant", R.monsterPlaceholder("undead", { genre: "steampunk", slug: "zombie", name: "Galvanic Revenant" }), "steampunk-galvanic-corpse");
+for (const [genre, slug, name, unwanted] of [
+  ["cyberpunk", "imp", "Imp", "cyberpunk-microdrone"],
+  ["steampunk", "giant-spider", "Cable Spinner", "steampunk-clockwork-spider"],
+  ["steampunk", "zombie", "Zombie", "steampunk-galvanic-corpse"],
+  ["steampunk", "ghost", "The Lady of the Gallery", "steampunk-galvanic-corpse"],
+  ["cyberpunk", "hydra", "Self-Repair Swarm Core", "steampunk-repair-swarm"],
+  ["cyberpunk", "custom", "Walking Turret Operator", "cyberpunk-walking-turret"],
+]) {
+  if (R.monsterPlaceholder("construct", { genre, slug, name }).endsWith(`/${unwanted}.webp`)) {
+    failures.push(`unrelated ${genre}/${name} drew ${unwanted}`);
+  }
+}
+
 // Genre enemy tokens. Every name in a genre's table draws its token there,
 // numbered like an encounter numbers a run and with or without "The"; the
 // same name in every other genre never draws it; and every stat block the

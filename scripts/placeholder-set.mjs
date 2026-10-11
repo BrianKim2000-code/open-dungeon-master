@@ -664,6 +664,11 @@ const ENEMY_ROLE_PLATES = [
 // stat blocks it plays as exactly this enemy. Hand-picked art at 512 px like
 // the family plates, so the same --force / --reencode caution applies.
 const GENRE_ENEMY_TOKEN_PLATES = [
+  { id: "cyberpunk-microdrone", subject: "a compact surveillance microdrone, close-up cyan camera lens and short rotor pods" },
+  { id: "cyberpunk-walking-turret", subject: "a walking gun turret, tight turret-head portrait with a red sensor and articulated support joints" },
+  { id: "steampunk-clockwork-spider", subject: "a brass clockwork spider, macro portrait of green glass optics and curved copper forelegs" },
+  { id: "steampunk-repair-swarm", subject: "three overlapping brass repair beetles with blue optics and tiny tool claws, macro close-up" },
+  { id: "steampunk-galvanic-corpse", subject: "a reanimated factory laborer, pale face close-up with brass temple electrodes and worn workshirt" },
   { id: "cyberpunk-corp-squad", subject: "a corporate tactical squad trooper in a visored helmet and armour with a rifle" },
   { id: "cyberpunk-gang", subject: "a street ganger with gang colours, chrome implants and a pistol" },
   { id: "cyberpunk-synth", subject: "a synthetic infiltrator, a humanlike android with subtle artificial seams" },
