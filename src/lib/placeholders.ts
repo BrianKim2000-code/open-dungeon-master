@@ -594,6 +594,165 @@ function familyOf(value: string | null | undefined): string | null {
 // grimmer names, so it draws family plates like high fantasy does.
 const RESKIN_GENRES = new Set(["cyberpunk", "steampunk", "post-apocalyptic", "horror", "mystery"]);
 
+// ---- genre enemy tokens ----
+
+// Enemies painted for one genre in particular: a cyberpunk ganger, a
+// steampunk sky pirate, a post-apocalyptic burrower. They are only ever
+// looked up in their own genre, so a corporate squad never turns up in a
+// fantasy dungeon. Within the genre a token is reached two ways:
+//   names: the whole name on the card (the genre bestiary's reskin name, or
+//          the plain words a DM would type), normalised like a family key
+//          with a leading "The" dropped, so "The Poisoner" and "Poisoner 2"
+//          both land. Never a word inside a longer name.
+//   slugs: the SRD stat block, where that genre's bestiary
+//          (src/lib/bestiary/<genre>.json) plays that block as exactly this
+//          enemy, so an encounter that renames it still gets the token.
+// A token beats the fantasy family plate, the boss plate and the genre's
+// type plate: in its genre it is the most specific picture there is.
+export type GenreEnemyTable = { names: Record<string, string[]>; slugs: Record<string, string> };
+
+export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
+  cyberpunk: {
+    names: {
+      "cyberpunk-corp-squad": [
+        "Corpo Rent-a-Cop", "Corpo Enforcer", "Merc Trooper", "Corp Squad", "Corporate Tactical Squad",
+        "Corporate Security", "Corp Security", "Security Trooper", "Tactical Squad",
+      ],
+      "cyberpunk-gang": ["Street Ganger", "Gang Boss", "Chromed Bruiser", "Ganger", "Gang Bruiser", "Gang Shooter", "Gang Member"],
+      "cyberpunk-synth": ["Face-Dancer", "Synth", "Synthetic Infiltrator", "Android", "Replicant", "Combat Synth"],
+    },
+    // guard is the Corpo Rent-a-Cop; bandit and bandit-captain are the
+    // Street Ganger and the Gang Boss.
+    slugs: { guard: "cyberpunk-corp-squad", bandit: "cyberpunk-gang", "bandit-captain": "cyberpunk-gang" },
+  },
+  steampunk: {
+    names: {
+      "steampunk-sky-pirate": ["Sky Pirate Captain", "Ironclad Marine", "Sky Pirate", "Air Pirate", "Boarding Marine"],
+      "steampunk-surgeon": ["Rogue Surgeon", "Mad Doctor", "Galvanist", "Mad Scientist"],
+      // Humanlike bosses, which the boiler-machine boss plate got wrong.
+      "steampunk-magnate": [
+        "The Colonial Magnate", "The Perpetual Chairman", "The Royal Society's Shadow", "The Opium Magnate",
+        "Ice-Trade Baron", "Industrial Magnate", "Magnate", "Mastermind", "Tycoon", "Robber Baron",
+      ],
+    },
+    // bandit-captain is the Sky Pirate Captain.
+    slugs: { "bandit-captain": "steampunk-sky-pirate" },
+  },
+  "post-apocalyptic": {
+    names: {
+      "post-apocalyptic-raider": ["Road Raider", "Raid Boss", "Warlord's Enforcer", "Raider", "Marauder", "Armored Scavenger"],
+      "post-apocalyptic-hazmat": ["Hazmat Trooper", "Hazmat Soldier", "Decon Trooper"],
+      "post-apocalyptic-stalker": ["Rad-Feral", "Feral Cannibal", "Pit Feeder", "Contaminated Stalker", "Irradiated Ghoul", "Stalker"],
+      "post-apocalyptic-burrower": ["Acid Burrower", "Road Shark", "Mutant Burrower", "Burrower"],
+      "post-apocalyptic-ambush-plant": ["Compost Colossus", "Mutant Plant", "Ambush Plant"],
+      "post-apocalyptic-predator": [
+        "Rad-Rat", "Waste Hound", "Alpha Waste Hound", "Mutant Alpha", "Two-Headed Coyote", "Nuclear-Winter Wolf",
+        "Wasteland Predator", "Mutant Quadruped",
+      ],
+    },
+    // The bestiary's reskins of each block: the raiders, the corporeal
+    // undead (rad-ferals and cannibals, not the shades and echoes), the two
+    // burrowers, the shambling mound, and every four-legged hunter, which
+    // otherwise drew the insect swarm the genre paints for beasts.
+    slugs: {
+      bandit: "post-apocalyptic-raider",
+      "bandit-captain": "post-apocalyptic-raider",
+      zombie: "post-apocalyptic-stalker",
+      ghoul: "post-apocalyptic-stalker",
+      ghast: "post-apocalyptic-stalker",
+      ankheg: "post-apocalyptic-burrower",
+      bulette: "post-apocalyptic-burrower",
+      "shambling-mound": "post-apocalyptic-ambush-plant",
+      "violet-fungus": "post-apocalyptic-ambush-plant",
+      "giant-rat": "post-apocalyptic-predator",
+      rat: "post-apocalyptic-predator",
+      wolf: "post-apocalyptic-predator",
+      worg: "post-apocalyptic-predator",
+      "dire-wolf": "post-apocalyptic-predator",
+      "winter-wolf": "post-apocalyptic-predator",
+      "death-dog": "post-apocalyptic-predator",
+      jackal: "post-apocalyptic-predator",
+      hyena: "post-apocalyptic-predator",
+      "giant-hyena": "post-apocalyptic-predator",
+      mastiff: "post-apocalyptic-predator",
+      panther: "post-apocalyptic-predator",
+      lion: "post-apocalyptic-predator",
+      tiger: "post-apocalyptic-predator",
+      "saber-toothed-tiger": "post-apocalyptic-predator",
+    },
+  },
+  // Horror goes by name only: its bestiary hides what a thing is behind its
+  // name, and a stat block's token would give that away (a commoner is a
+  // possessed villager only when the card says so).
+  horror: {
+    names: {
+      "horror-possessed": ["Smiling Neighbor", "Possessed", "Possessed Villager", "Possessed Commoner"],
+      "horror-doll": ["Doll", "Sinister Doll", "Porcelain Doll", "Haunted Doll"],
+      "horror-fungal-host": ["Fungal Host", "Spore Host", "Infested Host"],
+      "horror-parasite-swarm": ["The Skittering", "Parasite Swarm", "Crawling Parasite Swarm", "Crawling Swarm"],
+    },
+    slugs: {},
+  },
+  mystery: {
+    names: {
+      "mystery-hired-gun": ["Hired Rough", "Loan Shark's Muscle", "Foreign Legionnaire", "Hired Gun", "Gunman"],
+      "mystery-burglar": ["The Unseen Burglar", "Burglar", "Masked Burglar", "Cat Burglar", "Cracksman"],
+      "mystery-poisoner": ["Poisoner"],
+      "mystery-occult-enforcer": ["Secret Society Member", "Society Grandmaster", "Occult Enforcer", "Occult Society Enforcer", "Society Enforcer"],
+    },
+    // bandit and thug are the Hired Rough and the Loan Shark's Muscle,
+    // assassin is The Poisoner, cultist and cult-fanatic are the society.
+    slugs: {
+      bandit: "mystery-hired-gun",
+      thug: "mystery-hired-gun",
+      assassin: "mystery-poisoner",
+      cultist: "mystery-occult-enforcer",
+      "cult-fanatic": "mystery-occult-enforcer",
+    },
+  },
+  // Dark fantasy draws the fantasy family plates (see RESKIN_GENRES), so its
+  // tokens come by name only and a plain cultist stays a cultist.
+  "dark-fantasy": {
+    names: {
+      "dark-fantasy-penitent": ["Flagellant Champion", "Penitent of the Pit", "Penitent", "Penitent Executioner", "Flagellant"],
+      "dark-fantasy-plague-soldier": ["Plague Soldier", "Plague Trooper"],
+    },
+    slugs: {},
+  },
+};
+
+function genreNameKey(value: string | null | undefined): string {
+  return familyKey(value).replace(/^the-/, "");
+}
+
+const GENRE_ENEMY_LOOKUP: Record<string, { names: Map<string, string>; slugs: Record<string, string> }> =
+  Object.fromEntries(
+    Object.entries(GENRE_ENEMY_TOKENS).map(([genre, table]) => [
+      genre,
+      {
+        names: new Map(
+          Object.entries(table.names).flatMap(([plate, names]) => names.map((name) => [genreNameKey(name), plate] as const)),
+        ),
+        slugs: table.slugs,
+      },
+    ]),
+  );
+
+// Which genre token, if any, this monster draws: its name first, then its
+// stat block, and only in the genre that painted it.
+function genreEnemyPlate(genre: string, slug: string | null | undefined, name: string | null | undefined): string | null {
+  const table = GENRE_ENEMY_LOOKUP[genre];
+  if (!table) {
+    return null;
+  }
+  const byName = table.names.get(genreNameKey(name));
+  if (byName) {
+    return byName;
+  }
+  const key = familyKey(slug);
+  return key && Object.prototype.hasOwnProperty.call(table.slugs, key) ? (table.slugs[key] ?? null) : null;
+}
+
 // Which family plate, if any, this monster draws. The slug is the real
 // answer when the caller has it; a name only counts when the whole name is a
 // family (a homebrew monster called "Owlbear"), never a word inside one.
@@ -622,7 +781,8 @@ export type MonsterLook = {
   name?: string | null;
 };
 
-// Order: the creature's own family plate, then the genre's boss plate at
+// Order: the genre's own enemy token (in that genre only), then the
+// creature's own family plate, then the genre's boss plate at
 // CR 11 and up, then the genre's plate for the type, then the type. A
 // picture somebody supplied for this monster in particular (a world pack's
 // art) beats all of these, and is applied by the caller (MonsterTile's
@@ -632,6 +792,10 @@ export function monsterPlaceholder(
   options: MonsterLook = {},
 ): string {
   const slug = genreSlug(options.genre);
+  const token = genreEnemyPlate(slug, options.slug, options.name);
+  if (token) {
+    return `${BASE}/monster/${token}.webp`;
+  }
   const family = familyPlate(slug, options.slug, options.name);
   if (family) {
     return `${BASE}/monster/${family}.webp`;

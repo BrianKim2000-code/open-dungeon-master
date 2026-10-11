@@ -659,6 +659,35 @@ const ENEMY_ROLE_PLATES = [
   { id: "tyrant", subject: "a crowned tyrant sorcerer on a dark throne" },
 ];
 
+// Enemies painted for one genre: drawn only in that genre (GENRE_ENEMY_TOKENS
+// in src/lib/placeholders.ts), by the genre bestiary's reskin names and the
+// stat blocks it plays as exactly this enemy. Hand-picked art at 512 px like
+// the family plates, so the same --force / --reencode caution applies.
+const GENRE_ENEMY_TOKEN_PLATES = [
+  { id: "cyberpunk-corp-squad", subject: "a corporate tactical squad trooper in a visored helmet and armour with a rifle" },
+  { id: "cyberpunk-gang", subject: "a street ganger with gang colours, chrome implants and a pistol" },
+  { id: "cyberpunk-synth", subject: "a synthetic infiltrator, a humanlike android with subtle artificial seams" },
+  { id: "steampunk-sky-pirate", subject: "a sky pirate boarding marine with a cutlass and aviator goggles" },
+  { id: "steampunk-surgeon", subject: "a rogue surgeon in a stained apron with galvanic instruments" },
+  { id: "steampunk-magnate", subject: "an industrial magnate in a top hat and frock coat, the mastermind behind the factories" },
+  { id: "post-apocalyptic-raider", subject: "a road raider in scrap armour with a spiked club" },
+  { id: "post-apocalyptic-hazmat", subject: "a hazmat trooper in a sealed protective suit and gas mask" },
+  { id: "post-apocalyptic-stalker", subject: "a contaminated stalker, an irradiated ghoulish scavenger" },
+  { id: "post-apocalyptic-burrower", subject: "a mutant burrower erupting from cracked asphalt" },
+  { id: "post-apocalyptic-ambush-plant", subject: "a mutant ambush plant with a toothed pod among ruins" },
+  { id: "post-apocalyptic-predator", subject: "a mutant four-legged wasteland predator" },
+  { id: "horror-possessed", subject: "a possessed villager with wrong eyes and a rigid stance" },
+  { id: "horror-doll", subject: "a sinister porcelain doll" },
+  { id: "horror-fungal-host", subject: "a fungal host, a body overgrown with mushrooms and spores" },
+  { id: "horror-parasite-swarm", subject: "a crawling swarm of parasites" },
+  { id: "mystery-hired-gun", subject: "a period hired gun in a flat cap with a revolver" },
+  { id: "mystery-burglar", subject: "a masked cat burglar in dark clothes" },
+  { id: "mystery-poisoner", subject: "a poisoner in period dress holding a small vial" },
+  { id: "mystery-occult-enforcer", subject: "an occult society enforcer in a robe and signet ring" },
+  { id: "dark-fantasy-plague-soldier", subject: "a plague soldier in a beaked mask and rusted mail" },
+  { id: "dark-fantasy-penitent", subject: "a penitent executioner, a hooded flagellant with a heavy blade" },
+];
+
 // Threat, which a creature type cannot express. Once the bestiary carries a
 // type, the fourteen plates above answer "what is it" for all 576 roster
 // entries; they still cannot say "this one is the centrepiece", so a CR 18
@@ -801,6 +830,9 @@ export function placeholderJobs() {
   }
   for (const role of ENEMY_ROLE_PLATES) {
     portrait("monster", role.id, role.subject, "creature");
+  }
+  for (const token of GENRE_ENEMY_TOKEN_PLATES) {
+    portrait("monster", token.id, token.subject, "creature");
   }
 
   // Threat, not kind: id is <genre>-boss so paletteForId still picks up the
