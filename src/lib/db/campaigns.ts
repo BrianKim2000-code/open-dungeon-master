@@ -20,7 +20,8 @@ import { MINUTES_PER_DAY, daysPerYear, defaultClock, normalizeCalendarDefinition
 import { packFor } from "@/lib/worlds/preset";
 import { closeStreamsForCampaign } from "@/lib/live-streams";
 import { dropDmQueue } from "@/lib/dm/queue";
-import { normalizeParty, type PartyState } from "@/lib/dm/party-logic";
+import type { PartyState } from "@/lib/dm/party-logic";
+import { partyFromJson } from "@/lib/db/party";
 import {
   partySlotCount,
   viewerCaps,
@@ -269,7 +270,7 @@ function mapCampaign(row: CampaignRow): Campaign {
     floor: normalizeFloor(parseJson(row.floor_json, null)),
     dmCover: normalizeCover(parseJson(row.dm_cover_json ?? "", null)),
     clock: normalizeClock(parseJson(row.clock_json ?? "", null)),
-    party: normalizeParty(parseJson(row.party_json ?? "", null)),
+    party: partyFromJson(row.party_json ?? ""),
   };
 }
 
