@@ -105,7 +105,11 @@ const KIND_LINES: Record<ClaimKind, string> = {
   dies: '{"kind":"dies","target":REF,"quote":Q}: that creature dies, is killed, or is now a corpse.',
   downed: '{"kind":"downed","target":REF,"quote":Q}: that creature falls unconscious or drops.',
   amount: '{"kind":"amount","value":N,"of":"damage"|"healing","quote":Q}: a figure of damage or healing written in digits.',
-  cast: '{"kind":"cast","caster":PARTY_REF,"spell":"English spell name","spent":SPENT_REF,"quote":Q}: a party character casts a spell now. spent only when what the narration describes is the effect of something that character spent this turn, as the message lists it under "Spent refs": a feature, an item or an action is no spell, whatever spell it looks like.',
+  // spent is kept out of the template: shown in it, a small local model
+  // tied a cast beside a spend to that spend, even a spell the narration
+  // named, so the cast went unflagged (measured on the reader's test
+  // cases; a hosted model read them the same either way).
+  cast: '{"kind":"cast","caster":PARTY_REF,"spell":"English spell name","quote":Q}: a party character casts a spell now. Add "spent":SPENT_REF only when what the narration describes is really the effect of something that character spent this turn, as the message lists it under "Spent refs": a feature, an item or an action is no spell, whatever spell it looks like. Never for a spell the narration names or says is cast: that is a cast of its own, even beside a spend.',
   fight_start:
     '{"kind":"fight_start","quote":Q}: the narration announces to the players that a fight begins now: a call to roll initiative, or a stat-block style enemy roster (enemy counts with challenge ratings, a surprise field).',
   roll_ask:

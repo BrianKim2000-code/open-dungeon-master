@@ -67,7 +67,9 @@ await test("The request lists the kinds, the refs and the narration; the instruc
     renderReaderInput(["cast"], { creatures: [], party: [], speakers: [], spent }, "x"),
     /^Spent refs: "s1" for Hexblade's Curse \(Vesper\), "s2" for dash \(Kara\)$/m,
   );
-  assert.match(readerSystem([], false), /"spent":SPENT_REF/, "a cast can say which spend it describes");
+  assert.match(readerSystem([], false), /Add "spent":SPENT_REF only when/, "a cast can say which spend it describes");
+  assert.doesNotMatch(readerSystem([], false), /"spell":"English spell name","spent"/, "spent is no field of the cast template");
+  assert.match(readerSystem([], false), /Never for a spell the narration names or says is cast/);
 
   assert.match(
     renderReaderInput(["speaker"], { creatures: [], party: [], speakers: [{ ref: "n1", name: "Marla Venn", aliases: ["il Capitano"] }, { ref: "c1", name: "Kara" }], spent: [] }, "«Basta», dice il Capitano."),
