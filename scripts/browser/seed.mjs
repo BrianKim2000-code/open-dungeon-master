@@ -68,6 +68,53 @@ const paragraphs = [
 ];
 say(paragraphs.join("\n\n"), { authorType: "dm", speech: [] });
 
+// A second hero at the table, the player's, so the travel formation has an
+// order to arrange (issue 230).
+const player = world.addUser("player");
+const bree = world.addHero({
+  user: player,
+  name: "Bree Underbough",
+  class: "fighter",
+  level: 3,
+  abilities: { str: 16, con: 14 },
+  proficiencies: { saves: ["str", "con"], skills: ["athletics"], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+  equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+});
+// A character in the lead's library, for the build editor (issue 229).
+const { createCharacter } = await import("../../src/lib/db/characters.ts");
+const LIBRARY_NAME = "Brann Stoutheart";
+const brann = createCharacter(world.owner.id, 3, {
+  name: LIBRARY_NAME,
+  race: "human",
+  class: "fighter",
+  subclass: "Champion",
+  background: "soldier",
+  alignment: "LN",
+  abilities: { str: 16, dex: 12, con: 15, int: 10, wis: 12, cha: 9 },
+  maxHp: 28,
+  ac: 16,
+  acOverride: false,
+  speed: 30,
+  hitDice: { die: "d10", total: 3, spent: 0 },
+  proficiencies: {
+    saves: ["str", "con"],
+    skills: ["athletics", "intimidation", "perception", "survival"],
+    expertise: [],
+    languages: ["Common", "Dwarvish"],
+    tools: ["dice set", "vehicles (land)"],
+    armor: ["light", "medium", "heavy", "shields"],
+    weapons: ["simple", "martial"],
+  },
+  equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+  gold: 10,
+  copper: 0,
+  feats: [],
+  // The fighting style rides as a "choice" feature, as the builder saves it.
+  features: [{ name: "Fighting Style: Defense", source: "choice" }],
+  asiChoices: [],
+  spellcasting: null,
+  notes: "",
+});
 await kit.fight(1, { heroFaces: { [tavi.id]: 19 } });
 const [goblin] = world.enemies();
 kit.place(tavi.id, 2, 2);
@@ -85,7 +132,6 @@ const lobby = campaigns.createCampaign(world.owner.id, {
   gameSettings: { ttsEnabled: false },
 });
 
-const player = world.addUser("player");
 for (const user of [world.owner, player]) {
   setUserPassword(user.id, await hashPassword(PASSWORD), false);
 }
@@ -99,7 +145,10 @@ const ids = {
   campaignId: world.campaignId,
   lobbyId: lobby.id,
   tavi: tavi.id,
+  bree: bree.id,
   goblin: goblin.id,
+  library: brann.id,
+  libraryName: LIBRARY_NAME,
   systemLine,
   paragraphs: paragraphs.map((text) => text.replace(/[*_]/g, "")),
 };
