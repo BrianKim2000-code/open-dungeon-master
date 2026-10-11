@@ -1,6 +1,6 @@
 "use client";
 
-import { playingSheet } from "@/lib/battlemap/hand-table";
+import { playingSheet, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 import { BookMarked, BookOpen, Flag, Heart, History, ListChecks, ScrollText, ShoppingBag, Users } from "lucide-react";
 import { FactionsPanel } from "@/app/campaigns/[campaignId]/FactionsPanel";
 import { MarketPanel } from "@/app/campaigns/[campaignId]/MarketPanel";
@@ -439,6 +439,7 @@ export function SidePanelRouter({
     );
   }
   if (tab === "battle" && battleMap) {
+    const playing = playingSheet(sheets, meUserId, activeSheetId);
     return (
       // board-dock: the side panel and the phone hold the board in a fixed
       // window too, so its header and footer stay on screen (issue 87).
@@ -456,9 +457,12 @@ export function SidePanelRouter({
         turnBudget={
           // The character being played, as the Hand reads it
           // (src/lib/battlemap/hand-table.ts): any owned sheet's turn put
-          // the other character's budget on the board after Play as.
-          encounter?.turn && encounter.turn.ownerId === playingSheet(sheets, meUserId, activeSheetId)?.id
-            ? { action: !encounter.turn.actionUsed, bonus: !encounter.turn.bonusUsed, reaction: !encounter.turn.reactionUsed }
+          // the other character's budget on the board after Play as. The
+          // count is the main board's (SessionView.tsx): drawn from the
+          // turn's start, before anything is spent, with a spent reaction
+          // from reactionsUsed and an action Haste or Action Surge leave.
+          playing && !playing.isCompanion && encounter
+            ? turnHudBudget(turnFromEncounter(encounter, playing, { myTurn: encounter.turn?.ownerId === playing.id }))
             : null
         }
 

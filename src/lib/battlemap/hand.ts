@@ -8,7 +8,7 @@
 // card says once it is played lives next door in hand-play.ts.
 import { ragingMeleeBonus, weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
 import { magicWeaponOfRow, type WeaponGear } from "@/lib/dm/gear-attack";
-import { bonusRouteFor, kiLeft, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-routes";
+import { bonusRouteFor, kiLeft, usesLeft, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-routes";
 import { effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { attackOptionsFor, bonusStrikeCards, fastHandsCards, kiCards } from "@/lib/battlemap/hand-class";
@@ -324,8 +324,12 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
             ? `Perception ${signed(derived.skills.perception ?? derived.abilityMods.wis)}`
             : "",
       roll: contest || escape ? "contested check" : basic.id === "hide" || basic.id === "search" ? "skill check" : "no roll",
-      rules: route ? `${basic.rules} ${route.feature}: a bonus action${route.ki ? ` for ${route.ki} ki` : ""}.` : basic.rules,
-      resource: route?.ki && sheet.resources.ki ? `Ki ${ki ?? 0}/${sheet.resources.ki.max}` : "",
+      rules: route ? `${basic.rules} ${route.feature}: a bonus action${route.ki ? ` for ${route.ki} ki` : route.counter ? " and one use" : ""}.` : basic.rules,
+      resource: route?.ki && sheet.resources.ki
+        ? `Ki ${ki ?? 0}/${sheet.resources.ki.max}`
+        : route?.counter
+          ? `${route.feature} ${usesLeft(sheet, route.counter) ?? 0}/${sheet.resources[route.counter].max}`
+          : "",
       condition: basic.id === "dodge" ? "Dodging" : basic.id === "grapple" ? "Grappled" : basic.id === "shove" ? "Prone" : basic.id === "ready" ? "Readied" : "",
       icon: { kind: "action", key: basic.id },
       target: basic.target,
@@ -389,8 +393,12 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
         route.ki > 0 && (kiLeft(sheet) ?? 0) < route.ki
           ? { reason: `${sheet.name} has no ki point left for ${route.feature}. It comes back after a rest.`, spent: true }
           : null;
+      const usesGate: Gate =
+        route.counter && !usesLeft(sheet, route.counter)
+          ? { reason: `${sheet.name} has no use of ${route.feature} left. It comes back after a rest.`, spent: true }
+          : null;
       cards.push(
-        gated(make(basic, route), standingGate(sheet, turn, "bonus"), costGate("bonus", turn, sheet, `${route.feature} (${basic.name})`), kiGate, still),
+        gated(make(basic, route), standingGate(sheet, turn, "bonus"), costGate("bonus", turn, sheet, `${route.feature} (${basic.name})`), kiGate, usesGate, still),
       );
     }
   }
