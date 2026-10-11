@@ -36,6 +36,8 @@ export default {
       await t.tap(page.locator(`${root}[aria-label="Enlarge battle map"]`).locator("visible=true").first());
       await eventually(() => page.locator(DIALOG_CANVAS).count(), { label: `the painted board in the enlarged view (open ${round})` });
       check((await panelCanvases(page, root)) === 0, "while the enlarged view is open, the panel's board draws its plain cells (the one canvas is in the dialog)");
+      // The view fades in; the picture is for the eye, the checks above are the proof.
+      await sleep(900);
       await t.shot(`enlarged-${round}`);
       await t.tap(page.locator(".cine-tabletop-close").first());
       await eventually(() => page.locator('[role="dialog"] [aria-label^="Board view"]').count().then((n) => n === 0), { label: `the enlarged view closing (${round})` });
