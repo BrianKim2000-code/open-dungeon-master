@@ -174,14 +174,17 @@ export default function CharacterDetailPage({
   }
 
   // A second copy under a numbered name, sheet and portrait verbatim. The
-  // roster is where copies live, so that is where this lands.
-  async function handleDuplicate() {
+  // roster is where copies live, so that is where this lands; "Duplicate
+  // and edit" opens the copy in the build editor instead (issue 229).
+  async function handleDuplicate(edit = false) {
     setCloning(true);
     try {
       const response = await fetch(`/api/characters/${characterId}/clone`, { method: "POST" });
-      if (response.ok) {
-        navigateTo("/characters");
+      if (!response.ok) {
+        return;
       }
+      const data = (await response.json().catch(() => ({}))) as { character?: { id: string } };
+      navigateTo(edit && data.character ? `/characters/${data.character.id}/edit?copyOf=${characterId}` : "/characters");
     } finally {
       setCloning(false);
     }
@@ -267,12 +270,27 @@ export default function CharacterDetailPage({
       onSelect: () => void handleExport(),
     },
     {
+      id: "edit",
+      label: "Edit build",
+      hint: "Change this character's build choices in the library",
+      glyph: "rest-level-up",
+      onSelect: () => navigateTo(`/characters/${characterId}/edit`),
+    },
+    {
       id: "duplicate",
       label: cloning ? "Copying..." : "Duplicate",
       hint: "Save a second copy of this character to your library",
       glyph: "tab-notes",
       disabled: cloning,
       onSelect: () => void handleDuplicate(),
+    },
+    {
+      id: "duplicate-edit",
+      label: "Duplicate and edit",
+      hint: "Save a second copy and open it in the build editor; this one stays as it is",
+      glyph: "tab-notes",
+      disabled: cloning,
+      onSelect: () => void handleDuplicate(true),
     },
     {
       id: "portrait",
@@ -395,6 +413,9 @@ export default function CharacterDetailPage({
             <GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-6" />{" "}
             {character.role === "companion" ? "Bring to a campaign" : "Use in a campaign"}
           </button>
+          <Link href={`/characters/${characterId}/edit`} className={cn(ui.btnSecondary, "min-w-0 flex-1 sm:flex-none")}>
+            <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-6" /> Edit build
+          </Link>
           <KebabMenu
             items={actions}
             label={`More actions for ${character.name}`}
