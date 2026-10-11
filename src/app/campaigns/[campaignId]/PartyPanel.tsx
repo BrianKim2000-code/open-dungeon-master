@@ -1,5 +1,8 @@
 "use client";
 
+import { TravelFormation } from "@/app/campaigns/[campaignId]/TravelFormation";
+import type { PartyState } from "@/lib/dm/party-logic";
+import { fieldedOf } from "@/lib/player-characters";
 import { Bot, Check, Crown, Heart, ImagePlus, PawPrint, Save, Sparkles, UserPlus } from "lucide-react";
 import { describeExhaustion } from "@/lib/dm/condition-logic";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
@@ -307,9 +310,15 @@ export function PartyPanel({
   multiCharacter = "off",
   levelUpLevel = null,
   onLevelUp,
+  party,
+  arrangesFormation = false,
 }: {
   sheets: CharacterSheet[];
   meUserId: string;
+  // The party record, for the travel formation, and whether this seat
+  // arranges it (the party lead, or the DM seat where a person runs it).
+  party?: PartyState;
+  arrangesFormation?: boolean;
   // A level-up the experience has earned and nobody has taken yet: the
   // owner's card offers it.
   levelUpLevel?: number | null;
@@ -851,6 +860,17 @@ export function PartyPanel({
             </KitButton>
           ) : null}
         </div>
+      ) : null}
+
+      {/* Who walks first (issue 230): every seat sees it; the lead arranges. */}
+      {campaignId ? (
+        <TravelFormation
+          campaignId={campaignId}
+          sheets={fieldedOf(sheets, multiCharacter, (userId) => members.find((member) => member.userId === userId)?.activeCharacterId)}
+          party={party}
+          meUserId={meUserId}
+          arranges={arrangesFormation}
+        />
       ) : null}
 
       {buildingCompanion && campaignId ? (

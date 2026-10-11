@@ -38,6 +38,8 @@ import {
   type BattleToken,
 } from "@/lib/battlemap/types";
 import { getCurrentLocation } from "@/lib/db/locations";
+import { getParty } from "@/lib/db/party";
+import { placeByFormation } from "@/lib/dm/formation-logic";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral } from "@/lib/events";
 import { resolveSheetRef } from "@/lib/dm/rolls";
@@ -96,7 +98,9 @@ export function createBattleMapForEncounter(
   // The ground the fight is on when it is not the place's own
   // (start_encounter's scene).
   scene?: string,
-): BattleMap | null {
+  // Where the enemy comes from against the travel formation (issue 230).
+  from: "ahead" | "behind" = "ahead",
+): { map: BattleMap; formation: string } | null {
   const location = getCurrentLocation(campaign.id);
   const generated = generateBattleMap({
     seed: fnv1a(encounter.id),
@@ -116,12 +120,15 @@ export function createBattleMapForEncounter(
     lights: generated.lights,
     seed: fnv1a(encounter.id),
   });
+  // The party stands by its travel formation: the front of it nearest the
+  // enemy, or the rear when they came from behind (formation-logic.ts).
+  const formation = placeByFormation(sheets, generated.pcSpawns, generated.enemySpawns, getParty(campaign.id).marchingOrder, from);
   placeTokens(map.id, campaign.id, [
-    ...sheets.map((sheet, index) => ({
+    ...sheets.map((sheet) => ({
       kind: "pc" as const,
       refId: sheet.id,
       name: sheet.name,
-      spot: generated.pcSpawns[index] ?? generated.pcSpawns[0],
+      spot: formation.spots.get(sheet.id) ?? generated.pcSpawns[0],
       ...carriedLightFields(campaign.id, sheet),
     })),
     ...enemies.map((enemy, index) => ({
@@ -132,7 +139,7 @@ export function createBattleMapForEncounter(
     })),
   ]);
   publishBattleMapUpdate(campaign.id);
-  return map;
+  return { map, formation: formation.line };
 }
 
 // ---- teleport_token and set_movement tools ----

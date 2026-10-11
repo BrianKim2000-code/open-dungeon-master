@@ -30,6 +30,7 @@ import { companionMode } from "@/lib/dm/companion-tools";
 import { breakDown, describeInstant, isDark, normalizeClock } from "@/lib/dm/calendar";
 import { describeWeather } from "@/lib/srd/weather";
 import { describeParty, normalizeParty } from "@/lib/dm/party-logic";
+import { formationPartyIds } from "@/lib/dm/roster";
 import { getSceneTracker } from "@/lib/db/scene-tracker";
 import { trackerPromptBlock } from "@/lib/dm/scene-tracker-logic";
 import { getAmbience } from "@/lib/db/ambience";
@@ -635,10 +636,14 @@ export function buildGameStateBlock(state: DmGameState): string {
   // purse and the shared pack (src/lib/dm/party-logic.ts). Empty on a
   // campaign that has never used them, so an untouched table's prompt does
   // not carry a paragraph of zeroes.
+  // The travel formation is read against the party in play now (issue 230):
+  // from the campaign row on every turn, so a change made since the last one,
+  // or long ago and compacted out of the transcript, is the one the DM sees.
   const partyBlock = describeParty(
     normalizeParty(campaign.party),
     formatCopper,
     (characterId) => sheets.find((sheet) => sheet.id === characterId)?.name ?? "someone",
+    formationPartyIds(campaign, sheets),
   );
   if (partyBlock) {
     sections.push(partyBlock);

@@ -821,6 +821,14 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
             ? { ...state.campaign, ...(payload as Partial<Campaign>) }
             : state.campaign;
           return next;
+        // The party record (purse, pack, travel formation): live for every
+        // seat, not only after a reload (issue 230).
+        case "party_updated":
+          next.campaign =
+            state.campaign && payload.party
+              ? { ...state.campaign, party: payload.party as Campaign["party"] }
+              : state.campaign;
+          return next;
         case "item_proposal_added": {
           const proposal = payload.proposal as ItemProposal | undefined;
           if (proposal) {
