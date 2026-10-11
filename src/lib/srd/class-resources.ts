@@ -109,6 +109,9 @@ export function resolveDiceFormula(
   abilityMods: Record<string, number>,
 ): string {
   return formula
+    // A number of dice equal to the proficiency bonus ("profd4": Healing
+    // Hands, MotM).
+    .replace(/\bprofd(\d+)\b/g, (_, die) => `${proficiencyBonus(level)}d${die}`)
     .replace(/\b(level|prof|str|dex|con|int|wis|cha)\b/g, (token) => {
       if (token === "level") {
         return String(Math.max(1, level));
@@ -227,6 +230,12 @@ export type ResourceDef = {
   rechargeFor?: (level: number) => Recharge;
   // Never refilled by a rest: the DM gives it back (Inspiration).
   noRefill?: boolean;
+  // With no use left, this pool pays for one instead (Breath of the
+  // Dragon: 2 ki).
+  fallbackPool?: { id: string; amount: number };
+  // Only while the holder has fewer than half their hit points (Unearthly
+  // Recovery).
+  requires?: "below_half";
   // One line of SRD truth handed back to the model in the tool result, so a
   // spend never leaves it guessing what the feature does.
   guidance: string;
@@ -639,6 +648,8 @@ type SubclassResourceRow = {
   passive?: boolean;
   // What a use costs of the turn, when the guidance names it.
   action?: ResourceAction;
+  fallbackPool?: { id: string; amount: number };
+  requires?: "below_half";
 };
 
 function proficiencyBonus(level: number): number {
@@ -674,6 +685,8 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   guidance: row.guidance,
   ...(row.passive ? { passive: true } : {}),
   ...(row.action ? { action: row.action } : {}),
+  ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
+  ...(row.requires ? { requires: row.requires } : {}),
 }));
 
 // The spells a race casts once a day by nature (a tiefling's hellish rebuke

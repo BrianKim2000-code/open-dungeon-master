@@ -47,6 +47,8 @@ import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, PRONE, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { planCounterReaction } from "@/lib/dm/reaction-counters";
+import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse } from "@/lib/dm/item-use";
 import { applyConsumable, consumableRefusal } from "@/lib/dm/consumables";
@@ -1147,6 +1149,16 @@ export function applyDmMutation(
       if (featureSpend) {
         return { result: featureSpend };
       }
+      // A reaction counter that acts on the hit that triggered it, or on
+      // dropping to 0 (src/lib/dm/reaction-counters.ts): its trigger is
+      // checked before anything is spent, its effect applied after.
+      const counter = matchResource(resourceName);
+      const reacting = counter
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, sheets, sheetsById })
+        : null;
+      if (reacting && "error" in reacting) {
+        return { result: reacting };
+      }
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
       const charge = prepareResourceCharge(campaign, sheet, resourceName);
@@ -1168,12 +1180,16 @@ export function applyDmMutation(
           swims: args.formSwims,
         },
         args.variant,
+        { beforeDrop: charge.beforeDrop },
       );
       if ("error" in outcome) {
         return { result: outcome };
       }
       patchSheet(sheet.id, outcome.patch);
       Object.assign(outcome.result, charge.commit());
+      if (reacting) {
+        Object.assign(outcome.result, reacting.apply());
+      }
       if (outcome.shapeHours) {
         recordShapeEnd(campaign.id, sheet.id, outcome.shapeHours);
       }

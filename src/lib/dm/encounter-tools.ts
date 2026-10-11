@@ -1,4 +1,5 @@
 import type { SystemGlyph } from "@/lib/system-glyphs";
+import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -414,7 +415,7 @@ function handleStartEncounter(
 function entryAlive(entry: OrderEntry, enemiesById: Map<string, EncounterEnemy>): boolean {
   if (entry.kind === "pc") {
     const sheet = getSheetById(entry.characterId);
-    return (sheet?.currentHp ?? 0) > 0 && !isIncapacitated(sheet?.conditions ?? []);
+    return ((sheet?.currentHp ?? 0) > 0 || Boolean(sheet && holdsOn(sheet))) && !isIncapacitated(sheet?.conditions ?? []);
   }
   if (entry.kind === "enemy") {
     return enemiesById.get(entry.enemyId)?.status === "alive";

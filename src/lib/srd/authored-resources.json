@@ -139,7 +139,7 @@
    "ability": "con",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding 1d8 to an ally's AC against one attack, halving the damage if it still hits."
+   "guidance": "A reaction when the fighter or a creature they can see within 5 feet is hit, while wielding a melee weapon or a shield: 1d8 on the target's AC against that attack, and resistance to its damage if it still hits. Pass targetCharacterId for another creature; the server re-resolves the hit."
   },
   {
    "id": "sub_strength_before_death",
@@ -151,7 +151,7 @@
    "ability": null,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction on taking damage that grants a full extra turn before the damage lands."
+   "guidance": "A reaction as damage reduces the samurai to 0 hit points without killing them: they put off falling unconscious and take an extra turn at once. Damage at 0 during it still causes death save failures; when it ends they fall unconscious if still at 0. The server gives the turn."
   },
   {
    "id": "sub_arcane_shot",
@@ -589,7 +589,8 @@
     "kind": "enemy_save",
     "save": "wis",
     "dice": "2d12"
-   }
+   },
+   "proficiency": 1
   },
   {
    "id": "sub_call_the_hunt",
@@ -598,10 +599,11 @@
     "call the hunt"
    ],
    "uses": 1,
-   "ability": "con",
    "recharge": "long",
    "action": "none",
-   "guidance": "Part of entering a rage, with no action of its own: up to five allies each add a d6 to the damage of one hit per turn, and the barbarian gains 5 temporary hit points per ally who accepts."
+   "guidance": "Part of entering a rage, with no action of its own: up to five allies each add a d6 to the damage of one hit per turn, and the barbarian gains 5 temporary hit points per ally who accepts.",
+   "proficiency": 1,
+   "ability": null
   },
   {
    "id": "sub_hexblades_curse",
@@ -760,7 +762,7 @@
    "ability": null,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "Instead of dropping to 0 hit points, stay at 1 and deal necrotic damage equal to the warlock's level to each creature within 30 feet."
+   "guidance": "A reaction as damage reduces the warlock to 0 hit points: they drop to 1 hit point instead, each enemy within 30 feet takes 2d10 + the warlock level in necrotic damage, and they gain a level of exhaustion. It returns after 1d4 long rests. The server applies all of it."
   },
   {
    "id": "sub_spirit_projection",
@@ -862,7 +864,12 @@
    "ability": null,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action at half hit points or less, restoring hit points equal to half the sorcerer's maximum."
+   "fx": {
+    "kind": "heal_self",
+    "dice": "halfmax"
+   },
+   "guidance": "A bonus action when the sorcerer has fewer than half of their hit points left, restoring hit points equal to half their maximum. The server heals them.",
+   "requires": "below_half"
   },
   {
    "id": "sub_strength_of_the_grave",
@@ -1130,7 +1137,12 @@
    "ability": null,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action projecting the spellbook's spirit up to 300 feet, letting the wizard cast from its position. A spell slot buys extra uses."
+   "guidance": "A bonus action projecting the spellbook's spirit up to 300 feet, letting the wizard cast from its position. A spell slot buys extra uses.",
+   "fx": {
+    "kind": "buff",
+    "condition": "manifest mind",
+    "rounds": 600
+   }
   },
   {
    "id": "sub_master_scrivener",
@@ -1153,7 +1165,7 @@
    "ability": null,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "Avoid death by destroying the book's magic, which then takes days of study to rebuild."
+   "guidance": "A reaction to damage while the Manifest Mind is summoned: all of that damage is prevented and the mind is dismissed; spells totalling 3d6 levels or more vanish from the spellbook until 1d6 long rests pass. The server prevents the damage and rolls the 3d6."
   },
   {
    "id": "sub_hunters_sense",
@@ -1232,7 +1244,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction granting resistance to the damage just taken and teleporting the ranger 30 feet.",
+   "guidance": "A reaction to damage just taken: resistance to that damage, and the ranger teleports up to 30 feet. The server gives back the resisted half.",
    "fx": {
     "kind": "teleport",
     "feet": 30
@@ -1410,11 +1422,16 @@
    "uses": 2,
    "ability": null,
    "recharge": "long",
-   "guidance": "Replace one Attack-action attack with a 20-foot cone or 30-foot line dealing the martial arts die in the monk's chosen damage type, halved on a Dexterity save. Ki buys extra uses.",
+   "guidance": "Replace one Attack-action attack with a 20-foot cone or 30-foot line dealing the martial arts die in the monk's chosen damage type, halved on a Dexterity save. With no use left, 2 ki buys another (the server spends them).",
    "fx": {
     "kind": "aoe",
     "dice": "2d6",
     "save": "dex"
+   },
+   "proficiency": 1,
+   "fallbackPool": {
+    "id": "ki",
+    "amount": 2
    }
   },
   {
@@ -1483,7 +1500,7 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction reducing incoming damage by 1d12 + the goliath's Constitution modifier."
+   "guidance": "A reaction to damage just taken: 1d12 + the goliath's Constitution modifier comes off it. The server rolls it and gives the hit points back."
   },
   {
    "id": "race_healing_hands",
@@ -1495,10 +1512,10 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "Touch a creature to restore hit points equal to the aasimar's level.",
+   "guidance": "An action: a touched creature regains hit points equal to a number of d4s equal to the aasimar's proficiency bonus (MotM). Once a long rest.",
    "fx": {
     "kind": "heal_target",
-    "dice": "level"
+    "dice": "profd4"
    }
   },
   {
@@ -1857,7 +1874,7 @@
    ],
    "uses": 1,
    "ability": null,
-   "recharge": "long",
+   "recharge": "short",
    "action": "action",
    "guidance": "An action: the sorcerer and up to 3 + CHA-modifier creatures within 30 feet gain a flying speed for an hour. The server marks them flying."
   },

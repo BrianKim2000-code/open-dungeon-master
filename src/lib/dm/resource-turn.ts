@@ -31,6 +31,9 @@ export type ResourceCharge =
   | {
       // Writes the charge and returns what the tool result should say of it.
       commit: () => Record<string, unknown>;
+      // A reaction taken as the hit that dropped the character lands, judged
+      // as they stood before it (src/lib/dm/reaction-gate.ts, issue 233).
+      beforeDrop?: boolean;
     };
 
 const FREE: ResourceCharge = { commit: () => ({}) };

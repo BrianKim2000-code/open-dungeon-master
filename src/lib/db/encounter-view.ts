@@ -56,6 +56,8 @@ export type PublicEncounter = {
     // Thief's Reflexes: the thief's second turn in the first round, a
     // second entry with the same id (so rows are keyed by position).
     reflex?: boolean;
+    // The feature behind an extra turn taken at once (Strength before Death).
+    extra?: string;
   }>;
   enemies: Array<{
     id: string;
@@ -270,6 +272,7 @@ export function publicEncounter(
             // column of it, and the tracker has never shown one.
             ...(showNumbers ? { initiative: entry.initiative } : {}),
             ...(entry.kind === "pc" && entry.reflex ? { reflex: true } : {}),
+            ...(entry.kind === "pc" && entry.extra ? { extra: entry.extra } : {}),
           }))
       : [],
     enemies: enemies

@@ -60,6 +60,8 @@ import {
 } from "@/lib/dm/cast-rules";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { paidByManualTick } from "@/lib/dm/manual-ticks";
+import { reactionRefusal } from "@/lib/dm/reaction-gate";
+import { reactionTimingOf } from "@/lib/dm/reaction-kinds";
 import { readiedRelease, releaseReadied } from "@/lib/dm/readied-spell";
 import { antimagicProblem, silenceProblem } from "@/lib/dm/zone-rules";
 import { placeSpellZone } from "@/lib/dm/zone-cast";
@@ -299,9 +301,20 @@ export function castSpell(
   }
 
   // ---- refusals, in the order a person would give them ----
-  const able = canAct({ sheet, encounter, kind: reactionTime ? "reaction" : "cast" });
-  if (!able.ok) {
-    return { error: able.error };
+  // A reaction spell is asked through the one reaction gate, with the
+  // spell's own timing (src/lib/dm/reaction-kinds.ts, issue 233): Shield cast
+  // as the hit that dropped the caster lands is judged as they stood before
+  // it, whichever tool casts it; Hellish Rebuke is not.
+  if (reactionTime) {
+    const refused = reactionRefusal(campaign.id, sheet, encounter, name, reactionTimingOf(engine));
+    if (refused) {
+      return { error: refused };
+    }
+  } else {
+    const able = canAct({ sheet, encounter, kind: "cast" });
+    if (!able.ok) {
+      return { error: able.error };
+    }
   }
   const held = spellHeldProblem(sheet, spell, facts, {
     ritual: input.ritual,
