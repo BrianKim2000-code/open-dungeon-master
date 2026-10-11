@@ -7,3 +7,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Creature artwork and content sources
+
+Before creating or replacing creature art, adding bestiary content, or changing
+image prompts, read [docs/art/creature-art-guidance.md](docs/art/creature-art-guidance.md).
+Use a named SRD creature, an original design, or a separately licensed subject
+with recorded permission. Do not let a generic prompt such as "aberration"
+introduce a beholder or mind flayer. Inspect the rendered anatomy as well as the
+prompt, and preserve the source and edit history with each art change.
