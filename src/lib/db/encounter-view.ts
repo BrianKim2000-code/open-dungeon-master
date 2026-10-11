@@ -65,6 +65,13 @@ export type PublicEncounter = {
     cr: number;
     // SRD creature type off the snapshot, for the thumbnail.
     type: string;
+    // The stat block's slug (the SRD slug a reskin fights as, "custom" for
+    // an invented enemy, "summon:<form>" for a summon turned hostile), so the
+    // thumbnail can draw the creature's own family plate
+    // (monsterPlaceholder in src/lib/placeholders.ts). Not new information:
+    // groupKey has always been this same slug. Optional so a client talking
+    // to an older server still renders.
+    slug?: string;
     // Kept off the players' board and tracker by the DM. Only ever true in
     // the DM's own projection: a hidden enemy is absent from a player's.
     hidden: boolean;
@@ -282,6 +289,7 @@ export function publicEncounter(
       status: enemy.status,
       cr: enemy.cr,
       type: creatureTypeOf(enemy.stats),
+      slug: enemy.slug,
       groupKey: enemy.slug,
       // Knocked out by a nonlethal blow (src/lib/dm/knockout.ts): alive at
       // 0 hit points, out of the fight, not dying.

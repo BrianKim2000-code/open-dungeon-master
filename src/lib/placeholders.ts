@@ -283,9 +283,12 @@ export function npcPlaceholder(
   return `${BASE}/npc/commoner.webp`;
 }
 
-// A monster draws its SRD creature type, or the genre's boss plate when it is
-// the centrepiece of a fight. Threat is checked first because a CR 18
-// humanoid warlord wants the boss plate, not the generic raider one.
+// A monster draws its own creature family's plate when one is painted, else
+// the genre's boss plate when it is the centrepiece of a fight, else its SRD
+// creature type. Among the generic plates threat is checked first because a
+// CR 18 humanoid warlord wants the boss plate, not the generic raider one;
+// a painted family plate beats the boss plate because "this is a lich" says
+// more than "this is the big one" (a CR 21 lich used to draw the genre boss).
 export const BOSS_CR_FLOOR = 11;
 
 const BOSS_GENRES = new Set([
@@ -323,11 +326,124 @@ const GENRE_TYPE_PLATES: Record<string, Record<string, string[]>> = {
   },
 };
 
+// ---- creature families ----
+
+// Plates painted for one creature in particular, keyed by its SRD 5.1 /
+// Open5e monster slug, which is what an encounter enemy and a bestiary entry
+// both carry (EncounterEnemy.slug, BestiaryEntry.slug). The value is the
+// plate's file stem under monster/. A key that is not its own value is an
+// alias: a variant that is plainly the same creature and so shares the
+// plate. Only add an alias when a player would call the picture right for
+// it; a creature that merely sits in the same type (a winged kobold, a
+// giant wolf spider, a night hag) keeps its type plate until it is painted.
+export const MONSTER_FAMILIES: Readonly<Record<string, string>> = {
+  // The first 24, one plate each.
+  "animated-armor": "animated-armor",
+  "brown-bear": "brown-bear",
+  "earth-elemental": "earth-elemental",
+  gargoyle: "gargoyle",
+  "gelatinous-cube": "gelatinous-cube",
+  ghoul: "ghoul",
+  "giant-rat": "giant-rat",
+  "giant-spider": "giant-spider",
+  gnoll: "gnoll",
+  "green-hag": "green-hag",
+  "hell-hound": "hell-hound",
+  hobgoblin: "hobgoblin",
+  imp: "imp",
+  kobold: "kobold",
+  lich: "lich",
+  mimic: "mimic",
+  minotaur: "minotaur",
+  mummy: "mummy",
+  owlbear: "owlbear",
+  "rust-monster": "rust-monster",
+  stirge: "stirge",
+  troll: "troll",
+  werewolf: "werewolf",
+  zombie: "zombie",
+  // Aliases: the same creature under another SRD slug.
+  ghast: "ghoul",
+  "black-bear": "brown-bear",
+  "polar-bear": "brown-bear",
+  spider: "giant-spider",
+  rat: "giant-rat",
+  "mummy-lord": "mummy",
+};
+
+// A name or slug as a family key: lowercase, words hyphenated, and the run
+// number an encounter adds ("Ghoul 2", "Ghoul #2", src/lib/dm/encounter-logic.ts)
+// and a parenthetical ("Imp (unbound)") dropped, so "Giant Rat 3" is
+// giant-rat. Only ever looked up in MONSTER_FAMILIES, never trusted alone.
+function familyKey(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .replace(/\s+#?\d{1,3}$/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function familyOf(value: string | null | undefined): string | null {
+  const key = familyKey(value);
+  return key ? (MONSTER_FAMILIES[key] ?? null) : null;
+}
+
+// The genres whose bestiaries (src/lib/bestiary/*.json) keep the SRD stat
+// block and rename the creature: a cyberpunk giant-rat is a Sump Rat, a
+// horror werewolf is The Good Doctor, a mystery mimic is The Locked Chest.
+// A painted fantasy rat is the wrong picture for a sump rat, and in horror
+// and mystery the plate would give away what the name is hiding. So in these
+// genres the family plate is drawn only when the name on the card is the
+// SRD creature itself (a DM who spawns a plain "Troll" gets the troll), and a
+// reskin keeps the genre's own type plate. Dark fantasy renames too (a Plague
+// Rat, The Hollow Saint), but its creatures are the fantasy creatures under
+// grimmer names, so it draws family plates like high fantasy does.
+const RESKIN_GENRES = new Set(["cyberpunk", "steampunk", "post-apocalyptic", "horror", "mystery"]);
+
+// Which family plate, if any, this monster draws. The slug is the real
+// answer when the caller has it; a name only counts when the whole name is a
+// family (a homebrew monster called "Owlbear"), never a word inside one.
+function familyPlate(genre: string, slug: string | null | undefined, name: string | null | undefined): string | null {
+  const fromName = familyOf(name);
+  const family = familyOf(slug) ?? fromName;
+  if (!family) {
+    return null;
+  }
+  if (RESKIN_GENRES.has(genre) && fromName !== family) {
+    return null;
+  }
+  return family;
+}
+
+export type MonsterLook = {
+  cr?: number | null;
+  genre?: string | null;
+  // Keeps a monster on the same plate where a genre offers two.
+  seed?: string | null;
+  // The SRD / Open5e slug of the stat block it fights with (giant-rat for a
+  // cyberpunk Sump Rat), when the caller has one.
+  slug?: string | null;
+  // The name the table sees, for the reskin guard and for a monster with no
+  // slug at all.
+  name?: string | null;
+};
+
+// Order: the creature's own family plate, then the genre's boss plate at
+// CR 11 and up, then the genre's plate for the type, then the type. A
+// picture somebody supplied for this monster in particular (a world pack's
+// art) beats all of these, and is applied by the caller (MonsterTile's
+// `art`), since it is not a plate.
 export function monsterPlaceholder(
   type: string | null | undefined,
-  options: { cr?: number | null; genre?: string | null; seed?: string | null } = {},
+  options: MonsterLook = {},
 ): string {
   const slug = genreSlug(options.genre);
+  const family = familyPlate(slug, options.slug, options.name);
+  if (family) {
+    return `${BASE}/monster/${family}.webp`;
+  }
   if (typeof options.cr === "number" && options.cr >= BOSS_CR_FLOOR && BOSS_GENRES.has(slug)) {
     return `${BASE}/monster/${slug}-boss.webp`;
   }

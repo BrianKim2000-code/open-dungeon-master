@@ -350,6 +350,7 @@ export function DmBestiaryPanel({
                   cr={monster.draft.stats.cr}
                   genre={genre}
                   seed={monster.draft.name}
+                  name={monster.draft.name}
                   size="size-9"
                 />
                 <button type="button" onClick={toggle} aria-expanded={isOpen} className={cn(ui.btnSmall, quietRow, "flex-1 flex-wrap gap-x-2 gap-y-0")}>

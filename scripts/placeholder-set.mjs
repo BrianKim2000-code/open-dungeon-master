@@ -505,6 +505,40 @@ const GENRE_MONSTERS = [
   { id: "horror-flesh-thing", subject: "a flesh horror, a lumpen mass of fused limbs reaching outward" },
 ];
 
+// One plate per creature family, keyed by the SRD 5.1 / Open5e monster slug
+// (src/lib/placeholders.ts MONSTER_FAMILIES maps slugs and aliases onto these
+// ids). The shipped WebPs are hand-picked painted art at 512 px, not renders
+// of these subjects: like the majority-selected plates they are curated, so
+// --force or --reencode would replace them with generator output. The
+// subjects are here so the jobs list (and so manifest.json) names every
+// plate that ships, and so a regeneration has a starting prompt.
+const MONSTER_FAMILY_PLATES = [
+  { id: "mimic", subject: "a mimic, a treasure chest with a fanged maw and a long tongue" },
+  { id: "kobold", subject: "a kobold, a small scaly dog-snouted reptilian with a spear" },
+  { id: "hobgoblin", subject: "a hobgoblin soldier in red lacquered armour with a longsword" },
+  { id: "gnoll", subject: "a gnoll, a hyena-headed raider with a flail" },
+  { id: "giant-rat", subject: "a giant rat, bristling and snarling" },
+  { id: "giant-spider", subject: "a giant spider with long jointed legs over a web" },
+  { id: "stirge", subject: "a stirge, a bat-winged bloodsucker with a long proboscis" },
+  { id: "zombie", subject: "a shambling zombie in grave rags" },
+  { id: "ghoul", subject: "a ghoul, a gaunt grey corpse-eater crouched on a tomb" },
+  { id: "mummy", subject: "a mummy in rotting linen wrappings with glowing eyes" },
+  { id: "werewolf", subject: "a werewolf howling under a full moon" },
+  { id: "green-hag", subject: "a green hag, a crone with lank hair over a bubbling cauldron" },
+  { id: "troll", subject: "a troll, a lanky green-skinned brute with long claws" },
+  { id: "owlbear", subject: "an owlbear, a feathered bear with an owl's head and beak" },
+  { id: "minotaur", subject: "a minotaur, a bull-headed giant with a great axe" },
+  { id: "gargoyle", subject: "a gargoyle, a horned stone fiend perched on a parapet" },
+  { id: "gelatinous-cube", subject: "a gelatinous cube, a translucent cube with bones and a sword suspended inside" },
+  { id: "animated-armor", subject: "an animated suit of empty plate armour striding forward" },
+  { id: "hell-hound", subject: "a hell hound, a black hound breathing fire" },
+  { id: "imp", subject: "an imp, a small red winged devil with a barbed tail" },
+  { id: "lich", subject: "a lich, a crowned skeletal sorcerer in dark robes casting a spell" },
+  { id: "earth-elemental", subject: "an earth elemental, a hulking figure of rock and rubble" },
+  { id: "rust-monster", subject: "a rust monster, an armoured insectile beast with feathery antennae" },
+  { id: "brown-bear", subject: "a brown bear rearing up and roaring" },
+];
+
 // Threat, which a creature type cannot express. Once the bestiary carries a
 // type, the fourteen plates above answer "what is it" for all 576 roster
 // entries; they still cannot say "this one is the centrepiece", so a CR 18
@@ -638,6 +672,12 @@ export function placeholderJobs() {
 
   for (const type of [...MONSTER_TYPES, ...GENRE_MONSTERS]) {
     portrait("monster", type.id, type.subject, "creature");
+  }
+
+  // A creature's own plate, which beats the type and the boss plate when the
+  // monster is one of these (or an alias of one).
+  for (const family of MONSTER_FAMILY_PLATES) {
+    portrait("monster", family.id, family.subject, "creature");
   }
 
   // Threat, not kind: id is <genre>-boss so paletteForId still picks up the
