@@ -1178,34 +1178,34 @@ export function useCampaignStream(campaignId: string) {
 
   // Re-fetches just the caller's visible notes. Suggestion events carry no
   // content (privacy), so clients pull their own filtered list instead.
-  const refreshNotes = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/notes`);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      dispatch({ type: "notes", notes: data.notes ?? [] });
-    } catch {
-      // transient; the next snapshot refresh catches up
-    }
-  }, [campaignId]);
+  const refreshNotes = useMemo(
+    () =>
+      coalesceRefresh(
+        () => fetchBody(`/api/campaigns/${campaignId}/notes`),
+        (body) => {
+          const data = JSON.parse(body);
+          dispatch({ type: "notes", notes: data.notes ?? [] });
+        },
+        { skipSame: false },
+      ),
+    [campaignId],
+  );
 
   // Side-chat threads follow the same privacy pattern, one step stricter:
   // the side_activity event is ephemeral and empty, and each member pulls
   // only their own threads.
-  const refreshSideChat = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/side-chat`);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      dispatch({ type: "sideThreads", sideThreads: data.threads ?? [] });
-    } catch {
-      // transient; the next side_activity event retries
-    }
-  }, [campaignId]);
+  const refreshSideChat = useMemo(
+    () =>
+      coalesceRefresh(
+        () => fetchBody(`/api/campaigns/${campaignId}/side-chat`),
+        (body) => {
+          const data = JSON.parse(body);
+          dispatch({ type: "sideThreads", sideThreads: data.threads ?? [] });
+        },
+        { skipSame: false },
+      ),
+    [campaignId],
+  );
 
   // The battle map is per-character fogged, so even token positions never
   // ride the shared stream; the ping-and-self-fetch pattern applies. Pings
@@ -1236,64 +1236,64 @@ export function useCampaignStream(campaignId: string) {
   // stripped, because the stream is one payload for every seat. Whoever is
   // allowed to read it pulls their own copy, the same way the DM pulls their
   // own enemy numbers.
-  const refreshRolls = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/rolls`);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      dispatch({ type: "rolls", rolls: data.rolls ?? [] });
-    } catch {
-      // transient; the next roll retries
-    }
-  }, [campaignId]);
+  const refreshRolls = useMemo(
+    () =>
+      coalesceRefresh(
+        () => fetchBody(`/api/campaigns/${campaignId}/rolls`),
+        (body) => {
+          const data = JSON.parse(body);
+          dispatch({ type: "rolls", rolls: data.rolls ?? [] });
+        },
+        { skipSame: false },
+      ),
+    [campaignId],
+  );
 
   // DM whispers follow the side-chat privacy pattern: the whisper_activity
   // event is ephemeral and empty; each member pulls only their own rows.
-  const refreshWhispers = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/whispers`);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      dispatch({ type: "whispers", whispers: data.whispers ?? [], unread: data.unread ?? 0, inbox: data.inbox ?? [] });
-    } catch {
-      // transient; the next whisper_activity event retries
-    }
-  }, [campaignId]);
+  const refreshWhispers = useMemo(
+    () =>
+      coalesceRefresh(
+        () => fetchBody(`/api/campaigns/${campaignId}/whispers`),
+        (body) => {
+          const data = JSON.parse(body);
+          dispatch({ type: "whispers", whispers: data.whispers ?? [], unread: data.unread ?? 0, inbox: data.inbox ?? [] });
+        },
+        { skipSame: false },
+      ),
+    [campaignId],
+  );
 
   // Ask uses the same privacy pattern: ask_activity is contentless and
   // fires only for table-visible asks; each member pulls the rows they may
   // read (their own, plus anything shared with the table).
-  const refreshAsks = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/ask`);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      dispatch({ type: "asks", asks: data.asks ?? [] });
-    } catch {
-      // transient; the next ask_activity event retries
-    }
-  }, [campaignId]);
+  const refreshAsks = useMemo(
+    () =>
+      coalesceRefresh(
+        () => fetchBody(`/api/campaigns/${campaignId}/ask`),
+        (body) => {
+          const data = JSON.parse(body);
+          dispatch({ type: "asks", asks: data.asks ?? [] });
+        },
+        { skipSame: false },
+      ),
+    [campaignId],
+  );
 
   // World facts follow the same privacy pattern: facts_updated is
   // contentless and each member fetches their own known_by-scoped view.
-  const refreshFacts = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/facts`);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      dispatch({ type: "facts", facts: data.facts ?? [] });
-    } catch {
-      // transient; the next facts_updated event retries
-    }
-  }, [campaignId]);
+  const refreshFacts = useMemo(
+    () =>
+      coalesceRefresh(
+        () => fetchBody(`/api/campaigns/${campaignId}/facts`),
+        (body) => {
+          const data = JSON.parse(body);
+          dispatch({ type: "facts", facts: data.facts ?? [] });
+        },
+        { skipSame: false },
+      ),
+    [campaignId],
+  );
 
   useEffect(() => {
     let source: EventSource | null = null;
@@ -1347,6 +1347,9 @@ export function useCampaignStream(campaignId: string) {
       source.addEventListener("ping", () => watchdog.pinged());
       // Both the browser's EventSource and the apps' fetch-backed one
       // (client src/renderer/game/runtime.ts) dispatch open and error.
+      // Set when this open already reloaded everything, so the server's
+      // resync that may follow it does not reload it a second time.
+      let resyncedOnOpen = false;
       source.addEventListener("open", () => {
         watchdog.heard();
         if (probe !== null) {
@@ -1355,8 +1358,19 @@ export function useCampaignStream(campaignId: string) {
         }
         if (dropped) {
           dropped = false;
+          resyncedOnOpen = true;
           resync();
         }
+      });
+      // The server skipped the replay (this tab was too far behind, or its
+      // cursor was no cursor) and the snapshot is the way back in.
+      source.addEventListener("resync", () => {
+        watchdog.heard();
+        if (resyncedOnOpen) {
+          resyncedOnOpen = false;
+          return;
+        }
+        resync();
       });
       source.addEventListener("error", () => {
         dropped = true;

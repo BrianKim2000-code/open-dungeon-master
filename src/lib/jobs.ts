@@ -7,6 +7,7 @@ import {
   markCampaignNudged,
 } from "@/lib/db/campaigns";
 import { notifyUsers } from "@/lib/db/notifications";
+import { pruneExpiredSessions } from "@/lib/db/users";
 import {
   listSessionsAwaitingReminder,
   sessionWhen,
@@ -125,6 +126,12 @@ function idleCampaignJob(now: number) {
   }
 }
 
+// Expired sign-ins. The session lookup refuses them by date already; this
+// only keeps the table from growing (src/lib/db/users.ts).
+function expiredSessionsJob(now: number) {
+  pruneExpiredSessions(new Date(now).toISOString());
+}
+
 // Accounts whose deletion grace period has run out (src/lib/account-deletion.ts).
 function accountPurgeJob(now: number) {
   purgeDueAccounts(now);
@@ -138,6 +145,7 @@ function assistantRelayJob(now: number) {
 }
 
 const jobs: Array<[name: string, run: (now: number) => void]> = [
+  ["expired-sessions", expiredSessionsJob],
   ["session-reminders", sessionReminderJob],
   ["idle-campaigns", idleCampaignJob],
   ["account-purge", accountPurgeJob],

@@ -9,7 +9,7 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { KitButton, SettingToggle } from "./PanelKit";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 import { cn } from "@/lib/cn";
 import { CountPop } from "@/components/ui/Reveal";
 import { CharacterPortrait } from "@/lib/ui";
@@ -21,13 +21,18 @@ import { CompanionBuilderDialog } from "@/app/campaigns/[campaignId]/CompanionBu
 import { DiceSourcesButton } from "@/app/campaigns/[campaignId]/DiceSourcesDialog";
 import { DiceLookButton } from "@/components/DiceLookEditor";
 import { LeadEditDialog } from "@/app/campaigns/[campaignId]/LeadEditDialog";
-import { AvatarCropDialog } from "@/app/settings/AvatarCropDialog";
 import type { CampaignMember } from "@/lib/campaign-types";
 import type { Note } from "@/lib/db/notes";
 import type { Genre } from "@/lib/schemas/game-settings";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived, formatModifier } from "@/lib/srd";
 import { usePackArt } from "@/lib/worlds/use-pack-art";
+
+// The portrait cropper (and its cropping library) loads when a portrait is
+// being cropped, not with the table.
+const AvatarCropDialog = lazy(() =>
+  import("@/app/settings/AvatarCropDialog").then((module) => ({ default: module.AvatarCropDialog })),
+);
 
 // Inspiration held (resources.inspiration, used below its one use).
 function inspired(sheet: CharacterSheet): boolean {
@@ -828,11 +833,13 @@ export function PartyPanel({
       ) : null}
 
       {croppingSheet ? (
-        <AvatarCropDialog
-          title={`${croppingSheet.name}'s portrait`}
-          onUploaded={(image) => setPortrait(croppingSheet, image.url)}
-          onClose={() => setCroppingSheetId("")}
-        />
+        <Suspense fallback={null}>
+          <AvatarCropDialog
+            title={`${croppingSheet.name}'s portrait`}
+            onUploaded={(image) => setPortrait(croppingSheet, image.url)}
+            onClose={() => setCroppingSheetId("")}
+          />
+        </Suspense>
       ) : null}
 
       {tradingWith && mySheet ? (

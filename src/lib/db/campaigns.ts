@@ -18,6 +18,8 @@ import { syncArcQuests } from "@/lib/db/quests";
 import { normalizeCover, type DmCover } from "@/lib/dm/delegation";
 import { MINUTES_PER_DAY, daysPerYear, defaultClock, normalizeCalendarDefinition, normalizeClock, type CampaignClock } from "@/lib/dm/calendar";
 import { packFor } from "@/lib/worlds/preset";
+import { closeStreamsForCampaign } from "@/lib/live-streams";
+import { dropDmQueue } from "@/lib/dm/queue";
 import { normalizeParty, type PartyState } from "@/lib/dm/party-logic";
 import {
   partySlotCount,
@@ -419,6 +421,10 @@ export function deleteCampaign(campaignId: string) {
        AND id IN (SELECT user_id FROM character_sheets WHERE campaign_id = ?)`,
   ).run(campaignId);
   db.prepare(`DELETE FROM campaigns WHERE id = ?`).run(campaignId);
+  // Anyone still at the table stops hearing it now (src/lib/live-streams.ts),
+  // and turns still waiting for it are not run against rows that are gone.
+  closeStreamsForCampaign(campaignId);
+  dropDmQueue(campaignId);
 }
 
 export function listCampaignsForUser(userId: string): CampaignSummary[] {

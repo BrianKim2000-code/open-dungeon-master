@@ -31,7 +31,7 @@ function statusTone(status: HarnessStatus): { tone: "ready" | "warn" | "off" | "
   return { tone: "ready", text: "Ready" };
 }
 
-// The admin's agent program (docs/harness-mcp-plan.md 6): a card per program
+// The admin's agent program (docs/archive/harness-mcp-plan.md 6): a card per program
 // this server knows how to run, each saying whether it is installed, signed
 // in and locked down, then the models and limits for the chosen one. Saved on
 // its own, so choosing a program never rides along with an unrelated edit.

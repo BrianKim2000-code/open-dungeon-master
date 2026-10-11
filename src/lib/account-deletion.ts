@@ -11,6 +11,7 @@ import {
   markDeletionRequested,
 } from "@/lib/db/users";
 import { campaignFilePaths, removeUnreferencedFiles } from "@/lib/image-files";
+import { closeStreamsForUser } from "@/lib/live-streams";
 import { isUploadedImagePath } from "@/lib/uploads";
 
 // Self-service account deletion, in two steps. The request stamps a due
@@ -169,6 +170,9 @@ export function purgeAccount(userId: string) {
     // account invites.
     db.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
   })();
+  // The cascade took the sessions without passing deleteSessionsForUser, so
+  // the account's open streams are closed here (src/lib/live-streams.ts).
+  closeStreamsForUser(userId);
 
   removeUnreferencedFiles(files);
   for (const { id } of owned) {
