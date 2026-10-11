@@ -896,10 +896,14 @@ export function setMemberRealDice(campaignId: string, userId: string, useRealDic
 
 // Which of their characters a player is running now
 // (docs/vtt-parity-implementation-plan.md 11.3).
+// No character is the empty string: the column is NOT NULL DEFAULT ''. A
+// null here failed the write, which is how handing a player's only
+// character to the DM answered 500 after the sheet had already changed
+// hands, and the table never heard about it (companions/adopt).
 export function setMemberActiveCharacter(campaignId: string, userId: string, characterId: string | null) {
   getDatabase()
     .prepare(`UPDATE campaign_members SET active_character_id = ? WHERE campaign_id = ? AND user_id = ?`)
-    .run(characterId, campaignId, userId);
+    .run(characterId ?? "", campaignId, userId);
 }
 
 export function setMemberHoldRolls(campaignId: string, userId: string, holdRolls: boolean) {

@@ -31,6 +31,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { JOIN_NOTE_PREFIX, latestUnintroducedJoin } from "@/lib/campaign-types";
+import { composerLimit, textLength } from "@/lib/text-limits";
 import { markTourSeen, tourSeen } from "@/lib/tours/logic";
 import { DM_TOUR, DM_TOUR_ID, PLAYER_TOUR, PLAYER_TOUR_ID } from "@/lib/tours/table";
 import { HelpDialog } from "@/components/HelpDialog";
@@ -483,7 +484,8 @@ export function SessionView({
     async (event: FormEvent) => {
       event.preventDefault();
       const content = input.trim();
-      if (!content || sending || gate.inputBlocked || muted) {
+      // Over the mode's limit the box says so and keeps the draft (issue 207).
+      if (!content || sending || gate.inputBlocked || muted || textLength(content) > composerLimit(kind, leadPrivate)) {
         return;
       }
       setSending(true);
@@ -696,6 +698,10 @@ export function SessionView({
       inputBlocked={gate.inputBlocked || muted}
       placeholder={muted ? "The party lead has muted you at this table." : gate.placeholder}
       onSubmit={submit}
+      maxChars={composerLimit(kind, leadPrivate)}
+      // The stage's copy opens the story for what its window leaves out;
+      // the enlarged board's dialog covers the story, so it only says so.
+      onShowStory={composer ? undefined : toggleStage}
       composer={composer}
     />
   );
