@@ -86,6 +86,28 @@ const lobby = campaigns.createCampaign(world.owner.id, {
 });
 
 const player = world.addUser("player");
+// A second hero at the table, so the Party panel has cards to arrange
+// (issue 240), and a DM offer waiting on the lead's own character, so the
+// offer bar has something to settle (issue 239).
+const brann = world.addHero({
+  user: player,
+  name: "Brann Ironfoot",
+  class: "fighter",
+  level: 3,
+  abilities: { str: 16, dex: 10 },
+});
+const itemProposals = await import("../../src/lib/db/item-proposals.ts");
+const offer = itemProposals.insertItemProposal({
+  campaignId: world.campaignId,
+  turnId: null,
+  characterId: tavi.id,
+  userId: world.owner.id,
+  toolName: "grant_item",
+  argsJson: JSON.stringify({ characterId: tavi.id, name: "Healing potion", qty: 1, reason: "found in the mill" }),
+  summary: "Give Healing potion to Tavi Lockwhisper",
+  reason: "found in the mill",
+  seq: campaigns.allocateSeq(world.campaignId),
+});
 for (const user of [world.owner, player]) {
   setUserPassword(user.id, await hashPassword(PASSWORD), false);
 }
@@ -99,7 +121,10 @@ const ids = {
   campaignId: world.campaignId,
   lobbyId: lobby.id,
   tavi: tavi.id,
+  brann: brann.id,
   goblin: goblin.id,
+  offerId: offer.id,
+  offerSummary: offer.summary,
   systemLine,
   paragraphs: paragraphs.map((text) => text.replace(/[*_]/g, "")),
 };

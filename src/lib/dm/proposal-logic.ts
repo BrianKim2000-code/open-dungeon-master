@@ -150,3 +150,297 @@ export function canResolveProposal(
   }
   return actorIsOwner || actorIsLead;
 }
+
+// ---- Settling an offer with the DM (issue 239) ----
+//
+// Accepting or declining an offer settled the sheet but never the story:
+// the DM read the next turn's history and sheets and saw neither which
+// offer was answered nor how, so it asked again in words and, told "yes",
+// made a fresh offer for the same loot. Three things close that: a system
+// line in the chronicle when an offer is settled (the DM reads it as
+// authoritative, the table reads it as words), a block of open and recently
+// settled offers in the game state, and a refusal before an offer is shown
+// when it repeats one that is pending or just accepted, or cannot apply.
+
+// Marks the system line that says how an offer was answered.
+export const OFFER_NOTE_PREFIX = "[Offer settled] ";
+
+// An identical offer inside this window of an accepted one is the same loot
+// twice unless the caller says it is another (`additional: true`).
+export const DUPLICATE_OFFER_WINDOW_MS = 10 * 60_000;
+
+// How far back the game state lists settled offers, and how many.
+export const SETTLED_OFFERS_WINDOW_MS = 6 * 3_600_000;
+export const SETTLED_OFFERS_MAX = 8;
+
+export type OfferArgs = ProposalArgs & { coins?: string; additional?: boolean; unidentified?: boolean };
+
+export type OfferSheet = {
+  name: string;
+  equipment: Array<{ name: string; qty: number }>;
+  gold: number;
+  copper: number;
+};
+
+function heldQty(sheet: OfferSheet, name: string): number {
+  const wanted = name.trim().toLowerCase();
+  return sheet.equipment
+    .filter((item) => item.name.trim().toLowerCase() === wanted)
+    .reduce((sum, item) => sum + Math.max(0, Number(item.qty) || 0), 0);
+}
+
+export function purseWords(gold: number, copper: number): string {
+  const cp = Math.max(0, Math.round(gold * 100 + copper));
+  const gp = Math.floor(cp / 100);
+  const rest = cp % 100;
+  if (!rest) {
+    return `${gp} gp`;
+  }
+  return `${gp} gp ${rest} cp`;
+}
+
+// Whether the offer could apply right now; an offer that could not is
+// refused before the player ever sees it, and the DM is told why. The full
+// check still reruns on approval (applyDmMutation); this is the part the
+// model needs to hear at once. `moveCp` is a modify_gold's amount in copper
+// when the caller resolved `coins`; null means take `delta` as gold.
+export function offerPrecheck(
+  toolName: string,
+  args: OfferArgs,
+  sheet: OfferSheet,
+  moveCp: number | null = null,
+): string | null {
+  const purseCp = Math.round(sheet.gold * 100 + sheet.copper);
+  const qty = Math.max(1, Math.floor(Number(args.qty ?? 1) || 1));
+  if (toolName === "remove_item") {
+    const name = String(args.name ?? "").trim();
+    const held = heldQty(sheet, name);
+    if (!held) {
+      return `${sheet.name} does not carry "${name}", so there is nothing to take and no offer was made. Check the sheet before offering a removal.`;
+    }
+    if (qty > held) {
+      return `${sheet.name} carries only ${held} ${name}; offer to take at most ${held}. No offer was made.`;
+    }
+    return null;
+  }
+  if (toolName === "modify_gold") {
+    const delta = Number(args.delta ?? 0) || 0;
+    const moved = moveCp === null ? Math.round(delta * 100) : moveCp;
+    if (moved < 0 && purseCp + moved < 0) {
+      return `${sheet.name}'s purse holds ${purseWords(sheet.gold, sheet.copper)}; it cannot lose ${purseWords(0, -moved)}. No offer was made.`;
+    }
+    return null;
+  }
+  if (toolName === "purchase") {
+    const item = String(args.item ?? args.name ?? "").trim();
+    const costCp = Math.round((Number(args.price ?? 0) || 0) * qty * 100);
+    if (args.action === "buy" && costCp > purseCp) {
+      return `${sheet.name} cannot afford ${item}: it costs ${purseWords(0, costCp)} and the purse holds ${purseWords(sheet.gold, sheet.copper)}. No offer was made.`;
+    }
+    if (args.action === "sell") {
+      const held = heldQty(sheet, item);
+      if (!held) {
+        return `${sheet.name} does not carry "${item}" to sell. No offer was made.`;
+      }
+      if (qty > held) {
+        return `${sheet.name} carries only ${held} ${item} to sell. No offer was made.`;
+      }
+    }
+  }
+  return null;
+}
+
+// What an offer is, apart from who made it and when: the same key twice is
+// the same offer. Vitals have no key (a second blow or cure is its own).
+export function offerKey(toolName: string, args: OfferArgs): string | null {
+  const qty = Math.max(1, Math.floor(Number(args.qty ?? 1) || 1));
+  switch (toolName) {
+    case "grant_item":
+    case "remove_item":
+      return `${toolName}|${String(args.name ?? "").trim().toLowerCase()}|${qty}|${args.unidentified ? 1 : 0}`;
+    case "modify_gold":
+      return `${toolName}|${Number(args.delta ?? 0) || 0}|${String(args.coins ?? "").trim().toLowerCase()}`;
+    case "purchase":
+      return `${toolName}|${args.action}|${String(args.item ?? args.name ?? "").trim().toLowerCase()}|${qty}|${Number(args.price ?? 0) || 0}`;
+    default:
+      return null;
+  }
+}
+
+export type RecentOffer = {
+  toolName: string;
+  characterId: string;
+  argsJson: string;
+  status: ProposalStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+function parseArgs(raw: string): OfferArgs {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" ? (parsed as OfferArgs) : {};
+  } catch {
+    return {};
+  }
+}
+
+// The same offer again, while the first still waits or just after it was
+// accepted, is refused with the reason: the loot is claimed or the answer
+// is still coming. `additional: true` says this is another of the same from
+// a separate source and passes the accepted check (never the pending one).
+export function duplicateOfferProblem(
+  toolName: string,
+  args: OfferArgs,
+  character: { id: string; name: string },
+  recent: readonly RecentOffer[],
+  nowMs: number,
+): string | null {
+  const key = offerKey(toolName, args);
+  if (!key) {
+    return null;
+  }
+  const summary = proposalSummary(toolName, args, character.name);
+  for (const offer of recent) {
+    if (offer.characterId !== character.id || offer.toolName !== toolName) {
+      continue;
+    }
+    if (offerKey(offer.toolName, parseArgs(offer.argsJson)) !== key) {
+      continue;
+    }
+    if (offer.status === "pending" && !proposalExpired(offer.createdAt, new Date(nowMs))) {
+      return `An identical offer ("${summary}") is still waiting for ${character.name}'s player to answer. Do not offer it again and do not ask them in words; their answer arrives as a table note.`;
+    }
+    if (offer.status === "approved" && !args.additional) {
+      const resolved = Date.parse(offer.resolvedAt ?? "");
+      const age = Number.isNaN(resolved) ? Number.POSITIVE_INFINITY : nowMs - resolved;
+      if (age <= DUPLICATE_OFFER_WINDOW_MS) {
+        const minutes = Math.max(1, Math.round(age / 60_000));
+        const what = toolName === "modify_gold" ? "coin" : "loot";
+        return `${character.name}'s player already accepted "${summary}" ${minutes} minute${minutes === 1 ? "" : "s"} ago and it was applied; that ${what} is claimed. Do not grant it twice. Only if this is truly another, separate ${what} from a different source, call again with additional: true.`;
+      }
+    }
+  }
+  return null;
+}
+
+export type OfferAfter = OfferSheet & {
+  currentHp: number;
+  maxHp: number;
+  tempHp: number;
+  conditions: string[];
+};
+
+// What applying the offer left on the sheet, in one sentence the chronicle
+// and the DM both read.
+export function appliedOutcome(toolName: string, args: OfferArgs, after: OfferAfter): string {
+  const name = after.name;
+  const item = String(args.name ?? args.item ?? "").trim();
+  switch (toolName) {
+    case "grant_item": {
+      const held = heldQty(after, item);
+      return `${name} now carries ${item}${held > 1 ? ` x${held}` : ""}.`;
+    }
+    case "remove_item": {
+      const held = heldQty(after, item);
+      return held ? `${name} still carries ${item} x${held}.` : `${name} no longer carries any ${item}.`;
+    }
+    case "modify_gold":
+      return `${name}'s purse now holds ${purseWords(after.gold, after.copper)}.`;
+    case "purchase": {
+      const held = heldQty(after, item);
+      return `${name}'s purse now holds ${purseWords(after.gold, after.copper)}${held ? `; ${name} carries ${item}${held > 1 ? ` x${held}` : ""}` : ""}.`;
+    }
+    case "apply_damage":
+    case "heal":
+      return `${name} is at ${after.currentHp}/${after.maxHp} hit points${after.tempHp > 0 ? ` with ${after.tempHp} temporary` : ""}.`;
+    case "set_condition": {
+      const condition = String(args.condition ?? "").trim();
+      return after.conditions.some((entry) => entry.toLowerCase() === condition.toLowerCase())
+        ? `${name} is now ${condition}.`
+        : `${name} is not ${condition} after all.`;
+    }
+    case "clear_condition":
+      return `${name} is no longer ${String(args.condition ?? "").trim()}.`;
+    default:
+      return "";
+  }
+}
+
+export type OfferResolution = "approved" | "declined" | "cancelled" | "expired" | "failed";
+
+// The line the chronicle shows when an offer is settled (after the prefix).
+export function resolutionNote(input: {
+  status: OfferResolution;
+  summary: string;
+  characterName: string;
+  // The lead answered for the player.
+  byLead?: boolean;
+  // What applying it did, or why it could not be applied.
+  outcome?: string;
+}): string {
+  const { status, summary, characterName, byLead = false, outcome = "" } = input;
+  const tail = outcome ? ` ${outcome}` : "";
+  switch (status) {
+    case "approved":
+      return byLead
+        ? `The lead accepted the offer for ${characterName}: ${summary}.${tail}`
+        : `${characterName} accepted the offer: ${summary}.${tail}`;
+    case "declined":
+      return byLead
+        ? `The lead declined the offer for ${characterName}: ${summary}. Nothing changed.`
+        : `${characterName} declined the offer: ${summary}. Nothing changed.`;
+    case "cancelled":
+      return `The lead withdrew the offer: ${summary}. Nothing changed.`;
+    case "expired":
+      return `The offer lapsed unanswered: ${summary}. Nothing changed.`;
+    case "failed":
+      return `The offer "${summary}" could not be applied${outcome ? ` (${outcome.replace(/\.$/, "")})` : ""}. Nothing changed.`;
+  }
+}
+
+export type OfferLine = {
+  summary: string;
+  characterName: string;
+  status: ProposalStatus | "failed";
+  outcome: string;
+  minutesAgo: number | null;
+};
+
+// Every proposal row, as the game state wants it: status "declined" with a
+// failure recorded is a failure, not a refusal.
+export function offerLineStatus(status: ProposalStatus, outcome: string): OfferLine["status"] {
+  return status === "declined" && outcome.startsWith("failed:") ? "failed" : status;
+}
+
+function ago(minutes: number | null): string {
+  if (minutes === null) {
+    return "";
+  }
+  return minutes < 1 ? " just now" : ` ${minutes} min ago`;
+}
+
+// The offers block of the game state: what waits on a player, and what was
+// settled recently and how. Empty when there is nothing to say.
+export function renderOffersBlock(offers: readonly OfferLine[]): string {
+  if (!offers.length) {
+    return "";
+  }
+  const lines = offers.map((offer) => {
+    switch (offer.status) {
+      case "pending":
+        return `- WAITING on ${offer.characterName}'s player: ${offer.summary}. Do not offer it again, do not ask them in words, and do not narrate it as done; their answer arrives as a table note.`;
+      case "approved":
+        return `- ACCEPTED${ago(offer.minutesAgo)} and applied: ${offer.summary}.${offer.outcome ? ` ${offer.outcome}` : ""} Already settled: never offer or grant the same thing again; carry the scene on from here.`;
+      case "declined":
+        return `- DECLINED${ago(offer.minutesAgo)}: ${offer.summary}. Nothing changed; respect the refusal.`;
+      case "failed":
+        return `- COULD NOT BE APPLIED${ago(offer.minutesAgo)}: ${offer.summary} (${offer.outcome.replace(/^failed:\s*/, "").replace(/\.$/, "")}). Nothing changed.`;
+      case "cancelled":
+        return `- WITHDRAWN by the lead${ago(offer.minutesAgo)}: ${offer.summary}. Nothing changed.`;
+      case "expired":
+        return `- LAPSED unanswered${ago(offer.minutesAgo)}: ${offer.summary}. Nothing changed.`;
+    }
+  });
+  return `Offers to players (changes a player must accept before they land; the server settled each one exactly as recorded here, authoritative):\n${lines.join("\n")}`;
+}

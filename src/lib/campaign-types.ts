@@ -163,5 +163,8 @@ export type CampaignMember = {
   muted: boolean;
   // With several characters per player, the one they are running.
   activeCharacterId: string;
+  // This member's own order for the Party panel's cards, sheet ids first
+  // card first; empty is the campaign's order (src/lib/party-order.ts).
+  partyOrder: string[];
   joinedAt: string;
 };

@@ -1290,6 +1290,17 @@ function ensureSchema(db: SqliteDatabase) {
     // A trade between two players (11.2): who the offer is made to. Empty
     // for the DM's own offers.
     ["to_character_id", `TEXT NOT NULL DEFAULT ''`],
+    // How settling it went, for the DM's next turn (issue 239): what
+    // applying it left on the sheet, or "failed: <why>" when approval could
+    // not apply and the row was closed as declined.
+    ["outcome", `TEXT NOT NULL DEFAULT ''`],
+  ]);
+
+  addColumns("campaign_members", [
+    // This member's own order for the Party panel's cards (issue 240): a
+    // JSON list of sheet ids, first card first. Empty means the campaign's
+    // own order. Display only; initiative and formation never read it.
+    ["party_order_json", `TEXT NOT NULL DEFAULT ''`],
   ]);
 
   addColumns("campaigns", [

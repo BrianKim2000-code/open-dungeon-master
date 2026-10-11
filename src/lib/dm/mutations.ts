@@ -228,12 +228,14 @@ export const mutationTools: ToolDef[] = [
   tool("modify_gold", "Add or remove money (negative delta = spend/lose). Floors at 0. For anything under a gold piece, or a price quoted in another coin, send `coins` like \"340 silver\" or \"2 pp 5 sp\" and set delta to -1 to spend it or 1 to gain it.", {
     delta: { type: "integer", minimum: -100000, maximum: 100000 },
     coins: { type: "string", description: "Amount in denominations, e.g. '340 silver'. Overrides delta's size; delta's sign still says gain or spend." },
+    additional: { type: "boolean", description: "Only when a player just accepted this same amount and this is truly another, separate sum from a different source." },
   }, ["delta"]),
   tool("grant_item", "Give a character an item (loot, purchase, gift). Only for items the fiction actually put in their hands. Set unidentified when the party cannot tell what it is yet: then `name` is the description they would use ('an ornate silver ring'), never the true name, and reveal_item names it later.", {
     ...waypointProperty,
     unidentified: { type: "boolean", description: "True when the party does not yet know what this is." },
     name: { type: "string" },
     qty: { type: "integer", minimum: 1, maximum: 99 },
+    additional: { type: "boolean", description: "Only when a player just accepted this same item and this is truly another one from a different source." },
   }, ["name"]),
   tool("remove_item", "Take an item from a character (lost, stolen, destroyed). For consumables being USED, call use_item instead; for sales, call purchase.", {
     name: { type: "string" },

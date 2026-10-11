@@ -63,6 +63,7 @@ import { rollerName } from "@/lib/roll-labels";
 import { tableHazards } from "@/lib/srd/table-hazards";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { languageDirective } from "@/lib/dm/table-language-logic";
+import { OFFER_NOTE_PREFIX, renderOffersBlock, type OfferLine } from "@/lib/dm/proposal-logic";
 
 export { DM_SYSTEM, dmSystemText, ENCOUNTER_RULES, encounterRulesText } from "@/lib/dm/prompt-rules";
 
@@ -203,6 +204,9 @@ export type DmGameState = {
   recentWhispers?: Array<{ to: string; content: string }>;
   // Private messages players sent the DM that no turn has handled yet.
   pendingPlayerWhispers?: Array<{ from: string; content: string }>;
+  // Offers to players still waiting, and those settled recently and how
+  // (src/lib/dm/proposal-logic.ts, issue 239).
+  offers?: OfferLine[];
   // Prebuilt retrieval blocks (src/lib/dm/context-retrieval.ts): variant
   // rules, retrieved house-rule chunks, and retrieved world lore. Built
   // before the prompt so this module stays synchronous.
@@ -887,6 +891,10 @@ export function buildGameStateBlock(state: DmGameState): string {
         .join("\n")}`,
     );
   }
+  const offersBlock = renderOffersBlock(state.offers ?? []);
+  if (offersBlock) {
+    sections.push(offersBlock);
+  }
   // Only when somebody at the table fields several characters: the usual
   // one-each table pays no window for it (issue 120). Each line names the
   // player, the characters they control and the one they have selected.
@@ -1327,7 +1335,9 @@ export function buildDmMessages(
         : message.authorType === "system"
           ? message.content.startsWith(LEAD_NOTE_PREFIX)
             ? `[Authoritative direction from the party lead; weave it into the story now] ${message.content.slice(LEAD_NOTE_PREFIX.length)}`
-            : `[Table note] ${message.content}`
+            : message.content.startsWith(OFFER_NOTE_PREFIX)
+              ? `[An offer was settled by the player's own answer; authoritative, and never to be offered or asked again] ${message.content.slice(OFFER_NOTE_PREFIX.length)}`
+              : `[Table note] ${message.content}`
           : message.content.startsWith('"') || message.content.startsWith("(ooc)")
             ? `[${name}] ${message.content}`
             : `[${name} | attempt] ${message.content}`;

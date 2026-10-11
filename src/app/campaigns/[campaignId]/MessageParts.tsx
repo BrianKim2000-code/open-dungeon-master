@@ -8,6 +8,7 @@ import { PortraitMedallion } from "@/components/sheet/SheetParts";
 import { cn } from "@/lib/cn";
 import { avatarPlaceholder, characterPlaceholder } from "@/lib/placeholders";
 import { JOIN_NOTE_PREFIX, LEAD_NOTE_PREFIX, type CampaignMember } from "@/lib/campaign-types";
+import { OFFER_NOTE_PREFIX } from "@/lib/dm/proposal-logic";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import {
@@ -76,7 +77,12 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
     );
   }
   const join = content.startsWith(JOIN_NOTE_PREFIX);
-  const text = join ? content.slice(JOIN_NOTE_PREFIX.length) : content;
+  // A settled offer (issue 239) reads as words; its prefix is for the DM.
+  const text = join
+    ? content.slice(JOIN_NOTE_PREFIX.length)
+    : content.startsWith(OFFER_NOTE_PREFIX)
+      ? content.slice(OFFER_NOTE_PREFIX.length)
+      : content;
   return (
     <p className="session-sysline">
       <GameIcon icon={{ kind: "glyph", key: join ? "system-party" : (glyph ?? "cue-bell") }} size="size-6" />

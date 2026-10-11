@@ -107,7 +107,7 @@ import { handleSearchLore, searchLoreTool } from "@/lib/dm/lore-search";
 import { handleWriteCampaignNote, writeCampaignNoteTool } from "@/lib/dm/note-tools";
 import { buildTurnRetrieval } from "@/lib/dm/context-retrieval";
 import { estimateTokens, promptWindowTokens } from "@/lib/dm/context-budget";
-import { maybeProposeItemChange } from "@/lib/dm/proposal-intercept";
+import { maybeProposeItemChange, offerLinesForPrompt } from "@/lib/dm/proposal-intercept";
 import { maybeCloseChapter } from "@/lib/dm/chapter-close";
 import {
   hasRecentIdenticalEvent,
@@ -516,6 +516,9 @@ export async function startDmTurn(campaignId: string) {
         from: whisper.characterName,
         content: whisper.content,
       })),
+      // What waits on a player's answer and what was settled lately
+      // (issue 239), so an accepted offer is never asked about again.
+      offers: offerLinesForPrompt(campaignId, context.sheetsById),
   };
   const conversation = buildDmMessages(promptState, history);
 

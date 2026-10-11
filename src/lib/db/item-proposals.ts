@@ -22,6 +22,9 @@ export type ItemProposal = {
   resolvedAt: string | null;
   // A trade's counterparty (docs/vtt-parity-implementation-plan.md 11.2).
   toCharacterId: string;
+  // How settling it went (issue 239): what applying it left on the sheet,
+  // or "failed: <why>" when approval could not apply (status declined).
+  outcome: string;
 };
 
 type ProposalRow = {
@@ -39,11 +42,13 @@ type ProposalRow = {
   created_at: string;
   resolved_at: string | null;
   to_character_id: string | null;
+  outcome: string | null;
 };
 
 function mapProposal(row: ProposalRow): ItemProposal {
   return {
     toCharacterId: row.to_character_id ?? "",
+    outcome: row.outcome ?? "",
     id: row.id,
     campaignId: row.campaign_id,
     turnId: row.turn_id,
@@ -128,17 +133,31 @@ export function listOpenItemProposals(campaignId: string): ItemProposal[] {
   return open;
 }
 
+// Settled offers, newest first: what the DM's game state lists and what the
+// duplicate guard checks a new offer against (issue 239).
+export function listRecentItemProposals(campaignId: string, limit = 20): ItemProposal[] {
+  const rows = getDatabase()
+    .prepare(
+      `SELECT * FROM item_proposals WHERE campaign_id = ? AND status != 'pending'
+       ORDER BY resolved_at DESC, seq DESC LIMIT ?`,
+    )
+    .all(campaignId, limit) as ProposalRow[];
+  return rows.map(mapProposal);
+}
+
 // Flips a pending proposal to its resolution; returns null when it was
-// already resolved (double-click, race with expiry).
+// already resolved (double-click, race with expiry). `outcome` records how
+// it went for the DM's next turn.
 export function resolveItemProposal(
   proposalId: string,
   status: Exclude<ProposalStatus, "pending">,
+  outcome = "",
 ): ItemProposal | null {
   const info = getDatabase()
     .prepare(
-      `UPDATE item_proposals SET status = ?, resolved_at = ? WHERE id = ? AND status = 'pending'`,
+      `UPDATE item_proposals SET status = ?, resolved_at = ?, outcome = ? WHERE id = ? AND status = 'pending'`,
     )
-    .run(status, nowIso(), proposalId);
+    .run(status, nowIso(), outcome.slice(0, 300), proposalId);
   if (!info.changes) {
     return null;
   }

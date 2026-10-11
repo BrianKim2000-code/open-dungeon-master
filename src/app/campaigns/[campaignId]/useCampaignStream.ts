@@ -110,6 +110,8 @@ export type ItemProposal = {
   reason: string;
   status: string;
   createdAt: string;
+  // How settling it went (issue 239): what applying it did, or why not.
+  outcome?: string;
   // A trade's other side and its offer (11.2).
   toCharacterId?: string;
   offer?: { toCharacterId: string; give: Array<{ name: string; qty: number }>; giveCp: number; want: Array<{ name: string; qty: number }>; wantCp: number } | null;
@@ -734,6 +736,7 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
             holdRolls: false,
             muted: false,
             activeCharacterId: "",
+            partyOrder: [],
             joinedAt: new Date().toISOString(),
           };
           next.members = upsertBy(state.members, member, (entry) => entry.userId);
