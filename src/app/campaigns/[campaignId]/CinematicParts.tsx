@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type UIEvent } from "react";
 import { EyeOff } from "lucide-react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import type { CampaignMember } from "@/lib/campaign-types";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { campaignPlaceholder, characterPlaceholder, monsterPlaceholder, npcPlaceholder } from "@/lib/placeholders";
 import type { CampaignCover } from "@/lib/campaign-types";
 import type { CampaignMessage } from "@/lib/db/messages";
-import { clipRecap } from "@/lib/recap";
+import { recapParagraphs } from "@/lib/recap";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { StoredRoll } from "@/lib/db/rolls";
@@ -437,10 +437,38 @@ export function TabletopChronicle({
     [messages],
   );
   const logRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  // Follow the scroll only while the reader is already at its foot, as the
+  // transcript does (MessageList.tsx): scrolling up to reread must not be
+  // yanked back, and the way down is the Latest button.
+  const nearBottomRef = useRef(true);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
+  const toLatest = useCallback(() => {
     const log = logRef.current;
     if (log) log.scrollTop = log.scrollHeight;
-  }, [recent.length]);
+  }, []);
+  // On any change to what the scroll draws, not just the count of entries:
+  // the window is capped, so a new entry often leaves the count unchanged,
+  // and an entry also grows in place (an edit, a reroll, a roll card that
+  // lands after its passage).
+  useLayoutEffect(() => {
+    if (nearBottomRef.current) toLatest();
+  }, [recent, rollsById, toLatest]);
+  // And when the pane itself changes size (the stage, the enlarged board, a
+  // window resized or a phone turned).
+  useEffect(() => {
+    const log = logRef.current;
+    if (!log) return;
+    const observer = new ResizeObserver(() => {
+      if (nearBottomRef.current) toLatest();
+    });
+    observer.observe(log);
+    return () => observer.disconnect();
+  }, [toLatest]);
+  const onLogScroll = (event: UIEvent<HTMLDivElement>) => {
+    const log = event.currentTarget;
+    nearBottomRef.current = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+    setAwayFromLatest(!nearBottomRef.current);
+  };
   const nameOf = (message: CampaignMessage) =>
     sheets.find((sheet) => sheet.id === message.characterId)?.name ??
     sheets.find((sheet) => sheet.userId === message.userId)?.name ??
@@ -455,7 +483,7 @@ export function TabletopChronicle({
       <span className="cine-chronicle-roller" aria-hidden="true" />
       <div className="cine-chronicle-page">
         <span className="cine-chronicle-eyebrow">The chronicle</span>
-        <div ref={logRef} className="cine-chronicle-log">
+        <div ref={logRef} onScroll={onLogScroll} className="cine-chronicle-log">
           {recent.length === 0 ? <p className="cine-chronicle-quiet">The tale has not begun.</p> : null}
           {recent.map((message) => {
             if (message.authorType === "dm") {
@@ -468,14 +496,15 @@ export function TabletopChronicle({
                       const roll = rollsById.get(part);
                       return roll ? <ChronicleRoll key={`${message.id}-${index}`} roll={roll} sheets={sheets} /> : null;
                     }
-                    const text = clipRecap(part, 900);
-                    if (!text) return null;
-                    return (
-                      <p key={`${message.id}-${index}`} className="cine-chronicle-text">
-                        {dropcap && index === 0 ? <span className="cine-chronicle-cap">{text.charAt(0)}</span> : null}
-                        {dropcap && index === 0 ? text.slice(1) : text}
-                      </p>
-                    );
+                    return recapParagraphs(part).map((text, paragraph) => {
+                      const cap = dropcap && index === 0 && paragraph === 0;
+                      return (
+                        <p key={`${message.id}-${index}-${paragraph}`} className="cine-chronicle-text">
+                          {cap ? <span className="cine-chronicle-cap">{text.charAt(0)}</span> : null}
+                          {cap ? text.slice(1) : text}
+                        </p>
+                      );
+                    });
                   })}
                 </div>
               );
@@ -489,10 +518,15 @@ export function TabletopChronicle({
             }
             return (
               <p key={message.id} className="cine-chronicle-system">
-                {clipRecap(message.content, 200)}
+                {message.content}
               </p>
             );
           })}
+          {awayFromLatest ? (
+            <button type="button" onClick={toLatest} className="cine-chronicle-latest" aria-label="Jump to the latest entry">
+              Latest <span aria-hidden="true">&darr;</span>
+            </button>
+          ) : null}
         </div>
         {composer ? (
         <form onSubmit={onSubmit} className="cine-chronicle-desk">

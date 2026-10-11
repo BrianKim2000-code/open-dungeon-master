@@ -2364,6 +2364,28 @@ html[data-effects="low"] .ts-title.ts-reveal { animation-name: ts-rise; }
 .cine-chronicle-line { margin: 0; font-family: var(--font-serif); font-style: italic; font-size: 14px; line-height: 1.5; color: #aeaac6; animation: ts-rise var(--dur-move) var(--ease-settle) backwards; }
 .cine-chronicle-system { margin: 0; font-family: var(--font-serif); font-style: italic; font-size: 12.5px; color: #8f8aab; text-align: center; }
 .cine-chronicle-quiet { margin: 0; font-family: var(--font-serif); font-style: italic; color: #8f8aab; }
+/* Shown only while the reader is scrolled up: it rides the foot of the log. */
+.cine-chronicle-latest {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 171, 58, 0.55);
+  background: rgba(16, 13, 32, 0.92);
+  box-shadow: 0 0 12px rgba(212, 171, 58, 0.25);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #f4e0a6;
+  cursor: pointer;
+}
 .cine-chronicle-roll {
   display: flex;
   flex-direction: column;
