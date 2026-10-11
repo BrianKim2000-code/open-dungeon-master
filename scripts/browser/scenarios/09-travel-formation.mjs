@@ -1,7 +1,7 @@
 // Issue 230: the travel formation. The lead arranges who walks first in the
 // Party panel, saves it, and the order shows there in force; the order is
 // campaign state the DM reads every turn (src/lib/dm/formation-logic.ts).
-import { check, eventually, sleep } from "../lib.mjs";
+import { check, eventually } from "../lib.mjs";
 
 // The section's words as written: the buttons are uppercased by CSS, which
 // innerText would report.
