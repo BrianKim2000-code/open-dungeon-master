@@ -26,7 +26,7 @@ import { genreClassIds } from "@/lib/classes";
 import { renderArcForPrompt } from "@/lib/dm/arc-logic";
 import { renderWorldArcsForPrompt } from "@/lib/dm/world-arc-logic";
 import { renderFactsForPrompt, type FactLike } from "@/lib/dm/fact-logic";
-import { splitAtMoment, THIS_MOMENT_HEADING, THIS_TURN_HEADING } from "@/lib/prompt-boundary";
+import { MOMENT_INSTRUCTION, splitAtMoment, THIS_MOMENT_HEADING, THIS_TURN_HEADING } from "@/lib/prompt-boundary";
 import { companionMode } from "@/lib/dm/companion-tools";
 import { breakDown, describeInstant, isDark, normalizeClock } from "@/lib/dm/calendar";
 import { describeWeather } from "@/lib/srd/weather";
@@ -1534,7 +1534,9 @@ export function buildDmMessages(
   return [
     { role: "system", content: standing },
     ...historyMessages,
-    ...(moment ? [{ role: "user" as const, content: moment }] : []),
+    // The state, then the instruction to take the turn, so the newest player
+    // line is still what the model resolves (src/lib/prompt-boundary.ts).
+    ...(moment ? [{ role: "user" as const, content: `${moment}\n\n${MOMENT_INSTRUCTION}` }] : []),
     // Last, after the newest player line, so the model reads it closest to
     // the point of generation. Omitted entirely when nothing is armed.
     ...(state.directorBlock
