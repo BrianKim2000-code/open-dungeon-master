@@ -14,3 +14,12 @@ Before creating or replacing monster, NPC or character artwork, read
 [docs/art/token-readability.md](docs/art/token-readability.md). These images also
 appear as small round tokens: review the shipped asset at 96px and 40px, preserve
 existing paths for repaints, and reuse approved art that already reads well.
+
+## Creature artwork and content sources
+
+Before creating or replacing creature art, adding bestiary content, or changing
+image prompts, read [docs/art/creature-art-guidance.md](docs/art/creature-art-guidance.md).
+Use a named SRD creature, an original design, or a separately licensed subject
+with recorded permission. Do not let a generic prompt such as "aberration"
+introduce a beholder or mind flayer. Inspect the rendered anatomy as well as the
+prompt, and preserve the source and edit history with each art change.
