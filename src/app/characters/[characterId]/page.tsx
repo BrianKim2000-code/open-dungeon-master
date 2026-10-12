@@ -273,7 +273,7 @@ export default function CharacterDetailPage({
       id: "edit",
       label: "Edit build",
       hint: "Change this character's build choices in the library",
-      glyph: "rest-level-up",
+      glyph: "ui-edit",
       onSelect: () => navigateTo(`/characters/${characterId}/edit`),
     },
     {
@@ -288,7 +288,7 @@ export default function CharacterDetailPage({
       id: "duplicate-edit",
       label: "Duplicate and edit",
       hint: "Save a second copy and open it in the build editor; this one stays as it is",
-      glyph: "tab-notes",
+      glyph: "ui-duplicate",
       disabled: cloning,
       onSelect: () => void handleDuplicate(true),
     },
