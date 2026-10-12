@@ -1,6 +1,7 @@
 // The world the browser scenarios open: one table in a fight on a painted
-// board with a full chronicle, one campaign still in its lobby, and a lead
-// with a password. Writes the database, its key and the ids the scenarios
+// board with a full chronicle, a quiet table out of combat, two campaigns
+// still in their lobbies (one with an imported story arc), library
+// characters, and a lead with a password. Writes the database, its key and the ids the scenarios
 // need into the folder given, then exits (enforce-world cleans its own
 // scratch folder on the way out).
 //
@@ -25,7 +26,7 @@ const kit = await combatKit(world);
 const { getDatabase } = await import("../../src/lib/db/core.ts");
 const campaigns = await import("../../src/lib/db/campaigns.ts");
 const messages = await import("../../src/lib/db/messages.ts");
-const { setUserPassword } = await import("../../src/lib/db/users.ts");
+const { setUserAdmin, setUserPassword } = await import("../../src/lib/db/users.ts");
 const { hashPassword } = await import("../../src/lib/auth.ts");
 const { LEAD_NOTE_PREFIX } = await import("../../src/lib/campaign-types.ts");
 
@@ -115,6 +116,49 @@ const brann = createCharacter(world.owner.id, 3, {
   spellcasting: null,
   notes: "",
 });
+// A Life Domain cleric in the library, for the builder's subclass training
+// (issue 251): the domain's heavy armor is said on the calling step and kept.
+const LIFE_NAME = "Wren Ashdown";
+const wren = createCharacter(world.owner.id, 1, {
+  name: LIFE_NAME,
+  race: "human",
+  class: "cleric",
+  subclass: "Life Domain",
+  background: "acolyte",
+  alignment: "NG",
+  abilities: { str: 15, dex: 11, con: 14, int: 9, wis: 16, cha: 13 },
+  maxHp: 10,
+  ac: 16,
+  acOverride: false,
+  speed: 30,
+  hitDice: { die: "d8", total: 1, spent: 0 },
+  proficiencies: {
+    saves: ["wis", "cha"],
+    skills: ["insight", "religion", "medicine", "persuasion"],
+    expertise: [],
+    languages: ["Common", "Dwarvish", "Elvish", "Giant"],
+    tools: [],
+    armor: ["light", "medium", "shields", "heavy"],
+    weapons: ["simple"],
+  },
+  equipment: [
+    { name: "Mace", qty: 1, equipped: true },
+    { name: "Chain mail", qty: 1, equipped: true },
+  ],
+  gold: 15,
+  copper: 0,
+  feats: [],
+  features: [],
+  asiChoices: [],
+  spellcasting: {
+    ability: "wis",
+    slots: { 1: { max: 2, used: 0 } },
+    cantrips: ["Guidance", "Sacred Flame", "Spare the Dying"],
+    prepared: ["Command", "Healing Word", "Sanctuary", "Shield of Faith"],
+    known: [],
+  },
+  notes: "",
+});
 await kit.fight(1, { heroFaces: { [tavi.id]: 19 } });
 const [goblin] = world.enemies();
 kit.place(tavi.id, 2, 2);
@@ -147,9 +191,81 @@ const offer = itemProposals.insertItemProposal({
   reason: "found in the mill",
   seq: campaigns.allocateSeq(world.campaignId),
 });
+// A quiet table the AI narrates, with no fight: the lead's cleric holds
+// Spirit Guardians (issue 252) and the player's Bree is seated beside her,
+// so the party has a plan to coordinate (issue 254).
+const QUIET_TITLE = "Quiet Crossing";
+const { heroInput } = await import("../lib/enforce-world.mjs");
+const sheets = await import("../../src/lib/db/sheets.ts");
+const quiet = campaigns.createCampaign(world.owner.id, {
+  title: QUIET_TITLE,
+  description: "A ford at dusk, nothing hunting the party yet.",
+  theme: "high-fantasy",
+  maxPlayers: 6,
+  startingLevel: 5,
+  difficulty: "normal",
+  gameSettings: { ttsEnabled: false },
+});
+const joinedQuiet = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(quiet.id).inviteCode);
+if ("error" in joinedQuiet) {
+  throw new Error(`could not seat the player at ${QUIET_TITLE}: ${joinedQuiet.error}`);
+}
+campaigns.setCampaignStatus(quiet.id, "active");
+const ama = sheets.createSheet(
+  quiet.id,
+  world.owner.id,
+  5,
+  heroInput({
+    name: "Sister Ama",
+    class: "cleric",
+    level: 5,
+    abilities: { wis: 16 },
+    spellcasting: {
+      ability: "wis",
+      slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } },
+      prepared: ["Bless", "Spirit Guardians", "Hold Person", "Cure Wounds"],
+      known: [],
+      cantrips: ["Sacred Flame"],
+    },
+    equipment: [{ name: "Mace", qty: 1, equipped: true }, { name: "Component pouch", qty: 1 }],
+  }),
+);
+sheets.patchSheet(ama.id, { concentratingOn: "Spirit Guardians" });
+const corin = sheets.createSheet(quiet.id, player.id, 5, heroInput({ name: "Corin Vale", class: "fighter", level: 5 }));
+messages.insertCampaignMessage({
+  campaignId: quiet.id,
+  seq: campaigns.allocateSeq(quiet.id),
+  authorType: "dm",
+  speech: [],
+  content: "The ford is quiet. Across the water a lantern swings on the ferryman's hut, and the rope bridge creaks in the wind.",
+});
+
+// A lobby whose imported prep already wrote a story arc, so the lead is
+// told before AI Story Setup runs over it (issue 249).
+const PREP_TITLE = "Prepared Lobby";
+const { normalizeStoryArc } = await import("../../src/lib/dm/arc-logic.ts");
+const prepared = campaigns.createCampaign(world.owner.id, {
+  title: PREP_TITLE,
+  description: "A lobby with a storyboard already in.",
+  theme: "high-fantasy",
+  maxPlayers: 6,
+  startingLevel: 1,
+  difficulty: "normal",
+  gameSettings: { ttsEnabled: false },
+});
+campaigns.setStoryArc(
+  prepared.id,
+  normalizeStoryArc({
+    premise: "The mill wheel has stopped and the miller's girl is gone.",
+    beats: ["The wheel stops at dusk.", "Marla confesses what she saw.", "The wheelhouse opens."],
+  }),
+);
+
 for (const user of [world.owner, player]) {
   setUserPassword(user.id, await hashPassword(PASSWORD), false);
 }
+// The lead runs the server too, for the admin settings (issue 255).
+setUserAdmin(world.owner.id, true);
 
 const ids = {
   lead: world.owner.username,
@@ -164,8 +280,18 @@ const ids = {
   goblin: goblin.id,
   library: brann.id,
   libraryName: LIBRARY_NAME,
+  lifeCleric: wren.id,
+  lifeClericName: LIFE_NAME,
   offerId: offer.id,
   offerSummary: offer.summary,
+  quietId: quiet.id,
+  quietTitle: QUIET_TITLE,
+  ama: ama.id,
+  corin: corin.id,
+  preparedId: prepared.id,
+  preparedTitle: PREP_TITLE,
+  // Every campaign a scenario opens, by id, for the app's home tiles.
+  titles: { [world.campaignId]: TITLE, [lobby.id]: LOBBY_TITLE, [quiet.id]: QUIET_TITLE, [prepared.id]: PREP_TITLE },
   systemLine,
   paragraphs: paragraphs.map((text) => text.replace(/[*_]/g, "")),
 };
@@ -174,4 +300,4 @@ fs.copyFileSync(process.env.SQLITE_DB_PATH, path.join(out, "world.sqlite"));
 fs.writeFileSync(path.join(out, "key"), process.env.DB_ENCRYPTION_KEY);
 fs.writeFileSync(path.join(out, "ids.json"), JSON.stringify(ids, null, 2));
 getDatabase().close();
-console.log(`seeded ${TITLE} (${world.campaignId}) and ${LOBBY_TITLE} (${lobby.id}) into ${out}`);
+console.log(`seeded ${TITLE} (${world.campaignId}), ${QUIET_TITLE}, ${LOBBY_TITLE} and ${PREP_TITLE} into ${out}`);

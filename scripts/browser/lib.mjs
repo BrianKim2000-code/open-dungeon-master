@@ -244,7 +244,7 @@ async function appNavigate(page, route, ids, touch) {
   // on the shell's router (client src/renderer/game/index.tsx ROUTES).
   const campaign = route.match(/^\/campaigns\/([^/?]+)/)?.[1];
   if (campaign) {
-    const title = campaign === ids.campaignId ? ids.title : ids.lobbyTitle;
+    const title = ids.titles?.[campaign] ?? (campaign === ids.campaignId ? ids.title : ids.lobbyTitle);
     const tile = page.locator(".game-root a, .game-root button").filter({ hasText: new RegExp(title, "i") }).first();
     if (!(await tile.isVisible().catch(() => false))) {
       await push("/");
