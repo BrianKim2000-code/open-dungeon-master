@@ -11,6 +11,9 @@ import { CopyLine } from "@/components/CopyLine";
 import { Field, SelectField } from "@/app/admin/AdminSettingsFields";
 import type { AdminConfigDraftPatch } from "@/app/admin/merge-config-draft";
 import { HarnessTestPanel } from "@/app/admin/HarnessTestPanel";
+import { SpeedField } from "@/app/admin/SpeedField";
+import { agentSpeedEligibility } from "@/lib/speed-tier";
+import type { SpeedChannel, SpeedNote } from "@/lib/speed-status";
 import type { HarnessConfig, HarnessId, HarnessStatus } from "@/lib/harness/types";
 
 type Payload = {
@@ -40,12 +43,15 @@ export function AdminHarnessSection({
   textProvider,
   imagesBackend = "",
   onConfig,
+  speedNotes = {},
 }: {
   textProvider: string;
   // The server's default picture backend, to say whether the tables already
   // paint with the agent.
   imagesBackend?: string;
   onConfig: (patch: AdminConfigDraftPatch) => void;
+  // What the last Fast calls ran at (issue 255).
+  speedNotes?: Partial<Record<SpeedChannel, SpeedNote>>;
 }) {
   const [data, setData] = useState<Payload | null>(null);
   const [draft, setDraft] = useState<HarnessConfig | null>(null);
@@ -289,6 +295,24 @@ export function AdminHarnessSection({
                   })),
                 ]}
               />
+              {chosen.id === "claude" || chosen.id === "codex" ? (
+                <>
+                  <SpeedField
+                    label="Story speed"
+                    value={draft.speed}
+                    onChange={(speed) => setDraft({ ...draft, speed })}
+                    eligibility={agentSpeedEligibility({ harnessId: chosen.id, model: draft.model, models })}
+                    note={speedNotes["agent-story"]}
+                  />
+                  <SpeedField
+                    label="Bookkeeping speed"
+                    value={draft.utilitySpeed}
+                    onChange={(utilitySpeed) => setDraft({ ...draft, utilitySpeed })}
+                    eligibility={agentSpeedEligibility({ harnessId: chosen.id, model: draft.utilityModel || draft.model, models })}
+                    note={speedNotes["agent-utility"]}
+                  />
+                </>
+              ) : null}
               {chosen.id === "claude" || chosen.id === "codex" ? (
                 <SelectField
                   label="Effort"

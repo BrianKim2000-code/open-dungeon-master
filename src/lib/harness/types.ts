@@ -26,6 +26,8 @@ export type HarnessModel = {
   contextTokens?: number;
   // Good for summaries and bookkeeping: offered first as the utility model.
   cheap?: boolean;
+  // Offers a paid Fast tier on this connection (issue 255).
+  fast?: boolean;
 };
 
 export type HarnessAuth = {
@@ -68,6 +70,8 @@ export type HarnessConfig = {
   model: string;
   utilityModel: string;
   effort: "" | "low" | "medium" | "high" | "xhigh" | "max";
+  speed: "" | "fast";
+  utilitySpeed: "" | "fast";
   images: "off" | "native";
   imagesVerifiedAt: string;
   campaigns: "all" | "admins";
@@ -102,6 +106,9 @@ export type HarnessStartOptions = {
   system: string;
   model: string;
   effort: HarnessConfig["effort"];
+  // The Fast tier, for this run only, and which role it serves (the admin
+  // panel shows what it actually ran at). Absent = the program's default.
+  speed?: { role: "story" | "utility" };
   // Null for a plain completion: no tools of any kind.
   mcp: { url: string; token: string } | null;
   // Native image tool on, for a picture run. Everything else stays off.

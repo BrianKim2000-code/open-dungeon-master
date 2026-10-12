@@ -9,6 +9,10 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { AdminInvitesSection } from "@/app/admin/AdminInvitesSection";
+import { SpeedField } from "@/app/admin/SpeedField";
+import { apiSpeedEligibility } from "@/lib/speed-tier";
+import { describeEndpoint } from "@/lib/dm/sampling-logic";
+import type { SpeedChannel, SpeedNote } from "@/lib/speed-status";
 import { AdminNetworkSections } from "@/app/admin/AdminNetworkSections";
 import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
 import { AdminStorageSection } from "@/app/admin/AdminStorageSection";
@@ -72,6 +76,8 @@ export function AdminSettingsPanel() {
   // public address, sign-up mode, voice transport and there is no usable
   // Discord redirect, so those sections disappear and only AI settings stay.
   const [deviceWorld, setDeviceWorld] = useState(false);
+  // What the last Fast calls ran at, per role (issue 255).
+  const [speedNotes, setSpeedNotes] = useState<Partial<Record<SpeedChannel, SpeedNote>>>({});
   // A phone cannot run Ollama or a local ComfyUI install; the desktop shell
   // can, so the PC keeps the local-AI fields.
   const phoneWorld = deviceWorld && shellHost()?.platform === "android";
@@ -85,6 +91,7 @@ export function AdminSettingsPanel() {
           setEnv(data.envDefaults);
           setVoiceUnroutable(Boolean(data.voiceAnnounceUnroutable));
           setDeviceWorld(Boolean(data.deviceWorld));
+          setSpeedNotes(data.speedStatus ?? {});
         }
       });
   }, []);
@@ -132,6 +139,8 @@ export function AdminSettingsPanel() {
             utilityModel: config.text.utilityModel,
             utilityBaseUrl: config.text.utilityBaseUrl,
             ...(utilityApiKey === SECRET_KEPT ? {} : { utilityApiKey }),
+            speed: config.text.speed,
+            utilitySpeed: config.text.utilitySpeed,
           },
           images: {
             defaultBackend: config.images.defaultBackend,
@@ -384,6 +393,20 @@ export function AdminSettingsPanel() {
             continuation, so a backend is proven before a campaign learns it
             the hard way. Uses the field values as typed, saved values and
             env as fallbacks. */}
+        {config.text.provider === "" || config.text.provider === "custom" ? (
+          <div className="mt-3 sm:w-1/2">
+            <SpeedField
+              label="Processing speed"
+              value={config.text.speed}
+              onChange={(speed) => setConfig({ ...config, text: { ...config.text, speed } })}
+              eligibility={apiSpeedEligibility({
+                endpointKind: describeEndpoint(config.text.customBaseUrl || env.customBaseUrl || "").kind,
+                model: config.text.customModel || env.customModel || "",
+              })}
+              note={speedNotes.story}
+            />
+          </div>
+        ) : null}
         <BackendProbe
           which="story"
           baseUrl={config.text.customBaseUrl}
@@ -399,6 +422,7 @@ export function AdminSettingsPanel() {
           onConfig={(patch) =>
             setConfig((current) => (current ? mergeAdminConfigDraft(current, patch) : current))
           }
+          speedNotes={speedNotes}
         />
       )}
 
@@ -458,6 +482,18 @@ export function AdminSettingsPanel() {
             onChange={setUtilityApiKey}
             hint="Most local servers need none."
           />
+          {config.text.utilityProvider === "custom" && config.text.utilityModel.trim() ? (
+            <SpeedField
+              label="Processing speed"
+              value={config.text.utilitySpeed}
+              onChange={(utilitySpeed) => setConfig({ ...config, text: { ...config.text, utilitySpeed } })}
+              eligibility={apiSpeedEligibility({
+                endpointKind: describeEndpoint(config.text.utilityBaseUrl).kind,
+                model: config.text.utilityModel,
+              })}
+              note={speedNotes.utility}
+            />
+          ) : null}
         </div>
         <BackendProbe
           which="utility"

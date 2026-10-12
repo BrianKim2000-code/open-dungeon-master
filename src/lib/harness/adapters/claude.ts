@@ -8,6 +8,8 @@
 // on every run, and a run that reports any other tool is killed.
 
 import { writeFileSync } from "node:fs";
+import { claudeFastModel } from "@/lib/speed-tier";
+import { noteSpeed } from "@/lib/speed-status";
 import path from "node:path";
 import { THIS_TURN_HEADING } from "../../prompt-boundary.ts";
 import { parseJsonLine, runProgram, spawnProgram } from "../process.ts";
@@ -17,10 +19,10 @@ export const CLAUDE_MCP_PREFIX = "mcp__odm__";
 
 export const CLAUDE_MODELS: HarnessModel[] = [
   { id: "sonnet", label: "Sonnet (latest)", contextTokens: 1_000_000 },
-  { id: "opus", label: "Opus (latest)", contextTokens: 1_000_000 },
+  { id: "opus", label: "Opus (latest)", contextTokens: 1_000_000, fast: true },
   { id: "haiku", label: "Haiku (latest)", contextTokens: 200_000, cheap: true },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", contextTokens: 1_000_000 },
-  { id: "claude-opus-5", label: "Claude Opus 5", contextTokens: 1_000_000 },
+  { id: "claude-opus-5", label: "Claude Opus 5", contextTokens: 1_000_000, fast: true },
   { id: "claude-fable-5-1", label: "Claude Fable 5.1", contextTokens: 1_000_000 },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", contextTokens: 200_000, cheap: true },
 ];
@@ -31,6 +33,9 @@ export function claudeArgs(options: {
   model: string;
   effort: string;
   mcpConfigPath: string | null;
+  // Fast mode for this session only (issue 255): Claude Code's own setting,
+  // given in --settings so the user's saved default is never touched.
+  fast?: boolean;
 }): string[] {
   const args = [
     "-p",
@@ -48,7 +53,7 @@ export function claudeArgs(options: {
     "--setting-sources",
     "",
     "--settings",
-    JSON.stringify({ disableAllHooks: true }),
+    JSON.stringify({ disableAllHooks: true, ...(options.fast ? { fastMode: true } : {}) }),
     "--permission-mode",
     "dontAsk",
     "--no-session-persistence",
@@ -126,11 +131,13 @@ async function start(options: HarnessStartOptions) {
   // could not start at all.
   const systemPromptPath = path.join(options.cwd, "odm-system-prompt.md");
   writeFileSync(systemPromptPath, withCacheBoundary(options.system), { mode: 0o600 });
+  const fast = Boolean(options.speed) && claudeFastModel(options.model);
   const args = claudeArgs({
     systemPromptPath,
     model: options.model,
     effort: options.effort,
     mcpConfigPath,
+    fast,
   });
   let turnText = "";
   let closed = false;
@@ -196,7 +203,15 @@ async function start(options: HarnessStartOptions) {
         return;
       }
       if (event.type === "result") {
-        const usage = event.usage as { input_tokens?: unknown; output_tokens?: unknown } | undefined;
+        const usage = event.usage as { input_tokens?: unknown; output_tokens?: unknown; speed?: unknown } | undefined;
+        // What the session ran at, where Claude Code passes the API's word
+        // for it on (usage.speed: "fast" or "standard").
+        if (fast && options.speed) {
+          noteSpeed(options.speed.role === "utility" ? "agent-utility" : "agent-story", {
+            model: options.model,
+            reported: typeof usage?.speed === "string" ? usage.speed : null,
+          });
+        }
         const text = turnText.trim() || textOf(event.result).trim();
         turnText = "";
         if (event.is_error === true || (event.subtype !== "success" && event.subtype !== undefined)) {
