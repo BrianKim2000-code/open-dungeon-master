@@ -27,6 +27,9 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { parseMessageIntent } from "@/lib/dm/intent-logic";
 import { spokenLine } from "@/lib/dm/speech";
 import { intentRefusal } from "@/lib/dm/intent-check";
+import { concentrationSwapFor } from "@/lib/dm/concentration-confirm";
+import { confirmsSwap, swapQuestion } from "@/lib/dm/concentration-confirm-logic";
+import { tableAuthors } from "@/lib/db/homebrew";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +44,16 @@ const actionSchema = z.object({
   // actions and older clients send none, and a malformed one is dropped
   // rather than refusing the action (src/lib/dm/intent-logic.ts).
   intent: z.unknown().optional(),
+  // The player's yes to a cast that ends their running concentration spell
+  // (issue 252), naming exactly what they agreed to: it answers only while
+  // the character, the running spell and the new one are still those.
+  concentrationAck: z
+    .object({
+      characterId: z.string().trim().min(1).max(80),
+      current: z.string().trim().min(1).max(120),
+      next: z.string().trim().min(1).max(120),
+    })
+    .optional(),
 });
 
 export async function POST(
@@ -159,6 +172,17 @@ export async function POST(
     if (refusal) {
       return Response.json({ error: refusal }, { status: 409 });
     }
+  }
+  // A cast that would end the character's running concentration spell is
+  // asked about first (issue 252): nothing is posted, no floor is spent and
+  // no DM turn wakes until the player says yes, and the yes is checked
+  // against the state now, so an old answer cannot authorise another cast.
+  const swap = concentrationSwapFor(sheet, { intent, content: parsed.data.content, kind }, tableAuthors(campaignId));
+  if (swap && !confirmsSwap(swap, parsed.data.concentrationAck)) {
+    return Response.json(
+      { error: swapQuestion(swap, sheet.name), confirmConcentration: { ...swap, characterName: sheet.name } },
+      { status: 409 },
+    );
   }
   let spotlightStillWaiting = false;
   if (kind !== "ooc" && floor.mode === "spotlight") {

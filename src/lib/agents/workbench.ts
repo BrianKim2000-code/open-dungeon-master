@@ -183,22 +183,32 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
   {
     name: "odm_take_action",
     scope: "play",
-    description: "Act at the table as your character, exactly as typing in the chat box: 'do' is an action, 'say' is speech, 'ooc' is out of character. The Dungeon Master answers in the campaign.",
+    description: "Act at the table as your character, exactly as typing in the chat box: 'do' is an action, 'say' is speech, 'ooc' is out of character. The Dungeon Master answers in the campaign. A cast that would end your character's running concentration spell is refused with confirmConcentration naming both spells; ask your player, and if they agree send the same action again with concentrationAck set to that object.",
     properties: {
       ...campaignIdProp,
       ...WEBHOOK_GUARD_PROPS,
       content: { type: "string", maxLength: 2000 },
       kind: { type: "string", enum: ["do", "say", "ooc"] },
+      concentrationAck: {
+        type: "object",
+        description: "Your player's yes to ending the running concentration spell, copied from the refusal's confirmConcentration.",
+        properties: {
+          characterId: { type: "string" },
+          current: { type: "string" },
+          next: { type: "string" },
+        },
+        required: ["characterId", "current", "next"],
+      },
     },
     required: ["campaignId", "content"],
     method: "POST",
     path: (a) => `/api/campaigns/${seg(a.campaignId)}/actions`,
-    body: (a) => pick(a, ["content", "kind"]),
+    body: (a) => pick(a, ["content", "kind", "concentrationAck"]),
   },
   {
     name: "odm_ask",
     scope: "play",
-    description: "Ask the campaign's records a question (what happened, who someone is). A model writes the answer, waiting behind any narration in progress, so it can be incomplete or wrong, and it is not a view of the table: story questions read facts, chapter summaries and only the last few messages, clipped; rules and sheet questions read no messages. For what is happening now, read odm_get_campaign. Private to you unless visibility says otherwise.",
+    description: "Ask the campaign's records a question (what happened, who someone is). A model writes the answer, waiting behind any narration in progress, so it can be incomplete or wrong, and it is not a view of the table: story questions read facts, chapter summaries and the latest messages (the newest whole where it fits, and the search reaches further back); rules and sheet questions read no messages. For what is happening now, read odm_get_campaign. Private to you unless visibility says otherwise.",
     properties: {
       ...campaignIdProp,
       question: { type: "string", maxLength: QUESTION_MAX_CHARS },

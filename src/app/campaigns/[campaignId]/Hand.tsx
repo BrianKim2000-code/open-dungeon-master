@@ -7,6 +7,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import type { CSSProperties, Dispatch, RefObject, SetStateAction } from "react";
 import { cn } from "@/lib/cn";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { askConcentrationSwap, isConcentrationQuestion } from "@/components/concentration-prompt";
+import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
 import { HandAimBar, type HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
 import { HandCardFace, HandPlayedCard } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandArrange } from "@/app/campaigns/[campaignId]/HandArrange";
@@ -290,19 +292,43 @@ function HandInner({
       const ending = picked.intent.card === "basic" && picked.intent.action === "end-turn";
       // End turn is the floor banner's own route; everything else is the
       // composer's POST with the card riding along as an optional field.
-      const response = ending
-        ? await fetch(`/api/campaigns/${campaignId}/encounter/end-turn`, { method: "POST" })
-        : await fetch(`/api/campaigns/${campaignId}/actions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: sentence, kind: "do", characterId: sheet?.id, intent: intentBody(picked, aim, attachedRiders, choices) }),
-          });
+      const post = (concentrationAck?: ConcentrationSwap) =>
+        ending
+          ? fetch(`/api/campaigns/${campaignId}/encounter/end-turn`, { method: "POST" })
+          : fetch(`/api/campaigns/${campaignId}/actions`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                content: sentence,
+                kind: "do",
+                characterId: sheet?.id,
+                intent: intentBody(picked, aim, attachedRiders, choices),
+                ...(concentrationAck ? { concentrationAck } : {}),
+              }),
+            });
+      let response = await post();
       if (!response.ok) {
         // The engine's own reason (the actions route asks canAct and the
         // cast guard before anything is posted); the card stays playable.
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        say(data.error || "Could not send your action.");
-        return;
+        // A cast that ends the spell held now is asked about first (issue
+        // 252); a no keeps it, spending nothing.
+        if (isConcentrationQuestion(response.status, data)) {
+          const ack = await askConcentrationSwap(data);
+          if (!ack) {
+            say(`Kept ${(data as { confirmConcentration?: { current?: string } }).confirmConcentration?.current ?? "your spell"}; nothing was spent.`);
+            return;
+          }
+          response = await post(ack);
+          if (!response.ok) {
+            const again = (await response.json().catch(() => ({}))) as { error?: string };
+            say(again.error || "Could not send your action.");
+            return;
+          }
+        } else {
+          say(data.error || "Could not send your action.");
+          return;
+        }
       }
       // Nothing is marked spent: the engine's count arrives with the
       // encounter. Until it moves, the same cost waits on this card.
