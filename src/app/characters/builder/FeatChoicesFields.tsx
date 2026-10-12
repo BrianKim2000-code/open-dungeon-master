@@ -214,7 +214,7 @@ export default function FeatChoicesFields({
     });
   return (
     <div className="mt-2 space-y-2 rounded-lg border border-amber-900/40 bg-amber-950/10 p-2.5" data-feat-choices={feat}>
-      <p className="text-xs text-amber-200/90">{feat} choices</p>
+      <p className="text-xs text-amber-200/90">{hasPicks || teaches ? `${feat} choices` : feat}</p>
       {spec.any > 0 ? (
         <p className="text-[11px] text-stone-400" data-feat-shared={feat}>
           Any {spec.any} of {spec.anyKinds.map((kind) => (kind === "armor" ? "shields" : kind)).join(", ")}, in any combination
