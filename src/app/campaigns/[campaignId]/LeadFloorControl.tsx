@@ -368,6 +368,12 @@ export function LeadFloorControl({
             </button>
           </div>
         </div>
+      ) : coordinating ? (
+        // The plan itself is drawn above the composer for every seat; on a
+        // phone that is the Table view, not this panel.
+        <p className="motion-pop mt-3 rounded-md border border-amber-500/30 bg-amber-950/20 px-2.5 py-1.5 text-xs text-amber-100/90" data-coordinating-note>
+          The party is coordinating. The plan, with Resolve now and Set aside, is above the box where everyone types.
+        </p>
       ) : null}
 
       {error ? <PanelError className="mt-1.5">{error}</PanelError> : null}
