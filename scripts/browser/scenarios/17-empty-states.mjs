@@ -20,16 +20,18 @@ export default {
     await t.tap(storyTab);
     // The seeded table has no chapter row; the panel's own read creates
     // Chapter 1 and the table hears of it, so the open chapter is listed.
+    // The heading is CSS-uppercased, so the text is read, not the rendering.
     const section = () => page.locator(`${root}.motion-tab`).locator("visible=true").first();
-    await eventually(async () => /Chapter 1/.test(await section().innerText().catch(() => "")), { timeoutMs: 30_000, label: "Chapter 1 in the Story panel" });
-    const story = await section().innerText();
+    const sectionText = () => section().evaluate((node) => node.textContent ?? "").catch(() => "");
+    await eventually(async () => /chapter 1 in progress/i.test(await sectionText()), { timeoutMs: 30_000, label: "Chapter 1 in the Story panel" });
+    const story = await sectionText();
     check(!LEAK.test(story), `the Story panel shows no conditional as text (${story.slice(0, 120).replace(/\s+/g, " ")})`);
     await t.shot("story");
 
     // The lead owns no workshop, so the shelf is its empty state.
     await t.open("/workshop");
     await eventually(async () => /No workshops yet/.test(await page.locator("body").innerText()), { timeoutMs: 30_000, label: "the workshop shelf's empty state" });
-    const shelf = await page.locator("body").innerText();
+    const shelf = await page.evaluate(() => document.body.textContent ?? "");
     check(!LEAK.test(shelf), "the workshop shelf shows no conditional as text");
     await t.shot("workshop");
   },
