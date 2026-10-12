@@ -477,7 +477,15 @@ export async function startDmTurn(campaignId: string) {
       summaryCoveredSeq: coveredCount
         ? (listMessagesPage(campaignId, coveredCount - 1, 1)[0]?.seq ?? history.at(-1)?.seq ?? null)
         : null,
-      momentAfterHistory: campaign.settings.textProvider !== "harness",
+      // Off unless asked: with the turn-to-turn state after the history, the
+      // default local model (Qwen3.6-35B, llama-server) skipped the roll on an
+      // explicit search in five of six scripted runs, narrating what was found
+      // with no dice; with the state in the system message it rolled in three
+      // of three, and on main in three of four. DM_MOMENT_AFTER_HISTORY=1
+      // sends it after the history, so a server that caches the prompt's
+      // start reuses the whole history from one turn to the next; an agent
+      // program moves it itself (src/lib/harness/render.ts).
+      momentAfterHistory: campaign.settings.textProvider !== "harness" && process.env.DM_MOMENT_AFTER_HISTORY === "1",
       currentLocation: currentLocation
         ? {
             name: currentLocation.name,
