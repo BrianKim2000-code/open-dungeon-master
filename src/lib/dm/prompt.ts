@@ -230,7 +230,9 @@ export type DmGameState = {
   recentWhispers?: Array<{ to: string; content: string }>;
   // Private messages players sent the DM that no turn has handled yet.
   pendingPlayerWhispers?: Array<{ from: string; content: string }>;
-  // Offers to players still waiting, and those settled recently and how
+  // A plan the party staged together, resolved into this turn (issue 254).
+  coordinationBlock?: string | null;
+    // Offers to players still waiting, and those settled recently and how
   // (src/lib/dm/proposal-logic.ts, issue 239).
   offers?: OfferLine[];
   // Prebuilt retrieval blocks (src/lib/dm/context-retrieval.ts): variant
@@ -936,9 +938,14 @@ export function buildGameStateBlock(state: DmGameState): string {
         .join("\n")}`,
     );
   }
+  if (state.coordinationBlock) {
+    moment.push(state.coordinationBlock);
+  }
+  // In the moment, not the cached prefix: offers come and go turn by turn,
+  // and a block that changes there would cost the whole prefix its cache.
   const offersBlock = renderOffersBlock(state.offers ?? []);
   if (offersBlock) {
-    sections.push(offersBlock);
+    moment.push(offersBlock);
   }
   // Only when somebody at the table fields several characters: the usual
   // one-each table pays no window for it (issue 120). Each line names the

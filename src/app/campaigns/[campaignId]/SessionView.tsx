@@ -2,6 +2,7 @@
 
 import { initiativeCharacter, selectedCharacter } from "@/lib/player-characters";
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
+import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
 import { haptic, useEffectsRoot, useTurnChime } from "@/lib/effects-mode";
 import { levelForXp } from "@/lib/srd";
 import { SceneTitle } from "@/components/SceneTitle";
@@ -896,6 +897,12 @@ export function SessionView({
               <CharacterGate campaignId={campaign.id} />
             </Suspense>
           ) : (
+            <>
+            {/* The plan the party is coordinating (issue 254), above the
+                box its players would otherwise type their moves into. */}
+            {state.coordination ? (
+              <CoordinationPanel campaignId={campaign.id} phase={state.coordination} meUserId={me.id} steersStory={steersStory} />
+            ) : null}
             <Composer
               campaignId={campaign.id}
               trackAmmo={campaign.gameSettings?.variantRules?.ammunition ?? false}
@@ -937,6 +944,7 @@ export function SessionView({
               onSnoozeStory={snoozeStory}
               onSubmit={submit}
             />
+            </>
           )}
         </SessionChatColumn>
 
@@ -955,6 +963,7 @@ export function SessionView({
           dmIntents={state.dmIntents}
           floor={floor}
           directorArm={state.directorArm}
+          coordinating={Boolean(state.coordination)}
           isLead={isLead}
           leadUserId={campaign.leadUserId}
           canTransferLead={isLead || campaign.ownerUserId === me.id}

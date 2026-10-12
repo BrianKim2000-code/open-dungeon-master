@@ -1,5 +1,6 @@
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { manualTraits } from "@/lib/dm/monster-traits";
+import { coordinationForPrompt } from "@/lib/dm/coordination";
 import { clipKeepingEnds } from "@/lib/dm/ask-logic";
 import { findSpellByName } from "@/lib/content";
 import { allSpellNames, spellLevelOf } from "@/lib/srd/spell-lists";
@@ -549,6 +550,7 @@ export async function startDmTurn(campaignId: string) {
       // What waits on a player's answer and what was settled lately
       // (issue 239), so an accepted offer is never asked about again.
       offers: offerLinesForPrompt(campaignId, context.sheetsById),
+      coordinationBlock: coordinationForPrompt(campaignId),
   };
   const conversation = buildDmMessages(promptState, history);
 

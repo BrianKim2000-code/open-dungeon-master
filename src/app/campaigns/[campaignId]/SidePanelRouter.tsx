@@ -85,6 +85,8 @@ export type SidePanelRouterProps = {
   beats: DmBeat[];
   // The stream's director flag, for the armed banner on the lead's desk.
   directorArm?: Parameters<typeof LeadPanelComponent>[0]["directorArm"];
+  // The party is coordinating a plan (issue 254).
+  coordinating?: boolean;
   leadUserId: string;
   canTransferLead: boolean;
   spotlightUserIds: string[];
@@ -240,6 +242,7 @@ export function SidePanelRouter({
   floor,
   beats,
   directorArm,
+  coordinating = false,
 }: SidePanelRouterProps) {
   // Which section of Party and Story is showing. Local state: nothing outside
   // this panel reads or sets them.
@@ -338,6 +341,7 @@ export function SidePanelRouter({
         isLead={isLead}
         encounter={encounter}
         directorArm={directorArm}
+        coordinating={coordinating}
       />
 </Suspense>
     );

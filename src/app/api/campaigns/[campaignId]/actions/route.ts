@@ -28,6 +28,7 @@ import { parseMessageIntent } from "@/lib/dm/intent-logic";
 import { spokenLine } from "@/lib/dm/speech";
 import { intentRefusal } from "@/lib/dm/intent-check";
 import { concentrationSwapFor } from "@/lib/dm/concentration-confirm";
+import { inCoordination } from "@/lib/dm/coordination";
 import { confirmsSwap, swapQuestion } from "@/lib/dm/concentration-confirm-logic";
 import { tableAuthors } from "@/lib/db/homebrew";
 
@@ -173,7 +174,16 @@ export async function POST(
       return Response.json({ error: refusal }, { status: 409 });
     }
   }
-  // A cast that would end the character's running concentration spell is
+  // A character in the plan the party is coordinating puts its move there,
+  // not straight to the DM (issue 254): the plan resolves as one beat, and a
+  // move posted beside it would wake the DM before it. Table talk is free.
+  if (kind !== "ooc" && inCoordination(campaignId, sheet.id)) {
+    return Response.json(
+      { error: `The party is coordinating its next move; put ${sheet.name}'s part in the plan above the box, or ask the lead to set the plan aside.`, coordinating: true },
+      { status: 409 },
+    );
+  }
+    // A cast that would end the character's running concentration spell is
   // asked about first (issue 252): nothing is posted, no floor is spent and
   // no DM turn wakes until the player says yes, and the yes is checked
   // against the state now, so an old answer cannot authorise another cast.

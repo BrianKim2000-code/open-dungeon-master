@@ -14,6 +14,7 @@ import {
 } from "@/lib/db/campaigns";
 import { ensureOpenChapter, listChaptersForSnapshot } from "@/lib/db/chapters";
 import { publicCast } from "@/lib/dm/cast";
+import { currentCoordination } from "@/lib/dm/coordination";
 import { getAmbience } from "@/lib/db/ambience";
 import { captureBoundarySnapshot } from "@/lib/db/snapshots";
 import { listRecentCampaignEvents } from "@/lib/db/character-events";
@@ -110,6 +111,8 @@ export async function GET(
     // the arc itself never leaves the server.
     prepArc: caps.steersStory && campaign.status === "lobby" && Boolean(campaign.storyArc) && !campaign.dmOutline,
     me: { id: user.id, username: user.username, avatar: user.avatar },
+    // The plan the party is coordinating, when it is (issue 254).
+    coordination: currentCoordination(campaignId),
     members: listMembers(campaignId),
     // Names and faces of the cast, for the transcript's speech lines.
     cast: publicCast(campaignId),

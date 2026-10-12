@@ -907,6 +907,25 @@ function ensureSchema(db: SqliteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_rule_chunks
       ON rule_chunks(campaign_id, chunk_index);
 
+    -- Coordinated actions (issue 254): a party's plan staged together
+    -- outside a fight and resolved as one DM beat
+    -- (src/lib/dm/coordination.ts). entries_json holds every character's
+    -- draft and state; resolved_seq is the first line the plan posted.
+    CREATE TABLE IF NOT EXISTS coordination_phases (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'drafting'
+        CHECK (status IN ('drafting','resolved','cancelled')),
+      opened_by TEXT NOT NULL,
+      prompt TEXT NOT NULL DEFAULT '',
+      entries_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      resolved_seq INTEGER,
+      outcome TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_coordination_campaign ON coordination_phases(campaign_id, created_at);
+
     -- DM-proposed inventory/gold changes awaiting the owning player's answer
     -- (game setting inventoryApprovals). The original tool args are stored so
     -- approval replays the exact mutation through applyDmMutation.

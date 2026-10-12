@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type { CampaignMember, SessionUser } from "@/lib/campaign-types";
+import type { CoordinationPhase } from "@/lib/dm/coordination-logic";
 import { coalesceRefresh } from "@/app/campaigns/[campaignId]/coalesce";
 import { createStreamWatchdog } from "@/app/campaigns/[campaignId]/streamWatchdog";
 import {
@@ -152,7 +153,9 @@ export type CampaignState = {
   // asked rather than leaving the player to guess which world replied.
   answeredBy: string;
   campaign: Campaign | null;
-  // The table holds a story arc AI Story Setup has not built on yet (the
+  // The plan the party is coordinating, while it drafts (issue 254).
+  coordination: CoordinationPhase | null;
+    // The table holds a story arc AI Story Setup has not built on yet (the
   // lobby's warning, issue 249); false for anyone who does not steer.
   prepArc: boolean;
   // What this seat may see and do, decided by the server
@@ -307,6 +310,7 @@ const initialState: CampaignState = {
   answeredBy: "",
   campaign: null,
   prepArc: false,
+  coordination: null,
   // A plain player until the snapshot says otherwise: the safe default is
   // the one that shows the fewest controls and no secrets.
   caps: capsForRole("player", "ai"),
@@ -884,6 +888,9 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
             },
           ];
           return next;
+        case "coordination_updated":
+          next.coordination = (payload.phase as CoordinationPhase | null) ?? null;
+          return next;
         case "floor_changed":
           next.campaign = state.campaign
             ? { ...state.campaign, floor: payload.floor as Campaign["floor"] }
@@ -973,6 +980,7 @@ function endsDmTurn(message: CampaignMessage): boolean {
 
 const PERSISTED_EVENTS = [
   "message_added",
+  "coordination_updated",
   "message_updated",
   "roll_result",
   "roll_pending",
@@ -1178,6 +1186,7 @@ export function useCampaignStream(campaignId: string) {
           answeredBy,
           campaign: data.campaign,
           prepArc: Boolean(data.prepArc),
+          coordination: (data.coordination as CoordinationPhase | null) ?? null,
           caps: data.caps ?? capsForRole("player", "ai"),
           me: data.me,
           members: data.members,
