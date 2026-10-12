@@ -1514,6 +1514,10 @@ function ensureSchema(db: SqliteDatabase) {
     ["companion_kind", `TEXT`],
     // Short personality/voice brief the DM roleplays from.
     ["personality", `TEXT NOT NULL DEFAULT ''`],
+    // Which battle cards its player keeps in the visible Hand, and in what
+    // order (src/lib/battlemap/hand-layout.ts, issue 231); NULL = the
+    // automatic split. A preference of the player's, never a rule.
+    ["hand_layout_json", `TEXT`],
     // 1 = the `ac` column is a hand-set number the AC engine must not
     // recompute (src/lib/srd/armor.ts). Sheets created before the engine are
     // backfilled to 1 so no existing character's armor class changes under

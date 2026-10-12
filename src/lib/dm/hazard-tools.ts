@@ -10,6 +10,9 @@ import { openFall } from "@/lib/dm/last-hit";
 import { SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { handleCastAtPlayer } from "@/lib/dm/cast-tools";
 import { resolveSheetRef } from "@/lib/dm/rolls";
+import { getParty } from "@/lib/db/party";
+import { formationView } from "@/lib/dm/formation-logic";
+import { formationPartyIds } from "@/lib/dm/roster";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
 import { hourlyConSaves } from "@/lib/dm/endurance";
 import {
@@ -91,7 +94,13 @@ export const hazardTools: ToolDef[] = [
             type: "array",
             items: { type: "string" },
             minItems: 1,
-            description: "Exact characterIds from GAME STATE caught by the hazard.",
+            description: "Exact characterIds from GAME STATE caught by the hazard. Or pass rank instead.",
+          },
+          rank: {
+            type: "string",
+            enum: ["front", "rear"],
+            description:
+              "Instead of characterIds, for a trap or hazard the party walks into: the character walking first ('front') or last ('rear') in the party's travel formation (GAME STATE). Refused when no formation is set; then name the characterIds.",
           },
           feet: {
             type: "integer",
@@ -132,7 +141,7 @@ export const hazardTools: ToolDef[] = [
           },
           reason: { type: "string", description: "Short note on the hazard." },
         },
-        required: ["type", "characterIds"],
+        required: ["type"],
       },
     },
   },
@@ -148,7 +157,10 @@ const hazardSchema = z.object({
     "extreme_cold",
     "extreme_heat",
   ]),
-  characterIds: z.array(z.string()).min(1),
+  characterIds: z.array(z.string()).min(1).optional(),
+  // The front or the rear of the travel formation instead of named ids
+  // (issue 230).
+  rank: z.enum(["front", "rear"]).optional(),
   feet: z.coerce.number().int().min(0).max(1000).optional(),
   roundsWithoutAir: z.coerce.number().int().min(0).max(100).optional(),
   // extreme_cold / extreme_heat: hours of exposure, one save for each.
@@ -176,13 +188,40 @@ export function handleApplyHazard(
   try {
     args = hazardSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    return { error: "Invalid arguments: apply_hazard needs a type and characterIds." };
+    return { error: "Invalid arguments: apply_hazard needs a type and characterIds (or rank)." };
+  }
+  // Who walks first or last, from the formation in force (issue 230).
+  let named = args.characterIds ?? [];
+  let rankLine = "";
+  if (!named.length) {
+    if (!args.rank) {
+      return { error: "apply_hazard needs characterIds, or rank 'front' or 'rear' for whoever walks there in the travel formation." };
+    }
+    const { placed } = formationView(getParty(campaign.id).marchingOrder, formationPartyIds(campaign, sheets));
+    const walker = args.rank === "front" ? placed[0] : placed[placed.length - 1];
+    if (!walker) {
+      return { error: "The party has set no travel formation, so nobody is at the front or the rear. Name the characterIds the hazard catches." };
+    }
+    named = [walker];
+    rankLine = `${sheetsById.get(walker)?.name ?? "The character"} walks at the ${args.rank} of the travel formation, so the hazard catches them first.`;
   }
 
+  const result = resolveHazard(campaign, turn, args, named, sheets, sheetsById);
+  return rankLine && !("error" in result) ? { ...result, formation: rankLine } : result;
+}
+
+function resolveHazard(
+  campaign: Campaign,
+  turn: DmTurn,
+  args: z.infer<typeof hazardSchema>,
+  named: string[],
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): Record<string, unknown> {
   // Resolve the victims once; bad ids are reported, not silently dropped.
   const targets: CharacterSheet[] = [];
   const unknown: string[] = [];
-  for (const id of args.characterIds) {
+  for (const id of named) {
     const stale = resolveSheetRef(id, sheets, sheetsById);
     const sheet = stale ? getSheetById(stale.id) ?? stale : null;
     if (sheet && !targets.some((entry) => entry.id === sheet.id)) {

@@ -26,6 +26,7 @@ import type {
   MediaStatus,
 } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import type { CampaignMember } from "@/lib/campaign-types";
+import type { PartyState } from "@/lib/dm/party-logic";
 import { allDelegations, type DmCover } from "@/lib/dm/delegation";
 import type { Floor } from "@/lib/db/campaigns";
 import type { Chapter } from "@/lib/db/chapters";
@@ -117,6 +118,8 @@ export type SidePanelRouterProps = {
   campaign?: Parameters<typeof SessionSettingsComponent>[0]["campaign"] & {
     dmUserId?: string | null;
     assistantDmUserId?: string | null;
+    // The party record, for the travel formation (issue 230).
+    party?: PartyState;
   };
   // Assisted mode: the stretch of answers the DM handed to the AI. Separate
   // from `campaign` because that shape carries only what the settings panel edits.
@@ -387,6 +390,8 @@ export function SidePanelRouter({
               <PartyPanel
                 sheets={sheets}
                 meUserId={meUserId}
+                party={campaign?.party}
+                arrangesFormation={isLead || adjudicates}
                 spotlightUserIds={spotlightUserIds}
                 onlineUserIds={onlineUserIds}
                 steersStory={steersStory}

@@ -1,4 +1,5 @@
 import type { SystemGlyph } from "@/lib/system-glyphs";
+import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -195,6 +196,10 @@ const startArgsSchema = z.object({
     return value !== null && Number.isFinite(feet) && feet >= 5 ? Math.min(feet, 600) : undefined;
   }, z.number().optional()),
   lair: z.boolean().optional(),
+  // Where the enemy comes from against the party's travel formation (issue
+  // 230): ahead puts its front nearest them, behind its rear. Anything else
+  // a weak caller sends reads as ahead.
+  from: z.preprocess((value) => (value === "behind" || value === "ahead" ? value : undefined), z.enum(["ahead", "behind"]).optional()),
 });
 
 // Accepts the documented {enemies:[...]} shape, or flat monster/name/count
@@ -326,7 +331,7 @@ function handleStartEncounter(
   // plan.md 4.1), written with the fight so the tracker shows them at once.
   initLegendaryPools(encounter, enemies, args.lair === true);
   saveEncounter(encounter);
-  createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene);
+  const placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from);
   publishEncounter(campaign.id);
   // The fight's card: the opening line in ember, "Ambush" when the party
   // was caught, with the combat sting (SceneTitle.tsx).
@@ -385,6 +390,7 @@ function handleStartEncounter(
       ? { warning: "This fight can kill characters. Telegraph the danger." }
       : {}),
     map: "A tactical battle map was generated; positions appear in GAME STATE on your next call.",
+    ...(placed ? { formation: placed.formation } : {}),
     ...(ambushLines.length ? { ambush: ambushLines.join(" ") } : {}),
     ...(surprisedNames.length
       ? {
@@ -409,7 +415,7 @@ function handleStartEncounter(
 function entryAlive(entry: OrderEntry, enemiesById: Map<string, EncounterEnemy>): boolean {
   if (entry.kind === "pc") {
     const sheet = getSheetById(entry.characterId);
-    return (sheet?.currentHp ?? 0) > 0 && !isIncapacitated(sheet?.conditions ?? []);
+    return ((sheet?.currentHp ?? 0) > 0 || Boolean(sheet && holdsOn(sheet))) && !isIncapacitated(sheet?.conditions ?? []);
   }
   if (entry.kind === "enemy") {
     return enemiesById.get(entry.enemyId)?.status === "alive";

@@ -74,6 +74,12 @@ export const startEncounterTool: ToolDef = {
           type: "boolean",
           description: "True when the fight is in a legendary creature's lair, so the lair acts on initiative 20 each round (lair_action).",
         },
+        from: {
+          type: "string",
+          enum: ["ahead", "behind"],
+          description:
+            "Where the enemy comes from against the party's travel formation (GAME STATE): 'ahead' (the default) puts the front of the formation nearest them, 'behind' the rear. The formation only places the party; it grants no surprise or bonus.",
+        },
       },
       required: ["enemies"],
     },

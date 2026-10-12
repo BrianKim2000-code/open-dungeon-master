@@ -37,7 +37,7 @@ export default {
     };
     await openParty();
     const start = await shown();
-    check(start[0] === ids.tavi && start[1] === ids.brann, `the table's own order first: Tavi then Brann (${start.join(", ")})`);
+    check(start[0] === ids.tavi && start[1] === ids.bree, `the table's own order first: Tavi then Bree (${start.join(", ")})`);
 
     const arrange = page.getByRole("button", { name: /^arrange$/i }).locator("visible=true").first();
     await eventually(() => arrange.count(), { label: "the Arrange button" });
@@ -46,9 +46,9 @@ export default {
     await eventually(async () => (await handles.count()) >= 2, { label: "a handle on every card" });
     await t.shot("arranging");
 
-    // The arrow: Tavi goes down, Brann is first.
+    // The arrow: Tavi goes down, Bree is first.
     await t.tap(page.getByRole("button", { name: /^move tavi lockwhisper down$/i }).locator("visible=true").first());
-    await eventually(async () => (await shown())[0] === ids.brann, { label: "Brann first after the arrow" });
+    await eventually(async () => (await shown())[0] === ids.bree, { label: "Bree first after the arrow" });
     check((await shown())[1] === ids.tavi, "Tavi second after the arrow");
     const settled = page.locator(`${root}[data-party-card][data-moved]`);
     await eventually(() => settled.count(), { timeoutMs: 2_000, label: "the moved card settling with motion" });
@@ -58,22 +58,22 @@ export default {
       const response = await api.get(`${base}/api/campaigns/${ids.campaignId}`);
       const data = await response.json();
       const mine = (data.members ?? []).find((member) => member.username === ids.lead);
-      return mine && mine.partyOrder?.[0] === ids.brann && mine.partyOrder?.[1] === ids.tavi;
+      return mine && mine.partyOrder?.[0] === ids.bree && mine.partyOrder?.[1] === ids.tavi;
     }, { label: "the order saved on the lead's membership" });
 
-    // Dragging the handle: Tavi's grip up over Brann's card, let go above its
+    // Dragging the handle: Tavi's grip up over Bree's card, let go above its
     // middle: Tavi is first again.
     const taviGrip = page.locator(`${root}[data-party-card="${ids.tavi}"] .party-grip`).locator("visible=true").first();
-    const brannCard = page.locator(`${root}[data-party-card="${ids.brann}"]`).locator("visible=true").first();
+    const breeCard = page.locator(`${root}[data-party-card="${ids.bree}"]`).locator("visible=true").first();
     const grip = await taviGrip.boundingBox();
-    const target = await brannCard.boundingBox();
+    const target = await breeCard.boundingBox();
     check(Boolean(grip && target), "the grip and the other card are on screen");
     await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
     await page.mouse.down();
     await page.mouse.move(grip.x + grip.width / 2, target.y + 8, { steps: 6 });
     await sleep(120);
-    const drop = await page.locator(`${root}[data-party-card="${ids.brann}"][data-drop="before"]`).count();
-    check(drop === 1, "the drop line shows above Brann while dragging");
+    const drop = await page.locator(`${root}[data-party-card="${ids.bree}"][data-drop="before"]`).count();
+    check(drop === 1, "the drop line shows above Bree while dragging");
     await page.mouse.move(grip.x + grip.width / 2, target.y + 6, { steps: 2 });
     await page.mouse.up();
     await eventually(async () => (await shown())[0] === ids.tavi, { label: "Tavi first after the drag" });
@@ -81,11 +81,11 @@ export default {
 
     // The order survives a reload: it came from the membership, not the tab.
     await t.tap(page.getByRole("button", { name: /^move tavi lockwhisper down$/i }).locator("visible=true").first());
-    await eventually(async () => (await shown())[0] === ids.brann, { label: "Brann first before the reload" });
+    await eventually(async () => (await shown())[0] === ids.bree, { label: "Bree first before the reload" });
     await t.open(`/campaigns/${ids.campaignId}`);
     await openParty();
     const kept = await shown();
-    check(kept[0] === ids.brann && kept[1] === ids.tavi, `the order kept across a reload (${kept.join(", ")})`);
+    check(kept[0] === ids.bree && kept[1] === ids.tavi, `the order kept across a reload (${kept.join(", ")})`);
     check((await page.locator(`${root}.party-grip`).count()) === 0, "arranging is off again after a reload; the cards are plain");
 
     // Reset: back to the table's own order, for every run after this one.

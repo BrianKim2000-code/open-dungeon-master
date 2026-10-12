@@ -46,7 +46,11 @@ import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, PRONE, SUFFOCATING } from "@/lib/dm/vitals-logic";
-import { prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { planCounterReaction } from "@/lib/dm/reaction-counters";
+import { channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
+import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
+import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse } from "@/lib/dm/item-use";
 import { applyConsumable, consumableRefusal } from "@/lib/dm/consumables";
@@ -71,6 +75,7 @@ import {
   computePurchase,
   computeUseItem,
   computeUseResource,
+  parseFontOfMagic,
   rollHealing,
 } from "@/lib/dm/resource-tools";
 import { resourceTools } from "@/lib/dm/resource-tool-defs";
@@ -1148,9 +1153,55 @@ export function applyDmMutation(
       if (featureSpend) {
         return { result: featureSpend };
       }
+      // A reaction counter that acts on the hit that triggered it, or on
+      // dropping to 0 (src/lib/dm/reaction-counters.ts): its trigger is
+      // checked before anything is spent, its effect applied after.
+      const counter = matchResource(resourceName);
+      const reacting = counter
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, sheets, sheetsById })
+        : null;
+      if (reacting && "error" in reacting) {
+        return { result: reacting };
+      }
+      // An option of a pool whose options cost different things (Channel
+      // Divinity's, Psionic Energy's, a maneuver's) costs its own part of
+      // the turn (src/lib/dm/option-costs.ts); a Font of Magic conversion is
+      // a bonus action. A Channel Divinity in a fight names its option.
+      const fighting = (() => {
+        const live = getActiveEncounter(campaign.id);
+        return Boolean(live && (live.kind ?? "fight") === "fight");
+      })();
+      // War Priest, Unwavering Mark and Hungry Jaws are spent by the attack
+      // they buy (src/lib/dm/feature-bonus-attacks.ts).
+      if (counter && BONUS_ATTACK_COUNTERS.includes(counter.id)) {
+        return {
+          result: {
+            error: `${counter.displayName} is spent by its bonus-action attack: pc_attack with bonusAttack "feature"${counter.id === "race_hungry_jaws" ? ' and weapon "bite"' : ""}. Nothing was spent.`,
+          },
+        };
+      }
+      const option = optionCost(counter?.id, `${args.variant ?? ""} ${resourceName}`, fighting);
+      if (option && "refused" in option) {
+        return { result: { error: option.refused } };
+      }
+      if (!option && counter?.id === "channel_divinity" && fighting) {
+        const held = channelOptionsHeld(sheet);
+        return {
+          result: {
+            error: `Channel Divinity in a fight is one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Nothing was spent.`,
+          },
+        };
+      }
+      const optionCharge = option?.cost ?? (counter?.id === "sorcery_points" && parseFontOfMagic(args.variant) ? "bonus" : undefined);
+      // Embodiment of the Law and the genre surges move the next spell to
+      // the bonus action (src/lib/dm/resource-turn.ts castMarkCharge).
+      const castMark = castMarkCharge(campaign, sheet, counter?.id);
+      if (castMark && "error" in castMark) {
+        return { result: castMark };
+      }
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
-      const charge = prepareResourceCharge(campaign, sheet, resourceName);
+      const charge = prepareResourceCharge(campaign, sheet, resourceName, optionCharge);
       if ("error" in charge) {
         return { result: charge };
       }
@@ -1169,12 +1220,19 @@ export function applyDmMutation(
           swims: args.formSwims,
         },
         args.variant,
+        { beforeDrop: charge.beforeDrop },
       );
       if ("error" in outcome) {
         return { result: outcome };
       }
       patchSheet(sheet.id, outcome.patch);
       Object.assign(outcome.result, charge.commit());
+      if (castMark) {
+        Object.assign(outcome.result, castMark.apply());
+      }
+      if (reacting) {
+        Object.assign(outcome.result, reacting.apply());
+      }
       if (outcome.shapeHours) {
         recordShapeEnd(campaign.id, sheet.id, outcome.shapeHours);
       }

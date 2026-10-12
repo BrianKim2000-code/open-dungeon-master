@@ -1,3 +1,4 @@
+import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, saveEncounter } from "@/lib/db/encounters";
@@ -22,7 +23,7 @@ import { markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
-import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-onhit";
+import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
 import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
 import { moteBurst, moteOf } from "@/lib/dm/authored-mote";
@@ -199,7 +200,7 @@ export const pcAttackTool: ToolDef = {
         maneuver: {
           type: "string",
           description:
-            "Battle Master maneuver riding this weapon attack ('Trip Attack', 'Precision Attack', 'Menacing Attack'). The server spends a Superiority Die, adds it to the damage (Precision: to the attack roll), and rolls the target's save against the maneuver's rider.",
+            "Battle Master maneuver riding this weapon attack ('Trip Attack', 'Precision Attack', 'Menacing Attack'). The server spends a Superiority Die, adds it to the damage (Precision: to the attack roll), and rolls the target's save against the maneuver's rider. Feinting Attack (a creature within 5 feet, advantage) and Quick Toss (a thrown weapon) take the bonus action; Grappling Strike saves the die for the grapple that may follow as a bonus action; Maneuvering Attack lets an ally move with its reaction. Parry, Riposte, Brace, Rally and Commander's Strike are not named here.",
         },
       },
       required: ["characterId", "targetEnemyId"],
@@ -318,6 +319,19 @@ function spendPcAttack(plan: AttackPlan) {
   const { campaign, turn, encounter, sheet, sheets, sheetsById, budget, ammo, context } = plan;
   if (budget) {
     storeBudget(encounter, budget);
+  }
+  // A feature bonus attack's use, and the mark that opened it
+  // (src/lib/dm/feature-bonus-attacks.ts).
+  const featureBonus = plan.options.featureBonus;
+  if (featureBonus?.counter && spendFeatureUse(campaign, sheet.id, featureBonus.counter, featureBonus.feature)) {
+    context.notes.push(`${featureBonus.feature}: one use spent`);
+  }
+  if (featureBonus?.consume) {
+    const now = getSheetById(sheet.id);
+    if (now) {
+      const cleared = removeConditions(now.conditions, now.conditionMeta, [featureBonus.consume]);
+      patchSheet(now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+    }
   }
   if (plan.castsSpell) {
     castAttackSpell(plan);

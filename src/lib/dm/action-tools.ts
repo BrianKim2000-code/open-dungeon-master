@@ -22,6 +22,7 @@ import { readySpell } from "@/lib/dm/readied-spell";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { DODGING } from "@/lib/dm/condition-logic";
 import { contest, help, hide } from "@/lib/dm/combat-actions";
+import { grapplingStrikeDie, payGrapplingStrike } from "@/lib/dm/maneuver-reactions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The rest of a 5e turn: the actions that are not attacks or spells, plus
@@ -245,6 +246,7 @@ function priceAction(
   budget: TurnBudget | null,
   action: (typeof ACTIONS)[number],
   bonus: boolean,
+  context: { allyDown?: boolean } = {},
 ): Price | { error: string } {
   const move = MOVES.has(action) ? (action as MoveAction) : null;
   // Fast Hands (Thief 3): Use an Object with Cunning Action's bonus action.
@@ -263,8 +265,11 @@ function priceAction(
     // The feats' bonus-action routes: Tavern Brawler's grapple after its
     // hit, Shield Master's shove after the Attack action with a shield,
     // Charger's shove after a Dash (src/lib/srd/feat-combat.ts).
+    // Grappling Strike's hit opens the grapple as a bonus action
+    // (src/lib/dm/maneuver-reactions.ts).
     const route: BonusRoute | null =
-      (move ? bonusRouteFor(sheet, move) : authoredBonusRoute(sheet, action)) ??
+      (move ? bonusRouteFor(sheet, move, context) : authoredBonusRoute(sheet, action)) ??
+      (action === "grapple" && grapplingStrikeDie(sheet) ? { feature: "Grappling Strike", ki: 0 } : null) ??
       featBonusRoute(sheet, action, budget, Boolean(acBreakdownFor(sheet).shieldName));
     if (!route) {
       return {
@@ -315,7 +320,7 @@ function priceAction(
     // With the action gone, a free bonus-action route (Cunning Action) is
     // what the player meant; a ki route costs ki and a counted one a use, and
     // both wait to be asked for.
-    const route = bonusRouteFor(sheet, move);
+    const route = bonusRouteFor(sheet, move, context);
     if (route && route.ki === 0 && !route.counter) {
       const asBonus = spendAction(budget, "bonus", `${route.feature} (${action})`, sheet.name);
       if (asBonus.ok) {
@@ -378,7 +383,9 @@ export function handleTakeAction(
     attacksAllowedFor(sheet),
     conditionExtraActions(sheet.conditions),
   );
-  const price = priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true);
+  // Under Fire's route opens while an ally lies at 0 hit points.
+  const allyDown = sheets.some((entry) => entry.id !== sheet.id && (getSheetById(entry.id) ?? entry).currentHp <= 0 && !(getSheetById(entry.id) ?? entry).deathSaves?.dead);
+  const price = priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown });
   if ("error" in price) {
     return { error: price.error };
   }
@@ -449,8 +456,17 @@ export function handleTakeAction(
     case "help":
       return help(campaign, sheet, encounter, args, sheets, sheetsById, spend);
     case "grapple":
-    case "shove":
-      return contest(campaign, turn, sheet, encounter, args, spend, costs);
+    case "shove": {
+      if (price.feature !== "Grappling Strike") {
+        return contest(campaign, turn, sheet, encounter, args, spend, costs);
+      }
+      // The Superiority Die rides the Athletics check; it is paid with the
+      // bonus action, once the contest's own checks pass.
+      return contest(campaign, turn, sheet, encounter, args, spend, costs, () => {
+        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId, sheets, sheetsById);
+        return "error" in strike ? strike : { die: strike.die, label: "Grappling Strike" };
+      });
+    }
     case "ready":
       // A readied spell is cast now and held (src/lib/dm/readied-spell.ts);
       // its casting is the Ready action's cost.
