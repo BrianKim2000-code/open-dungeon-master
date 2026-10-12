@@ -250,8 +250,8 @@ export default function WorkshopListPage() {
               // The tile's link and its two buttons again; both stay on the tile.
               items={[
                 { id: "open", label: "Open", glyph: "system-storyboard", onSelect: () => navigateTo(`/workshop/${workshop.id}`) },
-                { id: "duplicate", label: "Duplicate", glyph: "tab-notes", disabled: cloningId === workshop.id, onSelect: () => void clone(workshop) },
-                { id: "delete", label: "Delete", glyph: "quest-failed", tone: "danger", separated: true, onSelect: () => void remove(workshop) },
+                { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: cloningId === workshop.id, onSelect: () => void clone(workshop) },
+                { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => void remove(workshop) },
               ]}
             >
               <Link

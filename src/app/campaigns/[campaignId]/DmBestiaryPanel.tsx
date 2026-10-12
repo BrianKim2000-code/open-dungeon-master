@@ -339,8 +339,8 @@ export function DmBestiaryPanel({
           // The labels are the names the two icon buttons always announced.
           const items: ContextMenuItem[] = [
             { id: "open", label: isOpen ? "Close the stat block" : "Open the stat block", glyph: "system-bestiary", onSelect: toggle },
-            { id: "duplicate", label: `Duplicate ${monster.draft.name}`, glyph: "system-homebrew", disabled: busy, onSelect: () => void duplicate(monster) },
-            { id: "delete", label: `Delete ${monster.draft.name}`, glyph: "quest-failed", tone: "danger", separated: true, onSelect: () => void remove(monster) },
+            { id: "duplicate", label: `Duplicate ${monster.draft.name}`, glyph: "ui-duplicate", disabled: busy, onSelect: () => void duplicate(monster) },
+            { id: "delete", label: `Delete ${monster.draft.name}`, glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => void remove(monster) },
           ];
           return (
             <ContextMenu key={monster.id} items={items} label={monster.draft.name} className={cn(ui.card, "rounded-lg")}>

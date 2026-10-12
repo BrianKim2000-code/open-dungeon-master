@@ -31,17 +31,17 @@ import {
 // world hides the section itself.
 const STOPS: Array<{ id: string; label: string; glyph: string; server?: boolean }> = [
   { id: "admin-server", label: "Server", glyph: "tab-settings", server: true },
-  { id: "admin-accounts", label: "Accounts", glyph: "tab-characters", server: true },
-  { id: "admin-text", label: "Text model", glyph: "system-lore" },
-  { id: "admin-harness", label: "Agent", glyph: "system-lore" },
-  { id: "admin-utility", label: "Utility model", glyph: "tab-log" },
-  { id: "admin-images", label: "Images", glyph: "sense-truesight" },
-  { id: "admin-speech", label: "Speech", glyph: "tab-ambience" },
-  { id: "admin-ambience", label: "Sound library", glyph: "cue-tavern" },
-  { id: "admin-voice", label: "Voice chat", glyph: "cue-horn", server: true },
+  { id: "admin-accounts", label: "Accounts", glyph: "ui-accounts", server: true },
+  { id: "admin-text", label: "Text model", glyph: "ui-ai" },
+  { id: "admin-harness", label: "Agent", glyph: "ui-agent" },
+  { id: "admin-utility", label: "Utility model", glyph: "ui-utility" },
+  { id: "admin-images", label: "Images", glyph: "ui-paint" },
+  { id: "admin-speech", label: "Speech", glyph: "ui-speech" },
+  { id: "admin-ambience", label: "Sound library", glyph: "tab-ambience" },
+  { id: "admin-voice", label: "Voice chat", glyph: "ui-voice", server: true },
   { id: "admin-discord", label: "Discord", glyph: "system-share", server: true },
-  { id: "admin-backup", label: "Backup", glyph: "tab-handout", server: true },
-  { id: "admin-storage", label: "Storage", glyph: "tab-journal" },
+  { id: "admin-backup", label: "Backup", glyph: "ui-backup", server: true },
+  { id: "admin-storage", label: "Storage", glyph: "ui-storage" },
 ];
 
 function jumpTo(id: string) {
@@ -226,7 +226,7 @@ export function AdminSettingsPanel() {
       )}
 
       {deviceWorld ? null : (
-        <PageSection id="admin-accounts" heading="Accounts" glyph="tab-characters">
+        <PageSection id="admin-accounts" heading="Accounts" glyph="ui-accounts">
           <SelectField
             label="New account sign-ups"
             value={config.signupMode}
@@ -313,7 +313,7 @@ export function AdminSettingsPanel() {
         </PageSection>
       )}
 
-      <PageSection id="admin-text" heading="Text model defaults" glyph="system-lore">
+      <PageSection id="admin-text" heading="Text model defaults" glyph="ui-ai">
         <p className="mb-3 text-xs text-stone-500">
           The backend every player&apos;s campaign runs on. A campaign can still pick its model,
           but only an admin&apos;s own campaigns can point at another address or key.
@@ -402,7 +402,7 @@ export function AdminSettingsPanel() {
         />
       )}
 
-      <PageSection id="admin-utility" heading="Utility model (optional)" glyph="tab-log">
+      <PageSection id="admin-utility" heading="Utility model (optional)" glyph="ui-utility">
         <p className="mb-3 text-xs text-stone-500">
           A second, smaller model for the mechanical work: history compaction, chapter summaries
           and fact extraction, world-arc ticks, lore checks, and Ask answers. None of it is
@@ -499,12 +499,12 @@ export function AdminSettingsPanel() {
       )}
 
       {deviceWorld ? null : (
-        <PageSection id="admin-backup" heading="Backup & restore" glyph="tab-handout">
+        <PageSection id="admin-backup" heading="Backup & restore" glyph="ui-backup">
           <AdminBackupSection />
         </PageSection>
       )}
 
-      <PageSection id="admin-storage" heading="Storage" glyph="tab-journal">
+      <PageSection id="admin-storage" heading="Storage" glyph="ui-storage">
         <AdminStorageSection />
       </PageSection>
 

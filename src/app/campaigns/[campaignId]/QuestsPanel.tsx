@@ -189,7 +189,7 @@ function QuestRow({
           onSelect: () => onPatch({ status }),
         })),
         ...(quest.source === "dm"
-          ? [{ id: "remove", label: "Take it off the log", glyph: "quest-failed", tone: "danger" as const, separated: true, onSelect: onRemove }]
+          ? [{ id: "remove", label: "Take it off the log", glyph: "ui-delete", tone: "danger" as const, separated: true, onSelect: onRemove }]
           : []),
       ]
     : [];

@@ -90,7 +90,7 @@ export function AdminHarnessSection({
 
   if (!data || !draft) {
     return (
-      <PageSection id="admin-harness" heading="Agent program" glyph="system-lore">
+      <PageSection id="admin-harness" heading="Agent program" glyph="ui-agent">
         <div className="skeleton-block h-28 rounded-xl" aria-label="Looking for agent programs" />
       </PageSection>
     );
@@ -179,7 +179,7 @@ export function AdminHarnessSection({
   const usage = data.usage;
 
   return (
-    <PageSection id="admin-harness" heading="Agent program" glyph="system-lore">
+    <PageSection id="admin-harness" heading="Agent program" glyph="ui-agent">
       <p className="mb-3 text-xs text-stone-500">
         Let an agent you already have, Claude Code, Codex, opencode or Grok Build, narrate the
         tables on its own sign-in. It is started with none of its own tools: the only thing it can
