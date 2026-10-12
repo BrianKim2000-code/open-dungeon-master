@@ -6,7 +6,6 @@ import { maybeCloseChapter } from "@/lib/dm/chapter-close";
 import { compactHistoryInBackground } from "@/lib/dm/compaction";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { enqueueNarrationAudio } from "@/lib/tts";
 import { getNpcById } from "@/lib/db/npcs";
 import type { Speaker } from "@/lib/dm/speech";
 import { closeAgentTurn, isAgentRequest, readAgentNarration } from "@/lib/dm/agent-turn";
@@ -109,17 +108,6 @@ export async function POST(
       setFloor(campaignId, held);
       publishPersisted(campaignId, "floor_changed", { floor: held });
     }
-  }
-
-  if (campaign.gameSettings.ttsEnabled) {
-    void enqueueNarrationAudio(
-      campaignId,
-      message.id,
-      parsed.data.content,
-      message.speech,
-      campaign.gameSettings,
-      speaker,
-    );
   }
 
   // Chapter upkeep runs on the campaign queue, off the request, so a long

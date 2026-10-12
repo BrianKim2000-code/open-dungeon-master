@@ -39,7 +39,6 @@ import { salvageJsonToolCalls } from "@/lib/dm/json-salvage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { fulfillMessageImage } from "@/lib/dm/images";
 import { imageProducerReady } from "@/lib/image-generate";
-import { enqueueNarrationAudio } from "@/lib/tts";
 import { requestDmMessage } from "@/lib/dm/model";
 import { releaseHarnessConversation } from "@/lib/harness/bridge";
 import { toMcpTools } from "@/lib/harness/render";
@@ -2045,16 +2044,6 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   if (message.imageRequest && imageProducerReady(context.campaign.settings)) {
     void fulfillMessageImage(campaignId, message.id, message.imageRequest, context.campaign.settings);
   }
-  if (context.campaign.gameSettings.ttsEnabled) {
-    void enqueueNarrationAudio(
-      campaignId,
-      message.id,
-      content,
-      message.speech,
-      context.campaign.gameSettings,
-    );
-  }
-
   turn.status = "done";
   saveDmTurn(turn);
 }

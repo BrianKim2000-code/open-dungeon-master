@@ -9,8 +9,6 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
-import { VoicePicker } from "@/components/VoicePicker";
-import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import {
   ATTITUDES,
   type GeneratableField,
@@ -203,46 +201,6 @@ export function NpcEditorFields({
           />
         </div>
 
-        {/* Their own read-aloud voice (docs/vtt-parity-implementation-plan.md
-            8.2): a voice from the server's speech backend and a pace, previewed here, heard on every
-            line attributed to them. */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <GameIcon icon={{ kind: "glyph", key: "tab-ambience" }} size="size-7" />
-          <span className="min-w-0 flex-1 sm:max-w-72">
-          <VoicePicker
-            label="Voice"
-            value={draft.voice?.voiceId ?? ""}
-            onChange={(voiceId) =>
-              onChange({
-                ...draft,
-                voice: voiceId ? { voiceId, speed: draft.voice?.speed ?? 1 } : null,
-              })
-            }
-            noneLabel="The narrator's voice"
-            className="w-full"
-          />
-          </span>
-          {draft.voice ? (
-            <>
-              <VoicePreviewButton voice={draft.voice.voiceId} />
-              <span className="flex items-center gap-2 text-xs text-stone-400">
-                Pace
-                <span className="w-28">
-                <Slider
-                  label="Pace"
-                  min={0.7}
-                  max={1.4}
-                  step={0.05}
-                  value={draft.voice.speed}
-                  onChange={(speed) => onChange({ ...draft, voice: { voiceId: draft.voice!.voiceId, speed } })}
-                  bubble={(speed) => speed.toFixed(2)}
-                />
-                </span>
-                <span className="w-8 text-stone-500">{draft.voice.speed.toFixed(2)}</span>
-              </span>
-            </>
-          ) : null}
-        </div>
       </section>
 
       <section className="panel space-y-2 rounded-xl p-3">

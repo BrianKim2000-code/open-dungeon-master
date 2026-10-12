@@ -459,7 +459,7 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
       ) : null}
       {provider.coversMedia ? (
         <p className="su-note">
-          One OpenAI key also paints the pictures, reads the story aloud and takes dictation. The next two steps can use it with
+          One OpenAI key also paints the pictures. The next step can use it with
           nothing more to paste.
         </p>
       ) : null}

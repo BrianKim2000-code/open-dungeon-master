@@ -95,8 +95,6 @@ export type GlobalConfigPatch = {
   sampling?: Partial<GlobalConfig["sampling"]>;
   text?: Partial<GlobalConfig["text"]>;
   images?: Partial<GlobalConfig["images"]>;
-  speech?: Partial<GlobalConfig["speech"]>;
-  voiceChat?: Partial<GlobalConfig["voiceChat"]>;
   discord?: Partial<GlobalConfig["discord"]>;
   harness?: Partial<GlobalConfig["harness"]>;
   sharedHost?: Partial<GlobalConfig["sharedHost"]>;
@@ -105,8 +103,8 @@ export type GlobalConfigPatch = {
 // Merges a partial update over the stored config. Secret fields follow the
 // same rule as everything else: undefined = keep, "" = clear, value = set.
 // Every schema key must appear here: a key missing from this object is
-// silently reset to its schema default on every save (that bug once ate the
-// voice-chat settings), so the merged literal is typed to force completeness.
+// silently reset to its schema default on every save (that bug once ate a
+// whole section's settings), so the merged literal is typed to force completeness.
 export function saveGlobalConfig(patch: GlobalConfigPatch): GlobalConfig {
   const current = getGlobalConfig();
   const signupMode = patch.signupMode ?? current.signupMode;
@@ -127,8 +125,6 @@ export function saveGlobalConfig(patch: GlobalConfigPatch): GlobalConfig {
     sampling: { ...current.sampling, ...patch.sampling },
     text: { ...current.text, ...patch.text },
     images: { ...current.images, ...patch.images },
-    speech: { ...current.speech, ...patch.speech },
-    voiceChat: { ...current.voiceChat, ...patch.voiceChat },
     sharedHost: { ...current.sharedHost, ...patch.sharedHost },
     discord: { ...current.discord, ...patch.discord },
     harness: { ...current.harness, ...patch.harness },

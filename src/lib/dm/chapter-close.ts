@@ -1,7 +1,5 @@
 import { withLanguage } from "@/lib/dm/table-language-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
-import { listTranscriptSince } from "@/lib/db/voice-transcript";
-import { renderTranscript } from "@/lib/voice/transcript";
 import { describeInstant } from "@/lib/dm/calendar";
 import { listFactions } from "@/lib/db/factions";
 import { advanceFactionGoals } from "@/lib/dm/faction-logic";
@@ -160,12 +158,7 @@ function chapterTranscript(campaignId: string, chapter: Chapter, seqEnd: number)
   const lines = messages.map(
     (message) => `${message.authorType === "dm" ? "DM" : "Player"}: ${message.content}`,
   );
-  // A transcribed table (docs/vtt-parity-implementation-plan.md 13.3) adds
-  // what was said aloud since the chapter's first line, so a chapter the DM
-  // narrated out loud still closes with a summary of what happened.
-  const openedAt = messages[0]?.createdAt ?? "";
-  const spoken = openedAt ? renderTranscript(listTranscriptSince(campaignId, openedAt, 400), 12_000) : "";
-  let transcript = lines.join("\n\n") + (spoken ? `\n\nSaid aloud at the table:\n${spoken}` : "");
+  let transcript = lines.join("\n\n");
   if (transcript.length > TRANSCRIPT_CHAR_BUDGET) {
     transcript = transcript.slice(-TRANSCRIPT_CHAR_BUDGET);
   }

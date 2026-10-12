@@ -31,7 +31,6 @@ import { ReviewStep } from "@/app/create-campaign/ReviewStep";
 type ServerCapabilities = {
   story: { configured: boolean; reachable: boolean };
   images: { configured: boolean };
-  tts: { configured: boolean };
 };
 
 const STEP_KEYS = ["premise", "world", "party", "feel", "advanced", "review"] as const;
@@ -102,7 +101,6 @@ export function CreateCampaignDialog({
     aiNarrates,
     storyKnownMissing,
     storyUnreachable,
-    ttsAvailable: capabilities ? capabilities.tts.configured : true,
     mapsAvailable: capabilities ? capabilities.images.configured : true,
   };
 
@@ -139,7 +137,6 @@ export function CreateCampaignDialog({
         setDraft((current) => ({
           ...current,
           dmMode: !data.story.configured || !data.story.reachable ? "human" : current.dmMode,
-          ttsEnabled: data.tts?.configured ? current.ttsEnabled : false,
         }));
       })
       .catch(() => {
@@ -188,14 +185,9 @@ export function CreateCampaignDialog({
       aiStorySetup,
       campaignLength,
       dicePolicy,
-      ttsEnabled,
-      ttsVoice,
-      ttsSpeed,
-      ttsAutoCast,
       mapsEnabled,
       boardDrawing,
       enemyIntent,
-      presentation,
       multiCharacter,
       multiclassingEnabled,
       midGameJoinOpen,
@@ -215,7 +207,6 @@ export function CreateCampaignDialog({
       maxCompanions,
       maxGuests,
       worldPack,
-      voiceChat,
       houseRules,
       loreDrafts,
       contentImport,
@@ -241,14 +232,9 @@ export function CreateCampaignDialog({
             aiStorySetup: aiNarrates && aiStorySetup,
             campaignLength,
             dicePolicy,
-            ttsEnabled,
-            ttsVoice,
-            ttsSpeed,
-            ttsAutoCast,
             mapsEnabled,
             boardDrawing,
             enemyIntent,
-            presentation,
             multiCharacter,
             multiclassingEnabled,
             midGameJoinOpen,
@@ -269,7 +255,6 @@ export function CreateCampaignDialog({
             maxCompanions,
             maxGuests,
             worldPack,
-            voice: voiceChat,
             // Three gameSettings fields are deliberately not offered here.
             //
             // `stages` trades turn quality for speed on a slow local model,
@@ -316,8 +301,7 @@ export function CreateCampaignDialog({
   const title = solo ? "New solo adventure" : "New campaign";
 
   // A step is dropped when nothing on it applies. Today every step keeps at
-  // least one field in every mode (voice chat leaves the Advanced step on a
-  // solo table, but the variant rules and prep stay), so the filter is there
+  // least one field in every mode, so the filter is there
   // for the mode that changes that, not for one that exists now.
   const applies: Record<StepKey, boolean> = {
     premise: true,
@@ -393,7 +377,7 @@ export function CreateCampaignDialog({
         key: "advanced",
         label: "Advanced",
         title: heading("advanced", "Advanced", "The parts you can skip"),
-        blurb: "Variant rules, house rules, prep and live voice. All optional.",
+        blurb: "Variant rules, house rules and prep. All optional.",
         content: <AdvancedStep {...stepProps} />,
       },
       {

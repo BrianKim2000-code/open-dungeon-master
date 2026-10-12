@@ -20,15 +20,8 @@ const volumeSchema = z.number().min(0).max(1);
 const diceLookSchema = z.custom<DiceLook>(isValidDiceLook, "Invalid dice look.");
 
 // Audio preferences synced across browsers (src/lib/audio-prefs.ts) and the
-// player's dice look (src/lib/dice/dice-look-store.ts). Voice device prefs
-// stay client-side on purpose; see useVoicePrefs.ts.
+// player's dice look (src/lib/dice/dice-look-store.ts).
 const settingsSchema = z.object({
-  narrationVolume: volumeSchema.optional(),
-  narrationMuted: z.boolean().optional(),
-  ambienceVolume: volumeSchema.optional(),
-  ambienceMuted: z.boolean().optional(),
-  ambienceBedLevel: volumeSchema.optional(),
-  ambienceMusicLevel: volumeSchema.optional(),
   chimeMuted: z.boolean().optional(),
   diceLook: diceLookSchema.optional(),
 });

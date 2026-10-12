@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
-import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import {
   BOUNDARIES,
   STRICTNESS,
@@ -19,8 +18,7 @@ import type { Personality } from "@/lib/dm/personalities";
 // Safety, strictness and tone (docs/vtt-parity-implementation-plan.md
 // section 9), shared by the creation wizard's Feel step and the lobby's
 // settings. Lines and veils are typed as lists; the boundary, strictness
-// and tone are chips; a personality preset fills strictness, tone and the
-// narrator's voice at once.
+// and tone are chips; a personality preset fills strictness and tone at once.
 
 const chip = "rounded-md border px-2 py-0.5 text-[11px]";
 const on = "border-amber-700 bg-amber-950/40 text-amber-100";
@@ -48,18 +46,14 @@ function ListField({ label, hint, value, onChange }: { label: string; hint: stri
 export function SafetyToneFields({
   safety,
   gm,
-  ttsVoice,
   onSafety,
   onGm,
-  onVoice,
   showPresets = true,
 }: {
   safety: SafetySettings;
   gm: GmSettings;
-  ttsVoice?: string;
   onSafety: (next: SafetySettings) => void;
   onGm: (next: GmSettings) => void;
-  onVoice?: (voice: string) => void;
   showPresets?: boolean;
 }) {
   const [presets, setPresets] = useState<Personality[]>([]);
@@ -129,7 +123,7 @@ export function SafetyToneFields({
           <p className="mb-1 text-xs uppercase tracking-wide text-stone-500">Or pick a DM personality</p>
           <div className="stagger-pop flex flex-wrap items-center gap-1.5">
             {presets.map((preset) => {
-              const active = preset.gm.strictness === gm.strictness && preset.gm.tone.join() === gm.tone.join() && (!ttsVoice || preset.ttsVoice === ttsVoice);
+              const active = preset.gm.strictness === gm.strictness && preset.gm.tone.join() === gm.tone.join();
               return (
                 <button
                   key={preset.id}
@@ -138,7 +132,6 @@ export function SafetyToneFields({
                   aria-pressed={active}
                   onClick={() => {
                     onGm({ strictness: preset.gm.strictness, tone: [...preset.gm.tone] });
-                    onVoice?.(preset.ttsVoice);
                   }}
                   className={cn(chip, active ? on : off)}
                 >
@@ -146,7 +139,6 @@ export function SafetyToneFields({
                 </button>
               );
             })}
-            {ttsVoice ? <VoicePreviewButton voice={ttsVoice} /> : null}
           </div>
         </div>
       ) : null}

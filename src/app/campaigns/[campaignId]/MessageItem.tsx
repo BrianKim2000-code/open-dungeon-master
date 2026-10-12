@@ -10,8 +10,6 @@ import {
   Pin,
   RefreshCw,
   ShieldQuestion,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import { memo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { appNotice } from "@/components/ui/ConfirmDialog";
@@ -68,8 +66,6 @@ export const MessageItem = memo(function MessageItem({
   locationsById,
   sheets,
   mediaStatus,
-  narrationFailure,
-  onReplayAudio,
   onPinCanon,
   onPinMemory,
   onEditSave,
@@ -104,10 +100,8 @@ export const MessageItem = memo(function MessageItem({
   sheets: CharacterSheet[];
   mediaStatus: Record<string, MediaStatus>;
   // Why this passage was not read aloud, when its narration failed.
-  narrationFailure?: string;
   // Plays the stored narration, rendering it first when this passage has
   // never been voiced. Resolves to an error string on failure, null on success.
-  onReplayAudio?: (messageId: string) => Promise<string | null>;
   onPinCanon?: (message: CampaignMessage) => void;
   // Pin the current selection (or the whole message) into every future prompt.
   onPinMemory?: (message: CampaignMessage) => void;
@@ -124,9 +118,6 @@ export const MessageItem = memo(function MessageItem({
   // Local to the row: only one narration is ever being corrected at a time,
   // and the draft should not survive the row unmounting.
   const [editing, setEditing] = useState(false);
-  // Stays true until the audio lands, at which point the replay button takes
-  // this one's place; cleared early only when the render actually failed.
-  const [narrating, setNarrating] = useState(false);
   // An uploaded picture on its way to this passage. The image itself arrives
   // through image_ready like a rendered one, so this only drives the spinner.
   const [attaching, setAttaching] = useState(false);
@@ -282,26 +273,6 @@ export const MessageItem = memo(function MessageItem({
         onSelect: () => pictureRef.current?.click(),
       });
     }
-    if (onReplayAudio) {
-      actions.push({
-        id: "read",
-        name: "Read aloud",
-        label: "Read this passage aloud",
-        hint: "Read aloud",
-        glyph: "cue-horn",
-        icon: <Volume2 className="size-3.5" />,
-        busy: narrating,
-        primary: true,
-        onSelect: async () => {
-          setNarrating(true);
-          const error = await onReplayAudio(message.id);
-          setNarrating(false);
-          if (error) {
-            void appNotice(error);
-          }
-        },
-      });
-    }
     actions.push(copyAction(message));
     if (onDispute) {
       actions.push(disputeAction(message, onDispute));
@@ -442,32 +413,6 @@ export const MessageItem = memo(function MessageItem({
               status={mediaStatus[message.id]}
               fallbackStartedAt={message.createdAt}
             />
-          ) : null}
-          {narrationFailure ? (
-            // The story carries on without the voice, but not silently
-            // (issue 88): what went wrong, and a way to ask again.
-            <p role="status" className="live-in mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-amber-400/90">
-              <VolumeX className="size-3.5 shrink-0" />
-              <span className="min-w-0">This passage was not read aloud. {narrationFailure}</span>
-              {onReplayAudio ? (
-                <button
-                  type="button"
-                  disabled={narrating}
-                  aria-busy={narrating}
-                  onClick={async () => {
-                    setNarrating(true);
-                    const error = await onReplayAudio(message.id);
-                    setNarrating(false);
-                    if (error) {
-                      void appNotice(error);
-                    }
-                  }}
-                  className="motion-press rounded-md border border-amber-800/60 px-1.5 py-0.5 text-amber-200 hover:border-amber-600 disabled:opacity-60"
-                >
-                  {narrating ? "Trying…" : "Try again"}
-                </button>
-              ) : null}
-            </p>
           ) : null}
           {(() => {
             // The message that introduced an area shows its map inline.

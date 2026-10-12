@@ -108,46 +108,6 @@ export const globalConfigSchema = z.object({
       openaiApiKey: z.string().trim().max(400).default(""),
     })
     .prefault({}),
-  speech: z
-    .object({
-      // Narration (src/lib/tts-backend.ts). Blank provider = Kokoro, the
-      // shipped default. kokoroUrl is the Kokoro address; an "openai" server
-      // has its own address, so switching kinds never points one kind's
-      // requests at the other's server. The key is masked on the way to the
-      // admin UI like every other secret here.
-      ttsProvider: z.enum(["", "kokoro", "openai", "off"]).default(""),
-      kokoroUrl: z.string().trim().max(500).default(""),
-      ttsBaseUrl: z.string().trim().max(500).default(""),
-      ttsModel: z.string().trim().max(200).default(""),
-      ttsApiKey: z.string().trim().max(400).default(""),
-      ttsVoice: z.string().trim().max(120).default(""),
-      sttUrl: z.string().trim().max(500).default(""),
-    })
-    .prefault({}),
-  // Live voice chat (src/lib/voice/). Separate from `speech` above, which is
-  // Kokoro TTS and Whisper STT: different feature, similar-sounding name.
-  //
-  // `enabled` is tri-state rather than a boolean so it follows the same
-  // "blank = fall through to the env var" rule as every string field here.
-  // Voice stays off unless something says on, because it cannot work until
-  // the owner also opens the media port and serves the app over https.
-  voiceChat: z
-    .object({
-      enabled: z.enum(["", "on", "off"]).default(""),
-      // "" or "sfu" = the mediasoup SFU (needs the open media port).
-      // "mesh" = browser-to-browser WebRTC: no port, works through an HTTP
-      // tunnel, meant for small tables hosted by the desktop app.
-      mode: z.enum(["", "sfu", "mesh"]).default(""),
-      // The address a player's browser can reach this host on.
-      announcedIp: z.string().trim().max(200).default(""),
-      // Optional hostname announced instead of the IP. Must resolve straight
-      // to this host: a proxied (Cloudflare orange cloud) name will not do.
-      domain: z.string().trim().max(300).default(""),
-      // Kept as a string so blank means "no override", like every other
-      // field. Parsed where it is used.
-      rtcPort: z.string().trim().max(10).default(""),
-    })
-    .prefault({}),
   discord: z
     .object({
       clientId: z.string().trim().max(100).default(""),

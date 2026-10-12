@@ -119,8 +119,6 @@ export const config = {
     "/api/:path*",
     "/uploads/:path*",
     "/generated/:path*",
-    "/generated-audio/:path*",
-    "/ambience/:path*",
     "/assets/:path*",
     "/dice-box/:path*",
     "/sidebar-icons/:path*",

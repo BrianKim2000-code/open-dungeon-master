@@ -34,8 +34,6 @@ export function WelcomeStep({
       text: `${entry.label} at ${host(entry.baseUrl)}${entry.models.length ? ` (${entry.models.length} ${entry.models.length === 1 ? "model" : "models"})` : ""}`,
     })),
     ...(scan?.comfyui ? [{ key: "comfy", text: `ComfyUI at ${host(scan.comfyui.url)}` }] : []),
-    ...(scan?.kokoro ? [{ key: "kokoro", text: `Kokoro voices at ${host(scan.kokoro.url)}` }] : []),
-    ...(scan?.whisper ? [{ key: "whisper", text: `Whisper dictation at ${host(scan.whisper.url)}` }] : []),
   ];
   return (
     <div className="space-y-5">

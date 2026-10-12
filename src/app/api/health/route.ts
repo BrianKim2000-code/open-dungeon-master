@@ -133,7 +133,6 @@ export async function GET() {
           : serverEnv("FLUX_WORKER_URL"),
         false,
       ),
-      tts: Boolean(configValue(cfg.speech.kokoroUrl, "KOKORO_URL")),
     },
   });
 }

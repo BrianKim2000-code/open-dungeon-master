@@ -18,8 +18,6 @@ import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
 import { AdminStorageSection } from "@/app/admin/AdminStorageSection";
 import { BackendProbe } from "@/app/admin/BackendProbe";
 import { AdminImagesSection } from "@/app/admin/AdminImagesSection";
-import { AdminSpeechSection } from "@/app/admin/AdminSpeechSection";
-import { AmbienceLibraryCard } from "@/app/admin/AmbienceLibraryCard";
 import { AdminHarnessSection } from "@/app/admin/AdminHarnessSection";
 import { mergeAdminConfigDraft } from "@/app/admin/merge-config-draft";
 import {
@@ -40,9 +38,6 @@ const STOPS: Array<{ id: string; label: string; glyph: string; server?: boolean 
   { id: "admin-harness", label: "Agent", glyph: "ui-agent" },
   { id: "admin-utility", label: "Utility model", glyph: "ui-utility" },
   { id: "admin-images", label: "Images", glyph: "ui-paint" },
-  { id: "admin-speech", label: "Speech", glyph: "ui-speech" },
-  { id: "admin-ambience", label: "Sound library", glyph: "tab-ambience" },
-  { id: "admin-voice", label: "Voice chat", glyph: "ui-voice", server: true },
   { id: "admin-discord", label: "Discord", glyph: "system-share", server: true },
   { id: "admin-backup", label: "Backup", glyph: "ui-backup", server: true },
   { id: "admin-storage", label: "Storage", glyph: "ui-storage" },
@@ -61,7 +56,6 @@ export function AdminSettingsPanel() {
   const [apiKey, setApiKey] = useState(SECRET_KEPT);
   const [utilityApiKey, setUtilityApiKey] = useState(SECRET_KEPT);
   const [openaiImageKey, setOpenaiImageKey] = useState(SECRET_KEPT);
-  const [ttsApiKey, setTtsApiKey] = useState(SECRET_KEPT);
   const [discordSecret, setDiscordSecret] = useState(SECRET_KEPT);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -69,11 +63,8 @@ export function AdminSettingsPanel() {
   // (src/lib/image-backend-rescue.ts), named once so the admin knows.
   const [rescued, setRescued] = useState<Array<{ title: string }>>([]);
   const [error, setError] = useState("");
-  // Server-computed, because the announced-address fallback chain ends at the
-  // bind address, which never reaches this panel. Reflects the SAVED config.
-  const [voiceUnroutable, setVoiceUnroutable] = useState(false);
   // A world hosted by the client app on this device. The shell owns the
-  // public address, sign-up mode, voice transport and there is no usable
+  // public address, sign-up mode and there is no usable
   // Discord redirect, so those sections disappear and only AI settings stay.
   const [deviceWorld, setDeviceWorld] = useState(false);
   // What the last Fast calls ran at, per role (issue 255).
@@ -89,7 +80,6 @@ export function AdminSettingsPanel() {
         if (data) {
           setConfig(data.config);
           setEnv(data.envDefaults);
-          setVoiceUnroutable(Boolean(data.voiceAnnounceUnroutable));
           setDeviceWorld(Boolean(data.deviceWorld));
           setSpeedNotes(data.speedStatus ?? {});
         }
@@ -110,7 +100,7 @@ export function AdminSettingsPanel() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         // On a device world the shell writes the address, sign-up mode,
-        // voice and Discord settings itself; sending this panel's (possibly
+        // and Discord settings itself; sending this panel's (possibly
         // stale) copy back would fight it, so those keys stay out entirely
         // and the PATCH route keeps the stored values.
         body: JSON.stringify({
@@ -123,7 +113,6 @@ export function AdminSettingsPanel() {
                 abilityRerollBelow: config.abilityRerollBelow,
                 publicUrl: config.publicUrl,
                 sharedHost: config.sharedHost,
-                voiceChat: config.voiceChat,
                 discord: {
                   clientId: config.discord.clientId,
                   ...(discordSecret === SECRET_KEPT ? {} : { clientSecret: discordSecret }),
@@ -152,15 +141,6 @@ export function AdminSettingsPanel() {
             openaiModel: config.images.openaiModel,
             ...(openaiImageKey === SECRET_KEPT ? {} : { openaiApiKey: openaiImageKey }),
           },
-          speech: {
-            ttsProvider: config.speech.ttsProvider,
-            kokoroUrl: config.speech.kokoroUrl,
-            ttsBaseUrl: config.speech.ttsBaseUrl,
-            ttsModel: config.speech.ttsModel,
-            ttsVoice: config.speech.ttsVoice,
-            sttUrl: config.speech.sttUrl,
-            ...(ttsApiKey === SECRET_KEPT ? {} : { ttsApiKey }),
-          },
         }),
       });
       const data = await response.json().catch(() => null);
@@ -169,11 +149,9 @@ export function AdminSettingsPanel() {
         return;
       }
       setConfig(data.config);
-      setVoiceUnroutable(Boolean(data.voiceAnnounceUnroutable));
       setApiKey(SECRET_KEPT);
       setUtilityApiKey(SECRET_KEPT);
       setOpenaiImageKey(SECRET_KEPT);
-      setTtsApiKey(SECRET_KEPT);
       setDiscordSecret(SECRET_KEPT);
       setRescued(Array.isArray(data.rescued) ? data.rescued : []);
       setSaved(true);
@@ -194,8 +172,8 @@ export function AdminSettingsPanel() {
       </nav>
       {deviceWorld ? (
         <p className="reveal text-xs text-stone-500">
-          This world runs inside the app, which manages its address, sharing
-          and voice chat for you. There are no passwords or sign-up rules to
+          This world runs inside the app, which manages its address and
+          sharing for you. There are no passwords or sign-up rules to
           set: anyone you give a live room code to can join, and nobody else
           can make an account. The settings here tune the AI it plays with.
         </p>
@@ -267,7 +245,7 @@ export function AdminSettingsPanel() {
             />
             <SelectField
               label="Paid AI backends"
-              hint="Paid means a text, picture or speech backend on a public host that takes this server's key (OpenAI, OpenRouter, a hosted model), and the agent program. Backends on this machine or your network (llama-server, Ollama, ComfyUI, Kokoro, Whisper) stay open to every table, keyed or not. A table that may not spend the paid ones can bring its own key in the client app."
+              hint="Paid means a text or picture backend on a public host that takes this server's key (OpenAI, OpenRouter, a hosted model), and the agent program. Backends on this machine or your network (llama-server, Ollama, ComfyUI) stay open to every table, keyed or not. A table that may not spend the paid ones can bring its own key in the client app."
               value={config.sharedHost.paidAi || "everyone"}
               onChange={(paidAi) => setConfig({ ...config, sharedHost: { ...config.sharedHost, paidAi } })}
               options={[
@@ -513,22 +491,11 @@ export function AdminSettingsPanel() {
         onOpenaiKey={setOpenaiImageKey}
       />
 
-      <AdminSpeechSection
-        speech={config.speech}
-        env={env}
-        apiKey={ttsApiKey}
-        onSpeech={(speech) => setConfig({ ...config, speech })}
-        onApiKey={setTtsApiKey}
-      />
-
-      <AmbienceLibraryCard />
-
       {deviceWorld ? null : (
         <AdminNetworkSections
           config={config}
           env={env}
           setConfig={setConfig}
-          voiceUnroutable={voiceUnroutable}
           discordSecret={discordSecret}
           setDiscordSecret={setDiscordSecret}
         />

@@ -10,7 +10,6 @@ import {
   clearDmDraft,
   setDmDraftSeq,
   resetLiveStores,
-  setVoiceSpeaking,
 } from "@/app/campaigns/[campaignId]/liveStore";
 import type { CastMember } from "@/lib/dm/cast";
 import type { EncounterSummary } from "@/lib/dm/encounter-summary";
@@ -29,14 +28,12 @@ import { queuedIntents } from "@/lib/dm/intent-queue";
 import type { CampaignAsk } from "@/lib/db/asks";
 import type { WorldFact } from "@/lib/db/facts";
 import type { SideThread } from "@/lib/db/side-chat";
-import { EMPTY_AMBIENCE, type AmbienceState } from "@/lib/ambience/logic";
 import type { PlayerMapView } from "@/lib/battlemap/view";
 import { redactFx, type FxEvent } from "@/lib/battlemap/fx-plan";
 import type { CameraEvent, HandoutShown, SceneState, TitleCard } from "@/lib/scene/state";
 import type { MapPing } from "@/lib/dm/board-logic";
 import { capsForRole, type ViewerCaps } from "@/lib/dm/viewer";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { VoiceRosterEntry } from "@/lib/voice/types";
 import { navigateTo } from "@/lib/navigation";
 import { registerBrowserSpecies } from "@/lib/srd/race-id";
 import { registerBrowserTableFeats } from "@/lib/srd/feat-effects";
@@ -51,18 +48,10 @@ export type DmStatus =
   | "plotting_arc";
 
 export type MediaStatus = {
-  kind: "image" | "map" | "tts";
+  kind: "image" | "map";
   state: "queued" | "generating" | "failed";
   startedAt: string;
   // Why a picture or map failed, for the line under its placeholder.
-  reason?: string;
-};
-
-// Narration on its way for a message, or why it never arrived. Kept apart
-// from mediaStatus: both are keyed by message id, and a passage can be
-// waiting on its picture and its voice at once (issue 88).
-export type NarrationStatus = {
-  state: "queued" | "generating" | "failed";
   reason?: string;
 };
 
@@ -139,8 +128,9 @@ export type CampaignLocation = {
   visited: boolean;
   isCurrent: boolean;
   mapImage: { url: string } | null;
-  // The place's ambience bed and music, which name its kind of scene.
-  ambience: { bed: string; music: string } | null;
+  // The place's kind of scene: what terrain its battle map is drawn on
+  // (src/lib/scenes.ts).
+  scene: string | null;
   updatedAt: string;
 };
 
@@ -164,7 +154,7 @@ export type CampaignState = {
   caps: ViewerCaps;
   me: SessionUser | null;
   members: CampaignMember[];
-  // Names and faces of the cast, for speech lines and theatre inserts.
+  // Names and faces of the cast, for speech lines.
   cast: CastMember[];
   // Players this user has blocked (server-wide); see /api/profile/blocks.
   blockedUserIds: string[];
@@ -219,15 +209,6 @@ export type CampaignState = {
   // only true while somebody is making it, so it is never replayed and the
   // panel drops it after its animation (src/lib/dm/board.ts).
   mapPing: MapPing | null;
-  // What the table is hearing: the ambience bed and music cue the DM, the
-  // model or the engine last set (src/lib/ambience/logic.ts). Persisted, so
-  // a player who reloads mid-scene lands back in the same room rather than
-  // in silence until something changes.
-  ambience: AmbienceState;
-  // The last one-shot sting. Ephemeral by nature, like a map ping: a sting
-  // is only true while it is happening, so it is never replayed and the
-  // player hook drops it once it has sounded.
-  ambienceSting: { cue: string; at: number } | null;
   // Effects the board has yet to play, newest last. Ephemeral like a ping:
   // planned on the server from a resolved outcome (src/lib/battlemap/
   // fx-plan.ts), never replayed, dropped by the renderer once played.
@@ -249,10 +230,6 @@ export type CampaignState = {
   handout: HandoutShown | null;
   // Someone raised the X-card and the table is paused; nobody is named.
   safetyPause: { at: number; reason: "x_card" } | null;
-  narrationAudio: Record<string, string>;
-  // `live` marks a passage offered while it is still being rendered
-  // (tts_stream): heard now, by whoever is at the table now.
-  latestTts: { messageId: string; url: string; seq: number; live?: boolean } | null;
   latestRoll: { roll: StoredRoll; source: string; seq: number } | null;
   lastSeq: number;
   dmStatus: DmStatus;
@@ -271,7 +248,6 @@ export type CampaignState = {
   } | null;
   // Ephemeral progress per media target (message/location id).
   mediaStatus: Record<string, MediaStatus>;
-  narrationStatus: Record<string, NarrationStatus>;
   // Human-DM mode: story the DM has written down, newest first. Only the DM
   // seat is served these; every other seat gets an empty list, because the
   // beats panel is a DM tool (the text itself is public, in the transcript).
@@ -280,21 +256,6 @@ export type CampaignState = {
   // Cleared when the DM narrates, which is what "answered" means until the
   // console can resolve them one at a time.
   dmIntents: Array<{ messageId: string; userId: string; characterId: string; seq: number }>;
-  // Who is on the voice call. Null until the first roster event, so the voice
-  // hook can tell "nobody has joined" from "we have not heard yet" and only
-  // re-subscribes once it has real data. Unlike most per-seat state this rides
-  // the stream directly: the roster is small, identical for every seat, and
-  // contains nothing private.
-  voiceRoster: VoiceRosterEntry[] | null;
-  // Who is talking rides liveStore.ts (useVoiceSpeaking) for the same reason
-  // the draft does: it ticks constantly and only the voice dock cares.
-  // Bumped by the contentless voice_audibility_changed ephemeral. Gains are
-  // per-listener, so like the fogged battle map each client fetches its own
-  // row rather than the stream carrying everyone's.
-  voiceAudibilityVersion: number;
-  // Mesh voice signaling nudge: `to` names whose mailbox has mail; the
-  // payload itself waits server-side for that user's authenticated drain.
-  voiceMeshSignal: { to: string; version: number };
   // Bumped by the contentless schedule_updated ephemeral; the schedule
   // section refetches its list.
   scheduleVersion: number;
@@ -349,8 +310,6 @@ const initialState: CampaignState = {
   disputes: [],
   battleMap: null,
   mapPing: null,
-  ambience: EMPTY_AMBIENCE,
-  ambienceSting: null,
   fx: [],
   scene: null,
   titleCard: null,
@@ -358,20 +317,14 @@ const initialState: CampaignState = {
   camera: null,
   handout: null,
   safetyPause: null,
-  narrationAudio: {},
-  latestTts: null,
   latestRoll: null,
   lastSeq: 0,
   dmStatus: "idle",
   utilityCalls: [],
   directorArm: null,
   mediaStatus: {},
-  narrationStatus: {},
   beats: [],
   dmIntents: [],
-  voiceRoster: null,
-  voiceAudibilityVersion: 0,
-  voiceMeshSignal: { to: "", version: 0 },
   online: [],
   scheduleVersion: 0,
 };
@@ -386,7 +339,6 @@ type Action =
   | { type: "battleMap"; view: PlayerMapView | null }
   | { type: "mapPing"; ping: MapPing }
   | { type: "fxPlayed"; ids: string[] }
-  | { type: "sting"; cue: string }
   | { type: "titleCardShown"; id: string }
   | { type: "cameraDone" }
   | { type: "encounter"; encounter: PublicEncounter | null }
@@ -456,8 +408,6 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
       return { ...state, battleMap: action.view };
     case "mapPing":
       return { ...state, mapPing: action.ping };
-    case "sting":
-      return { ...state, ambienceSting: { cue: action.cue, at: Date.now() } };
     case "fxPlayed": {
       const played = new Set(action.ids);
       return { ...state, fx: state.fx.filter((entry) => !played.has(entry.id)) };
@@ -578,36 +528,6 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           }
           return next;
         }
-        case "tts_ready": {
-          const messageId = String(payload.messageId ?? "");
-          const url = String(payload.url ?? "");
-          if (messageId && url) {
-            next.narrationAudio = { ...state.narrationAudio, [messageId]: url };
-            next.latestTts = { messageId, url, seq: action.seq ?? 0 };
-            next.narrationStatus = withoutKey(state.narrationStatus, messageId);
-          }
-          return next;
-        }
-        case "tts_stream": {
-          // The passage's first words exist and the rest are on their way:
-          // start listening now. tts_ready follows with the finished file,
-          // which is what makes it replayable.
-          const messageId = String(payload.messageId ?? "");
-          const url = String(payload.url ?? "");
-          if (messageId && url) {
-            next.latestTts = { messageId, url, seq: 0, live: true };
-          }
-          return next;
-        }
-        case "ambience_changed":
-          next.ambience = payload.ambience as AmbienceState;
-          return next;
-        case "ambience_sting":
-          next.ambienceSting = {
-            cue: String(payload.cue ?? ""),
-            at: Number(payload.at ?? Date.now()),
-          };
-          return next;
         case "fx": {
           const raw = payload as unknown as FxEvent;
           if (!raw || typeof raw.id !== "string" || typeof raw.kind !== "string") {
@@ -619,9 +539,6 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           // A bounded queue: an effect that waited through twelve others is
           // no longer a moment, so it is dropped rather than replayed late.
           next.fx = [...state.fx.slice(-11), fx];
-          if (fx.sting) {
-            next.ambienceSting = { cue: fx.sting, at: fx.at };
-          }
           return next;
         }
         case "scene_state":
@@ -635,9 +552,6 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
             }
           } else {
             next.titleCard = card;
-          }
-          if (card.sting) {
-            next.ambienceSting = { cue: card.sting, at: card.at };
           }
           return next;
         }
@@ -703,15 +617,7 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           return next;
         case "media_status": {
           const targetId = String(payload.targetId ?? "");
-          if (targetId && payload.kind === "tts") {
-            next.narrationStatus = {
-              ...state.narrationStatus,
-              [targetId]: {
-                state: payload.state as NarrationStatus["state"],
-                ...(typeof payload.reason === "string" && payload.reason ? { reason: payload.reason } : {}),
-              },
-            };
-          } else if (targetId) {
+          if (targetId) {
             next.mediaStatus = {
               ...state.mediaStatus,
               [targetId]: {
@@ -937,32 +843,18 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
             absoluteCommand: String(payload.absoluteCommand ?? ""),
           };
           return next;
-        // The whole roster each time, so a dropped event self-heals on the
-        // next one rather than leaving a ghost on the call.
-        case "voice_roster":
-          next.voiceRoster = (payload.peers as VoiceRosterEntry[]) ?? [];
-          return next;
-        // The whole online set each time, like the voice roster, so a
-        // dropped event self-heals on the next join or leave.
+        // The whole online set each time, so a dropped event self-heals on
+        // the next join or leave.
         case "presence":
           next.online = (payload.online as string[]) ?? [];
-          return next;
-        case "voice_audibility_changed":
-          next.voiceAudibilityVersion = state.voiceAudibilityVersion + 1;
-          return next;
-        case "voice_mesh_signal":
-          next.voiceMeshSignal = {
-            to: String(payload.to ?? ""),
-            version: state.voiceMeshSignal.version + 1,
-          };
           return next;
         case "schedule_updated":
           next.scheduleVersion = state.scheduleVersion + 1;
           return next;
         default:
           // An event the reducer has no hand in (a contentless ping whose
-          // refetch the handler runs, or voice_speaking, which goes to the
-          // live store) changes nothing; returning the same state lets React
+          // refetch the handler runs) changes nothing; returning the same
+          // state lets React
           // skip the render. A persisted one still has to record its seq.
           return action.seq === null ? state : next;
       }
@@ -1004,8 +896,6 @@ const PERSISTED_EVENTS = [
   "image_ready",
   "location_updated",
   "location_map_ready",
-  "tts_ready",
-  "ambience_changed",
   "campaign_rewound",
   "item_proposal_added",
   "item_proposal_resolved",
@@ -1045,7 +935,6 @@ const EPHEMERAL_EVENTS = [
   "camera",
   "quests_updated",
   "cast_updated",
-  "tts_stream",
   "dm_status",
   "utility_calls",
   "dm_delta",
@@ -1064,21 +953,10 @@ const EPHEMERAL_EVENTS = [
   "coins",
   "battle_map_updated",
   "map_ping",
-  // One sound, once. Worthless after the fact, so never replayed.
-  "ambience_sting",
-  // Who is on the call right now. Worthless after the fact, so it is never
-  // replayed to a reconnecting client.
-  "voice_roster",
-  // Who is talking. Even more so.
-  "voice_speaking",
-  // Contentless: each listener pulls their own gains.
-  "voice_audibility_changed",
-  // Mesh signaling nudge; the payload stays in a per-user server mailbox.
-  "voice_mesh_signal",
   // Contentless: the schedule section refetches.
   "schedule_updated",
-  // Who has the campaign open right now. Worthless after the fact, like the
-  // voice roster, so it is never replayed.
+  // Who has the campaign open right now. Worthless after the fact, so it is
+  // never replayed.
   "presence",
 ];
 const EPHEMERAL_EVENT_SET = new Set(EPHEMERAL_EVENTS);
@@ -1212,8 +1090,6 @@ export function useCampaignStream(campaignId: string) {
             : [],
           dmStatus: data.dmStatus ?? "idle",
           utilityCalls: sortCalls(data.utilityCalls ?? []),
-          narrationAudio: data.narrationAudio ?? {},
-          ambience: data.ambience ?? EMPTY_AMBIENCE,
           // The sky, the character in play, and what a late joiner walks in
           // on: the handout on the table, the X-card pause, the title card.
           // Their events were published before this snapshot, so the stream
@@ -1463,14 +1339,12 @@ export function useCampaignStream(campaignId: string) {
             EPHEMERAL_EVENT_SET.has(eventType) || !event.lastEventId
               ? null
               : Number(event.lastEventId);
-          // The two values that tick fastest go to the live store, read by
-          // the draft bubble and the voice dock alone (liveStore.ts).
+          // The streaming draft goes to the live store, read by the draft
+          // bubble alone (liveStore.ts).
           if (eventType === "dm_delta") {
             appendDmDraft(String(payload.text ?? ""));
           } else if (eventType === "dm_draft_seq") {
             setDmDraftSeq(typeof payload.seq === "number" ? payload.seq : null);
-          } else if (eventType === "voice_speaking") {
-            setVoiceSpeaking({ userId: String(payload.userId ?? ""), at: Date.now() });
           } else if (eventType === "message_added" && endsDmTurn(payload.message as CampaignMessage)) {
             clearDmDraft();
           }
@@ -1598,16 +1472,12 @@ export function useCampaignStream(campaignId: string) {
     [],
   );
   const markCameraDone = useCallback(() => dispatch({ type: "cameraDone" }), []);
-  // A sting this client decided to play (your-turn chime); goes through the
-  // same channel as the server's so volume and muting apply.
-  const playSting = useCallback((cue: string) => dispatch({ type: "sting", cue }), []);
 
   return {
     state,
     markFxPlayed,
     markTitleCardShown,
     markCameraDone,
-    playSting,
     refresh,
     refreshNotes,
     refreshSideChat,

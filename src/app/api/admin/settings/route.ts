@@ -4,7 +4,6 @@ import { speedStatus } from "@/lib/speed-status";
 import { getGlobalConfig, saveGlobalConfig } from "@/lib/db/app-settings";
 import { isDeviceWorld, serverEnv } from "@/lib/server-env";
 import { resolveSignupMode, type GlobalConfig } from "@/lib/schemas/global-config";
-import { announcedAddressFor, isUnroutableAddress, voiceConfig } from "@/lib/voice/config";
 import { forgetHarnessStatus } from "@/lib/harness/status";
 import { rescueStrandedCampaigns, type RescueMove } from "@/lib/image-backend-rescue";
 
@@ -49,16 +48,6 @@ function maskedConfig(config: GlobalConfig) {
       openaiModel: config.images.openaiModel,
       hasOpenaiApiKey: config.images.openaiApiKey !== "",
     },
-    speech: {
-      ttsProvider: config.speech.ttsProvider,
-      kokoroUrl: config.speech.kokoroUrl,
-      ttsBaseUrl: config.speech.ttsBaseUrl,
-      ttsModel: config.speech.ttsModel,
-      hasTtsApiKey: config.speech.ttsApiKey !== "",
-      ttsVoice: config.speech.ttsVoice,
-      sttUrl: config.speech.sttUrl,
-    },
-    voiceChat: config.voiceChat,
     discord: {
       clientId: config.discord.clientId,
       hasClientSecret: config.discord.clientSecret !== "",
@@ -80,34 +69,15 @@ function envDefaults() {
     imageBackend: serverEnv("DEFAULT_IMAGE_BACKEND"),
     hasOpenaiImageApiKey:
       serverEnv("OPENAI_IMAGE_API_KEY") !== "" || serverEnv("OPENAI_API_KEY") !== "",
-    kokoroUrl: serverEnv("KOKORO_URL", "http://127.0.0.1:8880"),
-    ttsProvider: serverEnv("TTS_PROVIDER"),
-    ttsBaseUrl: serverEnv("TTS_BASE_URL"),
-    ttsModel: serverEnv("TTS_MODEL"),
-    hasTtsApiKey: serverEnv("TTS_API_KEY") !== "",
-    sttUrl: serverEnv("STT_URL", "http://127.0.0.1:8870"),
     discordClientId: serverEnv("DISCORD_CLIENT_ID"),
     hasDiscordClientSecret: serverEnv("DISCORD_CLIENT_SECRET") !== "",
     publicUrl: serverEnv("APP_PUBLIC_URL"),
-    voiceEnabled: serverEnv("VOICE_ENABLED", "0") === "1",
-    voiceAnnouncedIp: serverEnv("VOICE_ANNOUNCED_IP"),
-    voiceDomain: serverEnv("VOICE_DOMAIN"),
-    voiceRtcPort: serverEnv("VOICE_RTC_PORT", "44444"),
     worldRegistryUrl: serverEnv("WORLD_REGISTRY_URL"),
   };
 }
 
-// SFU voice announcing an address remote browsers cannot dial is the silent
-// call failure (src/lib/voice/config.ts). Decided server side because the
-// announced-address fallback chain ends at the bind address, which the
-// masked config never carries.
-function voiceAnnounceUnroutable(): boolean {
-  const voice = voiceConfig();
-  return voice.mode === "sfu" && isUnroutableAddress(announcedAddressFor(voice));
-}
-
 // Set by the client shells for the world they host on the device. The panel
-// hides what the shell owns (address, sign-ups, voice transport, Discord)
+// hides what the shell owns (address, sign-ups, Discord)
 // and keeps only the AI settings the player can meaningfully change.
 function deviceWorld(): boolean {
   return isDeviceWorld();
@@ -121,7 +91,6 @@ export async function GET() {
   return Response.json({
     config: maskedConfig(getGlobalConfig()),
     envDefaults: envDefaults(),
-    voiceAnnounceUnroutable: voiceAnnounceUnroutable(),
     deviceWorld: deviceWorld(),
     // What the last Fast calls actually ran at (issue 255).
     speedStatus: speedStatus(),
@@ -163,26 +132,6 @@ const patchSchema = z.object({
       openaiBaseUrl: z.string().trim().max(500).optional(),
       openaiModel: z.string().trim().max(200).optional(),
       openaiApiKey: z.string().trim().max(400).optional(),
-    })
-    .optional(),
-  speech: z
-    .object({
-      ttsProvider: z.enum(["", "kokoro", "openai", "off"]).optional(),
-      kokoroUrl: z.string().trim().max(500).optional(),
-      ttsBaseUrl: z.string().trim().max(500).optional(),
-      ttsModel: z.string().trim().max(200).optional(),
-      ttsApiKey: z.string().trim().max(400).optional(),
-      ttsVoice: z.string().trim().max(120).optional(),
-      sttUrl: z.string().trim().max(500).optional(),
-    })
-    .optional(),
-  voiceChat: z
-    .object({
-      enabled: z.enum(["", "on", "off"]).optional(),
-      mode: z.enum(["", "sfu", "mesh"]).optional(),
-      announcedIp: z.string().trim().max(200).optional(),
-      domain: z.string().trim().max(300).optional(),
-      rtcPort: z.string().trim().max(10).optional(),
     })
     .optional(),
   discord: z
@@ -261,7 +210,6 @@ export async function PATCH(request: Request) {
   return Response.json({
     config: maskedConfig(saved),
     envDefaults: envDefaults(),
-    voiceAnnounceUnroutable: voiceAnnounceUnroutable(),
     deviceWorld: deviceWorld(),
     rescued,
   });

@@ -1,6 +1,6 @@
 import type { MapTheme } from "@/lib/battlemap/generate";
 import type { Backdrop } from "@/lib/battlemap/backdrop";
-import type { DoorStates, LightZone, MapDrawing, MapLabel, MapProp, SceneAmbience } from "@/lib/battlemap/scene";
+import type { DoorStates, LightZone, MapDrawing, MapLabel, MapProp } from "@/lib/battlemap/scene";
 import type { MapSkin } from "@/lib/battlemap/skins";
 import type { AmbientLight, MapLight } from "@/lib/battlemap/types";
 
@@ -35,7 +35,6 @@ export type PreparedMap = {
   doors: DoorStates;
   zones: LightZone[];
   overlayPath: string;
-  ambience: SceneAmbience;
   // Marks made at the table that came back with a captured board.
   drawings?: MapDrawing[];
   // What it is painted with; empty means the setting and theme decide.

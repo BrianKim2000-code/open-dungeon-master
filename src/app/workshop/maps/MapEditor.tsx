@@ -19,7 +19,7 @@ import { MapRollPanel } from "@/app/workshop/maps/MapRollPanel";
 import { TerrainCanvas, type CanvasControls } from "@/app/campaigns/[campaignId]/TerrainCanvas";
 import type { HiddenLayers, MapLayer } from "@/app/campaigns/[campaignId]/terrainDraw";
 import { BackdropControls } from "@/app/campaigns/[campaignId]/MapTools";
-import { AmbienceControls, OverlayControls } from "@/app/campaigns/[campaignId]/MapSceneTools";
+import { OverlayControls } from "@/app/campaigns/[campaignId]/MapSceneTools";
 import { MapEditorShell } from "@/app/campaigns/[campaignId]/MapEditorShell";
 import { MapOptions } from "@/app/campaigns/[campaignId]/MapOptions";
 import { MapLayersPanel } from "@/app/campaigns/[campaignId]/MapLayersPanel";
@@ -487,7 +487,6 @@ export function MapEditor({
                   ]}
                 />
               </div>
-              <AmbienceControls value={selected.ambience} onChange={(ambience) => void patch({ ambience })} />
             </MapDetailsPanel>
           </>
         }

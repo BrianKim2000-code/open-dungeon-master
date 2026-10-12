@@ -11,7 +11,7 @@ import { UtilityCallStrip } from "@/app/campaigns/[campaignId]/UtilityCallStrip"
 import { FightSummaryCard } from "@/app/campaigns/[campaignId]/FightSummaryCard";
 import { AskDock } from "@/app/campaigns/[campaignId]/AskPanel";
 import { DmCoverNotice } from "@/app/campaigns/[campaignId]/DmDelegationPanel";
-import type { CampaignState, NarrationStatus } from "@/app/campaigns/[campaignId]/useCampaignStream";
+import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import type { CampaignMessage } from "@/lib/db/messages";
 
 // The story column: the transcript with every message action wired to its
@@ -26,8 +26,6 @@ export function SessionChatColumn({
   campaignId,
   meUserId,
   steersStory,
-  narrationStatus,
-  onReplayAudio,
   visible,
   askOpen,
   onAskOpenChange,
@@ -44,10 +42,6 @@ export function SessionChatColumn({
   campaignId: string;
   meUserId: string;
   steersStory: boolean;
-  // Which passages were not read aloud and why, and the way to ask again
-  // (NarrationFailureBanner.tsx).
-  narrationStatus: Record<string, NarrationStatus> | undefined;
-  onReplayAudio: (messageId: string) => Promise<string | null>;
   // Below lg only one column shows at a time; from lg up both always do.
   visible: boolean;
   askOpen: boolean;
@@ -78,7 +72,6 @@ export function SessionChatColumn({
     () => [...new Set([...state.blockedUserIds, ...justBlocked])],
     [state.blockedUserIds, justBlocked],
   );
-  const ttsEnabled = Boolean(campaign?.gameSettings?.ttsEnabled);
   // Ask already reports its own progress inside the strip, naming the
   // question being answered, so repeating it in the strip is the same news
   // twice.
@@ -124,8 +117,6 @@ export function SessionChatColumn({
         locations={locations}
         dmStatus={dmStatus}
         mediaStatus={state.mediaStatus}
-        narrationStatus={narrationStatus}
-        onReplayAudio={ttsEnabled ? onReplayAudio : undefined}
         onLoreCheck={(message) => {
           // Whatever text was selected when the flag was raised, captured at
           // click, before the dialog steals focus.

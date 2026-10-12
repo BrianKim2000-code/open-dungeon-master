@@ -27,7 +27,7 @@ import {
   type ForgeSettings,
 } from "@/app/workshop/maps/forge";
 import { THEME_LABELS, type LibraryState, type PreparedMap } from "@/app/workshop/maps/types";
-import { cueById, sceneOptions } from "@/lib/ambience/catalog";
+import { sceneOptions } from "@/lib/scenes";
 
 // The Map Forge (docs/visual-overhaul-plan.md 4.1): one component for both
 // places a map is rolled. In the library it names a map, rolls it, shows it
@@ -158,7 +158,8 @@ export function MapForge({
   const named = name.trim().length > 0;
   const canRoll = !busy && !rolling && (!library || named);
   const { theme, ambient } = forgeOutcome(settings);
-  const sentences = explainForge(settings, (value) => THEME_LABELS[value], (scene) => cueById(scene)?.label ?? scene);
+  const sceneLabel = (scene: string) => sceneOptions().find((option) => option.value === scene)?.label ?? scene;
+  const sentences = explainForge(settings, (value) => THEME_LABELS[value], sceneLabel);
   const skinGroups = useMemo(() => skinChoices(genre), [genre]);
 
   async function show(roll: ForgeRoll, stretch: number) {

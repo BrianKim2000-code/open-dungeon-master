@@ -6,18 +6,17 @@ import { cn } from "@/lib/cn";
 import { encodeImageForUpload } from "@/lib/image-encode";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
-import { cueOptions } from "@/lib/ambience/catalog";
 import { LIGHT_LIMITS, LIGHT_PRESETS, describeLight } from "@/lib/battlemap/lights";
 import type { ObjectEntry } from "@/lib/battlemap/render/painted";
-import { SCENE_LIMITS, type SceneAmbience, type ZoneKind } from "@/lib/battlemap/scene";
+import { SCENE_LIMITS, type ZoneKind } from "@/lib/battlemap/scene";
 import { TILE_FEET, type AmbientLight } from "@/lib/battlemap/types";
 import { StampPicker } from "@/app/campaigns/[campaignId]/StampPicker";
 import { Chip, FinePrint, RangeRow, mapButton, mapDanger, mapInput } from "@/app/campaigns/[campaignId]/mapUi";
 
 // The dials for the scene tools (docs/workshop-parity-audit.md phase 13):
 // how far the next light reaches, what the next label says, what the next
-// prop is called and drawn as, which light a zone casts, the sound a map
-// makes, and the DM's overlay picture. None of them touch a map; the toolbox
+// prop is called and drawn as, which light a zone casts, and the DM's
+// overlay picture. None of them touch a map; the toolbox
 // holds the values and the canvas reports the tap that uses them.
 
 export function LightDial({
@@ -247,37 +246,6 @@ export function DoorHint() {
       Tap a door to lock it, again to make it secret, again to open it. A locked or secret door is a
       wall to everything that walks or looks until you open it; only you see which is which.
     </FinePrint>
-  );
-}
-
-export function AmbienceControls({
-  value,
-  onChange,
-}: {
-  value: SceneAmbience;
-  onChange: (next: SceneAmbience) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <p className="font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">What it sounds like</p>
-      <Select
-        value={value.bed}
-        label="Ambient bed"
-        size="sm"
-        onChange={(bed) => onChange({ ...value, bed })}
-        options={[{ value: "", label: "Leave the place sound alone" }, ...cueOptions("bed").map((option) => ({ value: option.value as string, label: option.label }))]}
-        className="w-full"
-      />
-      <Select
-        value={value.music}
-        label="Music"
-        size="sm"
-        onChange={(music) => onChange({ ...value, music })}
-        options={[{ value: "", label: "Leave the music alone" }, ...cueOptions("music").map((option) => ({ value: option.value as string, label: option.label }))]}
-        className="w-full"
-      />
-      <FinePrint>Played when this map goes on the table.</FinePrint>
-    </div>
   );
 }
 

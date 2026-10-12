@@ -15,7 +15,6 @@ import type { MapLabel } from "@/lib/battlemap/scene";
 const NOOP = () => {};
 const NOOP_IDS: (ids: string[]) => void = () => {};
 const NOOP_ID: (id: string) => void = () => {};
-const NOOP_CUE: (cue: string) => void = () => {};
 // One shared empty list: a fresh [] per render would defeat the memo on
 // every panel that takes it.
 const EMPTY_IDS: string[] = [];
@@ -62,15 +61,8 @@ import { SessionChatColumn } from "@/app/campaigns/[campaignId]/SessionChatColum
 import { SessionHeader } from "@/app/campaigns/[campaignId]/SessionHeader";
 import { SidePanel } from "@/app/campaigns/[campaignId]/SidePanel";
 import { useChatChime } from "@/app/campaigns/[campaignId]/useChatChime";
-import { useTableAudio } from "@/app/campaigns/[campaignId]/useTableAudio";
-import type { SoundSteering } from "@/app/campaigns/[campaignId]/SoundPanel";
 import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { InitiativeRibbon, PartyRail, QuestGlance, RollToast, SceneBackdrop, TabletopChronicle } from "@/app/campaigns/[campaignId]/CinematicParts";
-import {
-  NarrationFailureBanner,
-  useNarrationReplay,
-  useNarrationStatus,
-} from "@/app/campaigns/[campaignId]/NarrationFailureBanner";
 import { turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 
 import { useDocked } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -196,7 +188,6 @@ export function SessionView({
   markFxPlayed = NOOP_IDS,
   markCameraDone = NOOP,
   markTitleCardShown = NOOP_ID,
-  playSting = NOOP_CUE,
 }: {
   state: CampaignState;
   refreshNotes: () => Promise<void>;
@@ -206,11 +197,10 @@ export function SessionView({
   refreshAsks: () => Promise<void>;
   refreshBattleMap: () => Promise<void>;
   // The board reports effects it has played and camera moves it has obeyed
-  // (useCampaignStream.ts), and this view may sound a local sting.
+  // (useCampaignStream.ts).
   markFxPlayed?: (ids: string[]) => void;
   markCameraDone?: () => void;
   markTitleCardShown?: (id: string) => void;
-  playSting?: (cue: string) => void;
 }) {
   // The effects mode rides on <html data-effects> for CSS-only consumers.
   useEffectsRoot();
@@ -312,17 +302,6 @@ export function SessionView({
     }).catch(() => undefined);
   }, [canShake, shakeOn, campaignIdForShake]);
 
-  const { narration, ambience } = useTableAudio(state);
-  // Narration that was not read aloud, and the way to ask for it again
-  // (issue 88): under the passage in the transcript, and above the composer
-  // where a staged fight still shows it.
-  const narrationStatus = useNarrationStatus(narration, state.narrationStatus);
-  const replayNarration = useNarrationReplay(campaign?.id ?? "", narration, state.narrationAudio);
-  const messageIds = useMemo(() => state.messages.map((message) => message.id), [state.messages]);
-  const narrationNotice = useMemo(
-    () => <NarrationFailureBanner messageIds={messageIds} status={narrationStatus} onRetry={replayNarration} />,
-    [messageIds, narrationStatus, replayNarration],
-  );
   // Chime on new private messages (side chats + DM whispers). The loaded
   // flags keep the page-load backlog silent.
   const chatUnreadTotal =
@@ -398,16 +377,6 @@ export function SessionView({
   const floor = useMemo(() => campaign?.floor ?? { mode: "open" as const }, [campaign?.floor]);
   const isDm = caps.role === "dm";
   const steersStory = caps.steersStory;
-  // Who may change what the table hears, for the header's sound panel.
-  const sound = useMemo<SoundSteering>(
-    () => ({
-      campaignId: campaign?.id ?? "",
-      canSteer: steersStory,
-      auto: Boolean(campaign?.gameSettings?.ambienceAuto),
-      isAdmin: Boolean((me as { isAdmin?: boolean } | null)?.isAdmin),
-    }),
-    [campaign?.id, campaign?.gameSettings?.ambienceAuto, steersStory, me],
-  );
   if (isDm && !seenDmSeat) {
     setSeenDmSeat(true);
     setKind("narrate");
@@ -441,13 +410,6 @@ export function SessionView({
     window.dispatchEvent(new Event(TOUR_SEEN_EVENT));
     setTour(null);
   }, [tourId]);
-  // The campaign's opening narration gets everyone's full attention: while
-  // it plays for this user, do/say/lead input waits (OOC stays open).
-  const firstDmMessageId = messages.find((message) => message.authorType === "dm")?.id;
-  const openingNarrationPlaying =
-    Boolean(firstDmMessageId) &&
-    narration.playingMessageId === firstDmMessageId &&
-    messages.filter((message) => message.authorType === "dm").length === 1;
   const myName = actingSheet?.name ?? "your character";
   const meId = me?.id ?? "";
   // Muted by the party lead: the server refuses the send, so the box says
@@ -456,8 +418,8 @@ export function SessionView({
   const enemyTurns = state.encounter?.enemyTurns === true;
   const gate = useMemo(
     () =>
-      composerGate({ floor, sheets, meUserId: meId, kind, myName, leadPrivate, openingNarrationPlaying, enemyTurns }),
-    [floor, sheets, meId, kind, myName, leadPrivate, openingNarrationPlaying, enemyTurns],
+      composerGate({ floor, sheets, meUserId: meId, kind, myName, leadPrivate, enemyTurns }),
+    [floor, sheets, meId, kind, myName, leadPrivate, enemyTurns],
   );
   // A mid-game joiner without a character is gated to creation first. The DM
   // runs no character, so the gate must never catch them.
@@ -484,46 +446,6 @@ export function SessionView({
   const raiseXCard = useCallback(() => {
     void fetch(`/api/campaigns/${campaignId}/safety/x-card`, { method: "POST" });
   }, [campaignId]);
-
-  // The voice dock's props as one object with a stable identity, so the
-  // memoized header only re-renders when the call itself changes. Who is
-  // speaking is not here: the dock reads it from the live store.
-  const voiceSettings = campaign?.gameSettings?.voice;
-  const turnEnforcement = voiceSettings?.turnEnforcement ?? "soft";
-  const sayRangeRule = Boolean(voiceSettings?.rules?.sayRange);
-  const transcribe = Boolean(voiceSettings?.transcribe);
-  const floorUserIds =
-    floor.mode === "spotlight" || floor.mode === "initiative" ? floor.userIds : EMPTY_IDS;
-  const voice = useMemo(
-    () => ({
-      campaignId: campaignId ?? "",
-      meUserId: meId,
-      roster: state.voiceRoster,
-      floorMode: floor.mode,
-      floorUserIds,
-      turnEnforcement,
-      adjudicates: caps.adjudicates,
-      steersStory,
-      sayRangeRule,
-      transcribe,
-      audibilityVersion: state.voiceAudibilityVersion,
-      meshSignal: state.voiceMeshSignal,
-    }),
-    [
-      campaignId,
-      meId,
-      state.voiceRoster,
-      floor.mode,
-      floorUserIds,
-      turnEnforcement,
-      caps.adjudicates,
-      steersStory,
-      sayRangeRule,
-      transcribe,
-      state.voiceAudibilityVersion,
-      state.voiceMeshSignal,
-    ],
-  );
 
   const releaseFloor = useCallback(async () => {
     await fetch(`/api/campaigns/${campaignId}/floor`, { method: "POST" });
@@ -630,7 +552,6 @@ export function SessionView({
     if (!turnChime) {
       return;
     }
-    playSting("turn");
     haptic("turn");
     // The pulse is a moment: on after this tick, off when the animation
     // has run (--dur-linger).
@@ -640,7 +561,7 @@ export function SessionView({
       window.clearTimeout(on);
       window.clearTimeout(off);
     };
-  }, [turnTokenId, myTokenId, turnRound, turnChime, playSting]);
+  }, [turnTokenId, myTokenId, turnRound, turnChime]);
   // A pinned label on the board opens what it points at in a sheet.
   const [openedLabel, setOpenedLabel] = useState<MapLabel | null>(null);
   const labelMounted = useOpenedOnce(openedLabel !== null);
@@ -791,17 +712,11 @@ export function SessionView({
         title={campaign.title}
         scene={campaign.scene}
         user={me}
-        voice={voice}
         dice3d={dice3d}
         onToggleDice3d={toggleDice3d}
         onCustomizeDice={openDiceLook}
         onRollDice={openDiceTray}
         shake={shake}
-        ttsEnabled={Boolean(campaign.gameSettings?.ttsEnabled)}
-        narration={narration}
-        ambienceEnabled={Boolean(campaign.gameSettings?.ambienceEnabled)}
-        ambience={ambience}
-        sound={sound}
         onHelp={openHelp}
         stage={state.battleMap && docked ? { on: stageView === "board", onToggle: toggleStage } : undefined}
         ribbon={
@@ -880,8 +795,6 @@ export function SessionView({
           campaignId={campaign.id}
           meUserId={me.id}
           steersStory={steersStory}
-          narrationStatus={narrationStatus}
-          onReplayAudio={replayNarration}
           visible={mobileView === "chat"}
           askOpen={askOpen}
           onAskOpenChange={setAskOpen}
@@ -929,7 +842,6 @@ export function SessionView({
               encounter={state.encounter}
               onReleaseFloor={releaseFloor}
               joinBanner={joinBanner}
-              notice={narrationNotice}
               composerRef={composerRef}
               highlight={composerPulse}
               directorArm={state.directorArm}

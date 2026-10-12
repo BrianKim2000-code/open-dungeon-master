@@ -343,7 +343,6 @@ function handleStartEncounter(
         ? "The party strikes first"
         : "Roll initiative",
     tone: "ember",
-    sting: "sword_clash",
   });
 
   // The AI's fight rolls its initiative now, for every character whose dice

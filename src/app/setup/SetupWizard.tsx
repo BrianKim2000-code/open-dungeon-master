@@ -7,7 +7,7 @@ import { GoldTitle } from "@/components/ui/GoldTitle";
 import { navigateTo } from "@/lib/navigation";
 import type { MaskedConfig } from "@/app/admin/AdminSettingsFields";
 import { draftFromConfig, draftStoryIsOpenAi, draftWithScan, type Draft } from "@/app/setup/draft";
-import { PicturesStep, VoiceStep } from "@/app/setup/MediaSteps";
+import { PicturesStep } from "@/app/setup/MediaSteps";
 import { PlayersStep } from "@/app/setup/PlayersStep";
 import { ReadyStep } from "@/app/setup/ReadyStep";
 import type { ScanResult } from "@/app/setup/SetupParts";
@@ -19,7 +19,6 @@ import {
   PAINTING_AGENTS,
   joiningPatch,
   namePatch,
-  narrationPatch,
   picturesPatch,
   storyPatch,
   type Patch,
@@ -34,7 +33,7 @@ export type SetupInfo = {
   publicUrl: string;
 };
 
-const KEYS = ["welcome", "story", "pictures", "voice", "players", "agent", "ready"] as const;
+const KEYS = ["welcome", "story", "pictures", "players", "agent", "ready"] as const;
 type StepKey = (typeof KEYS)[number];
 const STEP_INDEX = Object.fromEntries(KEYS.map((key, index) => [key, index])) as Record<StepKey, number>;
 
@@ -50,7 +49,7 @@ function storyChoice(draft: Draft): StoryChoice | null {
   return null;
 }
 
-// The guided setup: seven short steps over the same settings the admin panel
+// The guided setup: six short steps over the same settings the admin panel
 // holds. Each step saves when Continue is pressed, so leaving halfway keeps
 // everything answered so far and the admin panel shows exactly what was
 // chosen. The scan of this computer starts with the page and fills in what
@@ -149,11 +148,6 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
       if (draft.pictures === "agent") return picturesPatch({ kind: "agent" });
       return picturesPatch({ kind: "none" });
     }
-    if (key === "voice") {
-      if (draft.narration === "kokoro") return narrationPatch({ kind: "kokoro", url: draft.kokoro.url, voice: draft.kokoro.voice });
-      if (draft.narration === "openai") return narrationPatch({ kind: "openai", apiKey: draft.narrationKey });
-      return narrationPatch({ kind: "off" });
-    }
     if (key === "players") {
       return joiningPatch({ signupMode: draft.signupMode, publicUrl: draft.publicUrl });
     }
@@ -212,17 +206,6 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
       : draft.pictures === "openai" && !storyIsOpenAi && !draft.picturesKey.trim() && !config.images.hasOpenaiApiKey
         ? "Paste an OpenAI key, or choose another answer."
         : null;
-  const voiceBlocker =
-    draft.narration === "kokoro" && !draft.kokoro.url.trim()
-      ? "Type where Kokoro runs, or choose another answer."
-      : draft.narration === "openai" &&
-          !storyIsOpenAi &&
-          !draft.narrationKey.trim() &&
-          !config.speech.hasTtsApiKey &&
-          !config.images.hasOpenaiApiKey
-        ? "Paste an OpenAI key, or choose another answer."
-        : null;
-
   const address = draft.publicUrl.trim() || info.lanUrls[0] || "";
   const title = (eyebrow: string, text: string, key: StepKey) => (
     <span className="block">
@@ -285,27 +268,9 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
       canContinue: !picturesBlocker,
     },
     {
-      key: "voice",
-      label: "Voice",
-      title: title("Step 3", "Should the storyteller speak?", "voice"),
-      blurb: "Narration reads each passage aloud; dictation lets players talk instead of type. Both are optional.",
-      content: (
-        <VoiceStep
-          draft={draft}
-          update={update}
-          scan={scan}
-          scanning={scanning}
-          storyIsOpenAi={storyIsOpenAi}
-          ttsKeySaved={config.speech.hasTtsApiKey || config.images.hasOpenaiApiKey}
-        />
-      ),
-      blocker: voiceBlocker,
-      canContinue: !voiceBlocker,
-    },
-    {
       key: "players",
       label: "Players",
-      title: title("Step 4", "How do players get in?", "players"),
+      title: title("Step 3", "How do players get in?", "players"),
       blurb: "The address to send your friends, and who may make an account.",
       content: (
         <PlayersStep draft={draft} update={update} lanUrls={info.lanUrls} />
@@ -314,7 +279,7 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
     {
       key: "agent",
       label: "Your agent",
-      title: title("Step 5", "Bring your own AI agent?", "agent"),
+      title: title("Step 4", "Bring your own AI agent?", "agent"),
       blurb: "Optional. Connect Claude Code, Codex or opencode to this server over MCP, as you.",
       content: <YourAgentStep made={made} onMade={setMade} />,
       continueLabel: made ? "Continue" : "Skip for now",

@@ -12,7 +12,6 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { KitButton, PanelError, RowMenu } from "./PanelKit";
 import { SkyLayer } from "@/components/SkyLayer";
-import { TheatreInserts } from "@/app/campaigns/[campaignId]/TheatreInserts";
 import type { CastMember } from "@/lib/dm/cast";
 import type { Speaker } from "@/lib/dm/speech";
 import type { SceneState } from "@/lib/scene/state";
@@ -36,7 +35,6 @@ export function MapPanel({
   mediaStatus = {},
   genre,
   scene = null,
-  inserts = null,
 }: {
   campaignId: string;
   locations: CampaignLocation[];
@@ -46,9 +44,6 @@ export function MapPanel({
   genre?: string | null;
   // The sky over the table: a tint and weather over the picture.
   scene?: SceneState | null;
-  // Theatre inserts (docs/vtt-parity-implementation-plan.md 8.3): who is
-  // speaking in the latest passage, and the faces to show for them.
-  inserts?: { speakers: Speaker[]; cast: CastMember[]; messageId: string } | null;
 }) {
   const current = locations.find((location) => location.isCurrent) ?? null;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -262,7 +257,6 @@ export function MapPanel({
                 className="ken-burns w-full"
               />
               <SkyLayer scene={scene} mode="art" />
-              {inserts ? <TheatreInserts speakers={inserts.speakers} cast={inserts.cast} messageId={inserts.messageId} /> : null}
             </button>
           ) : mediaStatus[shown.id] && mediaStatus[shown.id].state !== "failed" ? (
             <div role="status" className="skeleton-block flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-lg text-xs text-stone-400">
