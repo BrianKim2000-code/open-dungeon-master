@@ -26,7 +26,7 @@ export function copyAction(message: CampaignMessage): MessageAction {
     name: "Copy text",
     label: "Copy this message's text",
     hint: "Copy: put this message's words on the clipboard",
-    glyph: "tab-notes",
+    glyph: "ui-duplicate",
     icon: <Copy className="size-3.5" />,
     onSelect: () => {
       void navigator.clipboard?.writeText(message.content).catch(() => {});

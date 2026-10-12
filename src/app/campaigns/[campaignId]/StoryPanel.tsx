@@ -479,12 +479,12 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                             ...(beat.status === "active"
                               ? []
                               : [{ id: "now", label: "Make this the beat in play", glyph: "quest-active", disabled: beatBusy, onSelect: () => void editBeat({ op: "setNow", beat: number }) }]),
-                            { id: "up", label: "Move up", glyph: "pace-fast", disabled: beatBusy, onSelect: () => void editBeat({ op: "move", beat: number, direction: "up" }) },
-                            { id: "down", label: "Move down", glyph: "pace-slow", disabled: beatBusy, onSelect: () => void editBeat({ op: "move", beat: number, direction: "down" }) },
+                            { id: "up", label: "Move up", glyph: "ui-up", disabled: beatBusy, onSelect: () => void editBeat({ op: "move", beat: number, direction: "up" }) },
+                            { id: "down", label: "Move down", glyph: "ui-down", disabled: beatBusy, onSelect: () => void editBeat({ op: "move", beat: number, direction: "down" }) },
                             {
                               id: "reword",
                               label: "Reword this beat",
-                              glyph: "tab-notes",
+                              glyph: "ui-edit",
                               disabled: beatBusy,
                               onSelect: () => {
                                 closeEditor();
@@ -492,7 +492,7 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                                 setDraft(beat.text);
                               },
                             },
-                            { id: "skip", label: "Skip this beat", glyph: "quest-failed", separated: true, disabled: beatBusy, onSelect: () => void editBeat({ op: "skip", beat: number }) },
+                            { id: "skip", label: "Skip this beat", glyph: "ui-skip", separated: true, disabled: beatBusy, onSelect: () => void editBeat({ op: "skip", beat: number }) },
                           ];
                       return (
                         <ContextMenu

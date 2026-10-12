@@ -236,7 +236,7 @@ export function RulesetLibrary({
             // row, under the list of what it would change.
             const items: ContextMenuItem[] = [
               { id: "open", label: openId === ruleset.id ? "Close" : "Open", glyph: "system-rulesets", onSelect: () => void open(ruleset) },
-              { id: "delete", label: "Delete", glyph: "quest-failed", tone: "danger", separated: true, onSelect: () => void remove(ruleset) },
+              { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => void remove(ruleset) },
             ];
             return (
             <ContextMenu as="li" key={ruleset.id} label={ruleset.name} items={items} className="panel rounded-xl">

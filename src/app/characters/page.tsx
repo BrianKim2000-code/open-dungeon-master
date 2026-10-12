@@ -324,8 +324,8 @@ function CharacterCard({
   // and a long press all raise this list.
   const menu: ContextMenuItem[] = [
     { id: "open", label: "Open", glyph: "tab-characters", onSelect: () => router.push(`/characters/${character.id}`) },
-    { id: "portrait", label: "Upload portrait", glyph: "tab-handout", onSelect: onUploadPortrait },
-    { id: "duplicate", label: "Duplicate", glyph: "tab-notes", disabled: cloning, onSelect: onDuplicate },
+    { id: "portrait", label: "Upload portrait", glyph: "ui-upload", onSelect: onUploadPortrait },
+    { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: cloning, onSelect: onDuplicate },
     ...(character.campaigns ?? []).map((assignment, index) => ({
       id: `go-${assignment.campaignId}`,
       label: `Go to ${assignment.title}`,
@@ -336,7 +336,7 @@ function CharacterCard({
           assignment.kind === "workshop" ? `/workshop/${assignment.campaignId}` : `/campaigns/${assignment.campaignId}`,
         ),
     })),
-    { id: "delete", label: "Delete", glyph: "quest-failed", tone: "danger", separated: true, onSelect: onDelete },
+    { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: onDelete },
   ];
   return (
     <ContextMenu as="li" items={menu} label={character.name} className={cn("group relative", ui.cardHover, "p-4")}>
