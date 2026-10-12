@@ -152,6 +152,9 @@ export type CampaignState = {
   // asked rather than leaving the player to guess which world replied.
   answeredBy: string;
   campaign: Campaign | null;
+  // The table holds a story arc AI Story Setup has not built on yet (the
+  // lobby's warning, issue 249); false for anyone who does not steer.
+  prepArc: boolean;
   // What this seat may see and do, decided by the server
   // (src/lib/dm/viewer.ts). The client never re-derives it from ids, so a
   // control the server would refuse is never rendered in the first place.
@@ -303,6 +306,7 @@ const initialState: CampaignState = {
   error: "",
   answeredBy: "",
   campaign: null,
+  prepArc: false,
   // A plain player until the snapshot says otherwise: the safe default is
   // the one that shows the fewest controls and no secrets.
   caps: capsForRole("player", "ai"),
@@ -1173,6 +1177,7 @@ export function useCampaignStream(campaignId: string) {
         payload: {
           answeredBy,
           campaign: data.campaign,
+          prepArc: Boolean(data.prepArc),
           caps: data.caps ?? capsForRole("player", "ai"),
           me: data.me,
           members: data.members,
