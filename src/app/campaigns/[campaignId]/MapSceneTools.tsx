@@ -4,7 +4,6 @@ import { useId, useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { encodeImageForUpload } from "@/lib/image-encode";
-import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { LIGHT_LIMITS, LIGHT_PRESETS, describeLight } from "@/lib/battlemap/lights";
 import type { ObjectEntry } from "@/lib/battlemap/render/painted";

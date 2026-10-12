@@ -253,16 +253,6 @@ async function hashFile(file: string): Promise<string> {
   });
 }
 
-function envValue(file: string, key: string): string {
-  if (!fs.existsSync(file)) return "";
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return fs.readFileSync(file, "utf8").match(new RegExp(`^${escaped}=(.*)$`, "m"))?.[1]?.trim() || "";
-}
-
-function encryptionKey(): string {
-  return "";
-}
-
 // Only ever touch archives we named: a strict name plus a containment check,
 // so no request can walk out of the backup directory.
 export function resolveArchive(name: string): string | null {

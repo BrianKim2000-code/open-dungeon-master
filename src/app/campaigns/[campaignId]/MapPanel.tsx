@@ -12,8 +12,6 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { KitButton, PanelError, RowMenu } from "./PanelKit";
 import { SkyLayer } from "@/components/SkyLayer";
-import type { CastMember } from "@/lib/dm/cast";
-import type { Speaker } from "@/lib/dm/speech";
 import type { SceneState } from "@/lib/scene/state";
 import { mapPlaceholder } from "@/lib/placeholders";
 import { offersImages, useCapabilities } from "@/lib/use-capabilities";

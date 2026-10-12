@@ -926,7 +926,6 @@ export function SessionView({
           coins={state.coins}
           activeSheetId={state.activeSheetId}
           questsVersion={state.questsVersion}
-          cast={state.cast}
           relationshipsEnabled={relationshipsEnabled}
           beats={state.beats}
           storyDue={storyDue}

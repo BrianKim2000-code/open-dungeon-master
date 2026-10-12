@@ -19,7 +19,6 @@ const { createUser } = await import("../src/lib/db/users.ts");
 const { createCampaign, allocateSeq } = await import("../src/lib/db/campaigns.ts");
 const { mintSession } = await import("../src/lib/auth.ts");
 const { closeChapterRow, ensureOpenChapter, listChapters, SNAPSHOT_FULL_CHAPTERS } = await import("../src/lib/db/chapters.ts");
-const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
 const snapshotRoute = await import("../src/app/api/campaigns/[campaignId]/route.ts");
 const chaptersRoute = await import("../src/app/api/campaigns/[campaignId]/chapters/route.ts");
 

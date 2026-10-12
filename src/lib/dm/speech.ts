@@ -5,9 +5,8 @@
 // (SpokenLine, campaign_messages.speech_json): attributeSpeech below reads
 // person-written text, and model-written text gets the claims reader's
 // speakers first (src/lib/dm/claims.ts), with attributeSpeech for the lines
-// the reader leaves out. The transcript, the scene inserts and the
-// narration voices all draw the stored lines (segmentsOf), so they can never
-// disagree.
+// the reader leaves out. The transcript draws the stored lines
+// (segmentsOf), so what is shown can never disagree with who was recorded.
 //
 // attributeSpeech reads a passage the way a reader does it: by the line's
 // own tag ("...," says Marla; "...", dice Marla), else by whoever the

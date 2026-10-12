@@ -8,7 +8,6 @@ import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Select } from "@/components/ui/Select";
-import { Slider } from "@/components/ui/Slider";
 import {
   ATTITUDES,
   type GeneratableField,

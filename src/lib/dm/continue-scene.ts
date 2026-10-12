@@ -1,4 +1,4 @@
-import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
+import { getCampaignById } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import {
   getCampaignMessage,

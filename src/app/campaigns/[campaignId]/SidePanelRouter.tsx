@@ -2,7 +2,7 @@
 
 import { playingSheet, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 import { BookMarked, BookOpen, Flag, Heart, History, ListChecks, ScrollText, ShoppingBag, Users } from "lucide-react";
-import { Suspense, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { DmBeat } from "@/lib/db/dm-beats";
 import { ConsoleOutcomeBanner } from "@/app/campaigns/[campaignId]/ConsoleOutcomeBanner";
@@ -11,8 +11,6 @@ import type { CameraEvent, SceneState } from "@/lib/scene/state";
 import type { MapLabel } from "@/lib/battlemap/scene";
 import { EncounterPanel } from "@/app/campaigns/[campaignId]/EncounterPanel";
 import { PartyPanel } from "@/app/campaigns/[campaignId]/PartyPanel";
-import { segmentsOf, speakersIn } from "@/lib/dm/speech";
-import type { CastMember } from "@/lib/dm/cast";
 import {
   SubTabs,
   type PanelTab,
@@ -65,7 +63,6 @@ export type SidePanelRouterProps = {
   onLevelUp?: () => void;
   sheets: CharacterSheet[];
   members: CampaignMember[];
-  cast: CastMember[];
   meUserId: string;
   // Runs the story: the party lead in an AI campaign, the DM in a human-run
   // one. Gates every panel that curates the world or fixes its numbers.
@@ -181,7 +178,6 @@ export function SidePanelRouter({
   onLevelUp,
   sheets,
   members,
-  cast,
   meUserId,
   steersStory,
   isLead,

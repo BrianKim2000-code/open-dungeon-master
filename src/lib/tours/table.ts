@@ -3,11 +3,11 @@
 // data-tour values set in the session components; prepare names are the
 // side effects SessionView performs before a step (which tab to open,
 // which column a phone shows). Steps whose anchor is not on screen are
-// skipped, so one list serves every table: a tab that is off (maps,
-// voice, narration) simply never gets a step, and the cinematic frame's
-// pieces (the party rail from a wide table up, the turn order in the top
-// bar during a fight, the quest line once there is a quest) only get one
-// where they are showing.
+// skipped, so one list serves every table: a tab that is off (maps)
+// simply never gets a step, and the cinematic frame's pieces (the party
+// rail from a wide table up, the turn order in the top bar during a fight,
+// the quest line once there is a quest) only get one where they are
+// showing.
 import type { TourStep } from "@/lib/tours/logic";
 
 export const PLAYER_TOUR_ID = "table-player";

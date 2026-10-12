@@ -8,7 +8,6 @@
 //   npm run setup               all of it
 //   npm run setup -- --no-build  skip the production build (for npm run dev)
 import { spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
