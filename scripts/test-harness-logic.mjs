@@ -32,7 +32,7 @@ const { grokAdapter, grokArgs, grokAgentProfile, GROK_ENV } = await import("../s
 const { sniffImage, imageSize, acceptImage, MAX_HARNESS_IMAGE_BYTES } = await import("../src/lib/harness/images.ts");
 const { maskAccount } = await import("../src/lib/harness/status.ts");
 const { knownInstallDirs } = await import("../src/lib/harness/discover.ts");
-const { THIS_TURN_HEADING, THIS_MOMENT_HEADING } = await import("../src/lib/prompt-boundary.ts");
+const { THIS_TURN_HEADING, THIS_MOMENT_HEADING, MOMENT_INSTRUCTION } = await import("../src/lib/prompt-boundary.ts");
 const { buildDmMessages, buildGameStateBlock, ENCOUNTER_RULES, PLAYER_WHISPER_RULES, REAL_DICE_RULE } = await import(
   "../src/lib/dm/prompt.ts"
 );
@@ -349,10 +349,14 @@ test("a chat model reads the turn-to-turn state after the transcript, the same t
   assert.ok(!after[0].content.includes(THIS_MOMENT_HEADING), "no turn-to-turn state in the system message");
   const moment = after[1 + history.length];
   assert.equal(moment.role, "user");
-  assert.ok(moment.content.startsWith(THIS_MOMENT_HEADING) && moment.content.endsWith("=== END GAME STATE ==="));
+  assert.ok(moment.content.startsWith(THIS_MOMENT_HEADING));
+  // The newest player line is no longer the last thing read, so the moment
+  // closes on the instruction to resolve it, as an agent program's opening
+  // message does.
+  assert.ok(moment.content.endsWith(`=== END GAME STATE ===\n\n${MOMENT_INSTRUCTION}`));
   assert.deepEqual(after.slice(1, 1 + history.length), before.slice(1, 1 + history.length), "the history is untouched");
   assert.equal(after.at(-1).content, "DIRECTOR: the bell rings once.", "the director's note stays last");
-  assert.equal(`${after[0].content}\n\n${moment.content}`, before[0].content, "only the order changes, byte for byte");
+  assert.equal(`${after[0].content}\n\n${moment.content}`, `${before[0].content}\n\n${MOMENT_INSTRUCTION}`, "only the order changes, byte for byte");
   assert.deepEqual(plain.contextTrace, chat.contextTrace, "the budget and the trace are the same");
 });
 

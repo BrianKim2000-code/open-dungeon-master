@@ -19,6 +19,15 @@ export const THIS_TURN_HEADING = "=== THIS TURN ===";
 // framing, so the part still reads as authoritative there.
 export const THIS_MOMENT_HEADING = "=== GAME STATE, THIS MOMENT (authoritative; never contradict) ===";
 
+// Closes the turn-to-turn part when a chat model reads it after the history:
+// the newest player line is then no longer the last thing the model reads,
+// and on the default local model (Qwen3.6-35B) that cost the roll on an
+// explicit search in two of three scripted runs, narrated as found or not
+// found with no dice. An agent program's opening message ends on the same
+// instruction (src/lib/harness/render.ts renderTurn).
+export const MOMENT_INSTRUCTION =
+  "It is your turn as the Dungeon Master. Resolve what the players just did with your tools, then write the narration.";
+
 // A system prompt cut at THIS_MOMENT_HEADING: the text before it, and the
 // turn-to-turn part from the heading on ("" when the prompt has none).
 export function splitAtMoment(text: string): { standing: string; moment: string } {
