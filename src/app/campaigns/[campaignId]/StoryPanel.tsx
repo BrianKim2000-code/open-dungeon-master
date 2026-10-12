@@ -886,7 +886,19 @@ export function StoryPanel({
       <div className="space-y-2">
         {steersStory ? <ArcCard campaignId={campaignId} /> : null}
         {steersStory ? <NpcReviewCard campaignId={campaignId} /> : null}
-        (loadError ? <LoadFailed error={loadError} onRetry={() => setReloads((current) => current + 1)} /> : loaded ? <EmptyState art="scrolls" size="sm" title="The story has not begun" hint="Chapters appear here as the adventure unfolds." /> : null)
+        {loadError ? (
+          <LoadFailed
+            error={loadError}
+            onRetry={() => setReloads((current) => current + 1)}
+          />
+        ) : loaded ? (
+          <EmptyState
+            size="sm"
+            art="scrolls"
+            title="The story has not begun"
+            hint="Chapters appear here as the adventure unfolds."
+          />
+        ) : null}
       </div>
     );
   }

@@ -337,7 +337,18 @@ export function RulesetLibrary({
         </ul>
         </>
       ) : (
-        (loadError ? <LoadFailed error={loadError} onRetry={() => void load()} /> : loaded ? <EmptyState size="md" art="scrolls" title="No saved rulesets yet. Set the rules below the way your table plays, then save them." /> : null)
+        (loadError ? (
+          <LoadFailed
+            error={loadError}
+            onRetry={() => void load()}
+          />
+        ) : loaded ? (
+          <EmptyState
+            size="md"
+            art="scrolls"
+            title="No saved rulesets yet. Set the rules below the way your table plays, then save them."
+          />
+        ) : null)
       )}
 
       <div className="flex flex-wrap items-center gap-2 text-sm" data-tour="rules-save-as">

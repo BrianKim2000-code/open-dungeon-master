@@ -306,7 +306,18 @@ export default function WorkshopListPage() {
         </ul>
       ) : (
         <div className={`${ui.card} ornate p-4`}>
-          (loadError ? <LoadFailed error={loadError} onRetry={() => { setLoading(true); setReloads((current) => current + 1); }} /> : loaded ? <EmptyState art="map" title="No workshops yet." hint="A workshop is yours alone. Nothing in it reaches a table until you import it." /> : null)
+          {loadError ? (
+            <LoadFailed
+              error={loadError}
+              onRetry={() => { setLoading(true); setReloads((current) => current + 1); }}
+            />
+          ) : loaded ? (
+            <EmptyState
+              art="map"
+              title="No workshops yet."
+              hint="A workshop is yours alone. Nothing in it reaches a table until you import it."
+            />
+          ) : null}
         </div>
       )}
     </main>
