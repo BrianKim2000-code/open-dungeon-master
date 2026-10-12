@@ -32,21 +32,6 @@ async function portInUse(port) {
   });
 }
 
-function envValue(file, key) {
-  if (!fs.existsSync(file)) return "";
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return fs.readFileSync(file, "utf8").match(new RegExp(`^${escaped}=(.*)$`, "m"))?.[1]?.trim() || "";
-}
-
-function encryptionKey() {
-  const fromProcess = (process.env.DB_ENCRYPTION_KEY || "").trim();
-  if (fromProcess) return fromProcess;
-  const fromEnv = envValue(path.join(root, ".env.server"), "DB_ENCRYPTION_KEY");
-  if (fromEnv) return fromEnv;
-  const dockerKey = path.join(root, "data", ".db-key");
-  return fs.existsSync(dockerKey) ? fs.readFileSync(dockerKey, "utf8").trim() : "";
-}
-
 if (await portInUse(appPort)) {
   fail(`the app is listening on :${appPort}; stop it before taking a backup so the SQLite snapshot is consistent`);
 }
@@ -61,16 +46,9 @@ if (!fs.existsSync(dbPath)) {
   fail(`database not found: ${dbPath}`);
 }
 
-const key = encryptionKey();
-if (!key) {
-  fail("DB_ENCRYPTION_KEY was not found in the environment, .env.server, or data/.db-key");
-}
-
-const Database = (await import("better-sqlite3-multiple-ciphers")).default;
+const Database = (await import("better-sqlite3")).default;
 const db = new Database(dbPath);
 try {
-  db.pragma("cipher='chacha20'");
-  db.pragma(`key='${key.replaceAll("'", "''")}'`);
   db.pragma("wal_checkpoint(TRUNCATE)");
   const integrity = db.pragma("integrity_check", { simple: true });
   if (integrity !== "ok") fail(`database integrity check failed: ${integrity}`);
@@ -108,7 +86,6 @@ try {
   const archive = path.join(targetDir, `odm-backup-${stamp}.tar.gz`);
   execFileSync("tar", ["-czf", archive, "-C", stage, "."], { stdio: "pipe" });
 
-  // Archives can pass 2 GiB, where readFileSync throws; hash over a stream.
   const sha = await new Promise((resolve, reject) => {
     const hash = crypto.createHash("sha256");
     const stream = fs.createReadStream(archive);
@@ -119,7 +96,6 @@ try {
   const sizeMb = (fs.statSync(archive).size / 2 ** 20).toFixed(1);
   console.log(`backup: ${archive} (${sizeMb} MB)`);
   console.log(`sha256: ${sha}`);
-  console.log("The archive contains the database encryption key; store it as a secret.");
 } finally {
   fs.rmSync(stage, { recursive: true, force: true });
 }

@@ -48,28 +48,10 @@ step(1, total, "Checking Node");
   note(`Node ${process.versions.node}`);
 }
 
-// 2. The database key. Never replaced: a database made under one key cannot
-// be read with another, so an existing database with no key is a stop.
-step(2, total, "The database key");
+// 2. Database: unencrypted in this simplified build, no key needed.
+step(2, total, "The database");
 {
-  const envPath = path.join(root, ".env.server");
-  const env = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
-  const hasKey = /^\s*DB_ENCRYPTION_KEY\s*=\s*\S+/m.test(env) || Boolean(process.env.DB_ENCRYPTION_KEY);
-  const dbPath = process.env.SQLITE_DB_PATH || path.join(root, "data", "local-roleplay.sqlite");
-  if (hasKey) {
-    note("Already set in .env.server. Kept as it is.");
-  } else if (fs.existsSync(dbPath) && fs.statSync(dbPath).size > 0) {
-    console.error(
-      `      A database already exists at ${path.relative(root, dbPath)} but .env.server has no DB_ENCRYPTION_KEY.\n` +
-        "      A new key cannot open it. Put the key it was made with back in .env.server, then run this again.",
-    );
-    process.exit(1);
-  } else {
-    const line = `DB_ENCRYPTION_KEY=${randomBytes(32).toString("hex")}\n`;
-    fs.writeFileSync(envPath, env && !env.endsWith("\n") ? `${env}\n${line}` : `${env}${line}`, { mode: 0o600 });
-    note("Made one and saved it in .env.server.");
-    note(gold("Back that file up. The database is encrypted with the key and cannot be read without it."));
-  }
+  note("Unencrypted SQLite at data/local-roleplay.sqlite (no key needed).");
 }
 
 // 3. The content pack: every spell, feat, item, subclass and monster.

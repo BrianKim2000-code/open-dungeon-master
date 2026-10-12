@@ -2,7 +2,6 @@ import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { serverEnv } from "../server-env.ts";
 import { maintenanceState } from "../maintenance.ts";
 import { populateFeatures, populateFeaturesForClasses } from "@/lib/srd/features";
 import { packSubclassExtras } from "@/lib/content/archetype-tables";
@@ -2975,19 +2974,7 @@ export function resyncLibraryTraining(db: SqliteDatabase): number {
   return changed;
 }
 
-let plaintextWarned = false;
-
-function requireDbKey() {
-  const key = serverEnv("DB_ENCRYPTION_KEY");
-  if (!key) {
-    throw new Error(
-      "DB_ENCRYPTION_KEY is not set. Generate one with `openssl rand -hex 32` and add it to .env.server. " +
-        "For an existing plaintext database, then run: node scripts/migrate-encrypt-db.mjs",
-    );
-  }
-
-  return key;
-}
+// Encryption removed: the database is stored unencrypted for simplicity.
 
 // Module-level (not on globalThis) so a dev HMR reload of this file re-runs
 // ensureSchema once on the next call, picking up schema edits; in prod it
@@ -3027,32 +3014,14 @@ export function getDatabase() {
     return globalThis.__localRoleplayDb;
   }
 
-  const key = requireDbKey();
   mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = openDatabase(dbPath);
-  if (db.encrypted) {
-    db.pragma("cipher='chacha20'");
-    db.pragma(`key='${key.replaceAll("'", "''")}'`);
-  } else if (!plaintextWarned) {
-    // Node's built-in SQLite (the engine on hosts without the native
-    // module, such as the Android app) has no cipher: the file is plain.
-    plaintextWarned = true;
-    console.warn(
-      `[db] ${db.engine} SQLite engine cannot encrypt; ${dbPath} is stored unencrypted.`,
-    );
-  }
   let tables = 0;
   try {
     tables = Number(Object.values(db.prepare("SELECT count(*) FROM sqlite_master").get() as object)[0]) || 0;
-  } catch {
+  } catch (error) {
     db.close();
-    throw new Error(
-      db.encrypted
-        ? `Could not decrypt ${dbPath}: wrong or missing DB_ENCRYPTION_KEY. ` +
-            "If this database predates encryption, run: node scripts/migrate-encrypt-db.mjs"
-        : `Could not open ${dbPath}: it is encrypted and the ${db.engine} SQLite engine has no cipher. ` +
-            "Set ODM_SQLITE_DRIVER=native on a host with the native module.",
-    );
+    throw new Error(`Could not open ${dbPath}: ${(error as Error).message}`);
   }
   // A new database hands the pages its deletes free back to the disk a
   // little at a time (src/lib/ops/retention.ts). Only possible before the

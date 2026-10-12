@@ -112,7 +112,7 @@ function canonicalLookups() {
   let monsterNames = new Map();
   if (existsSync(CONTENT_DB)) {
     try {
-      const { default: Database } = require("better-sqlite3-multiple-ciphers");
+      const { default: Database } = require("better-sqlite3");
       const db = new Database(CONTENT_DB, { readonly: true });
       monsterNames = new Map(db.prepare("SELECT slug, name FROM monsters").all().map((row) => [row.slug, row.name]));
       db.close();

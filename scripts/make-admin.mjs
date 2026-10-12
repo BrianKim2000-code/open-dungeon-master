@@ -1,12 +1,8 @@
 // Promote an existing account to global admin (or demote with --revoke).
 // Usage: node scripts/make-admin.mjs <username> [--revoke]
-// Reads DB_ENCRYPTION_KEY from .env.server like the app does. Safe to run
-// while the server is up (single UPDATE); the change applies on the user's
-// next request.
-import Database from "better-sqlite3-multiple-ciphers";
+import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { serverEnv } from "../src/lib/server-env.ts";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(process.cwd(), "data", "local-roleplay.sqlite");
@@ -23,22 +19,16 @@ if (!username) {
   fail("Usage: node scripts/make-admin.mjs <username> [--revoke]");
 }
 
-const key = serverEnv("DB_ENCRYPTION_KEY");
-if (!key) {
-  fail("DB_ENCRYPTION_KEY is not set in .env.server.");
-}
 if (!existsSync(dbPath)) {
   fail(`No database at ${dbPath}. Start the app once (or register) first.`);
 }
 
 const db = new Database(dbPath);
-db.pragma("cipher='chacha20'");
-db.pragma(`key='${key.replaceAll("'", "''")}'`);
 try {
   db.prepare("SELECT count(*) FROM sqlite_master").get();
-} catch {
+} catch (error) {
   db.close();
-  fail(`Could not decrypt ${dbPath}: wrong or missing DB_ENCRYPTION_KEY.`);
+  fail(`Could not open ${dbPath}: ${error.message}`);
 }
 
 const columns = db.prepare("PRAGMA table_info(users)").all();

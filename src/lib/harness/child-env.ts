@@ -75,7 +75,7 @@ const PER_HARNESS: Record<string, readonly string[]> = {
 
 // Names that must never pass, whatever an allowlist entry above might
 // match in the future. Checked last.
-const NEVER = /^(DB_ENCRYPTION_KEY|OPENAI_COMPAT_API_KEY|OPENROUTER_API_KEY|OPENAI_IMAGE_API_KEY|DISCORD_CLIENT_SECRET|SQLITE_DB_PATH|CONTENT_DB_PATH|ODM_.*)$/;
+const NEVER = /^(OPENAI_COMPAT_API_KEY|OPENROUTER_API_KEY|OPENAI_IMAGE_API_KEY|DISCORD_CLIENT_SECRET|SQLITE_DB_PATH|CONTENT_DB_PATH|ODM_.*)$/;
 
 export function buildChildEnv(
   parent: Record<string, string | undefined>,
@@ -112,7 +112,7 @@ export function leaksServerSecret(
     if (NEVER.test(name)) {
       return name;
     }
-    for (const secretName of ["DB_ENCRYPTION_KEY", "OPENAI_COMPAT_API_KEY", "OPENROUTER_API_KEY", "OPENAI_IMAGE_API_KEY"]) {
+    for (const secretName of ["OPENAI_COMPAT_API_KEY", "OPENROUTER_API_KEY", "OPENAI_IMAGE_API_KEY"]) {
       const secret = parent[secretName];
       if (secret && secret.length >= 8 && value.includes(secret)) {
         return name;

@@ -187,7 +187,7 @@ for (const group of groupByFranchise(packs.map(({ pack }) => summarizePack(pack)
 }
 
 if (fs.existsSync(contentDbPath)) {
-  const { default: Database } = await import("better-sqlite3-multiple-ciphers");
+  const { default: Database } = await import("better-sqlite3");
   const db = new Database(contentDbPath, { readonly: true });
   const monsterRows = db.prepare("SELECT slug, cr, type FROM monsters").all();
   const crBySlug = new Map(monsterRows.map((r) => [r.slug, r.cr]));

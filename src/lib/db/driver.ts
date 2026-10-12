@@ -1,11 +1,11 @@
 // The one place SQLite is opened. Two engines sit behind the same small
 // interface:
 //
-//  - better-sqlite3-multiple-ciphers, the native module every desktop and
-//    server install ships, which also encrypts the game database at rest.
+//  - better-sqlite3, the native module every desktop and
+//    server install ships, which stores the game database unencrypted.
 //  - Node's built-in node:sqlite, for hosts where no native module can be
 //    loaded: the Android app runs the server on a Node built for the phone,
-//    where the addon does not exist. SQLite there is plain (no cipher).
+//    where the addon does not exist.
 //
 // The app only ever uses prepare/run/get/all, exec, pragma, transaction and
 // close, so that is the whole contract. ODM_SQLITE_DRIVER=node|native forces
@@ -53,9 +53,6 @@ export interface SqliteDatabase {
   pragma(source: string): unknown;
   transaction<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R;
   close(): void;
-  // Which engine opened the file, and whether cipher/key pragmas mean
-  // anything on it. The core module warns when a key was requested but the
-  // engine cannot honor it.
   readonly engine: "native" | "node";
   readonly encrypted: boolean;
 }
@@ -81,16 +78,14 @@ function chooseEngine(): Engine {
   return resolvedEngine;
 }
 
-type NativeModule = typeof import("better-sqlite3-multiple-ciphers");
+type NativeModule = { new (file: string, options?: unknown): { prepare(sql: string): unknown; exec(sql: string): void; pragma(source: string): unknown; transaction(fn: unknown): unknown; close(): void } };
 
 let nativeModule: NativeModule | null | undefined;
 
 function loadNative(): NativeModule | null {
   if (nativeModule !== undefined) return nativeModule;
   try {
-    // On a host without the addon this throws and the built-in engine
-    // takes over.
-    nativeModule = localRequire("better-sqlite3-multiple-ciphers") as NativeModule;
+    nativeModule = localRequire("better-sqlite3") as unknown as NativeModule;
   } catch {
     nativeModule = null;
   }
@@ -159,24 +154,18 @@ export function openDatabase(file: string, options: OpenOptions = {}): SqliteDat
   if (engine === "native") {
     const Native = loadNative();
     if (!Native) {
-      throw new Error("ODM_SQLITE_DRIVER=native but better-sqlite3-multiple-ciphers cannot be loaded.");
+      throw new Error("ODM_SQLITE_DRIVER=native but better-sqlite3 cannot be loaded.");
     }
     return wrapNative(new Native(file, options));
   }
   return openNode(file, options);
 }
 
-function wrapNative(db: import("better-sqlite3-multiple-ciphers").Database): SqliteDatabase {
-  // One cache per open database: a statement belongs to the connection that
-  // prepared it and must never be handed to another. Schema changes only
-  // ever arrive through exec (ensureSchema's CREATE, ALTER and rebuilds), so
-  // exec also empties the cache: SQLite re-prepares a stale statement on its
-  // own, but node:sqlite reads the column count before the first step, and
-  // a SELECT * cached before an ADD COLUMN would miss the new column once.
+function wrapNative(db: any): SqliteDatabase {
   const statements = new StatementCache<SqliteStatement>();
   return {
     engine: "native",
-    encrypted: true,
+    encrypted: false,
     prepare: (sql) => statements.take(sql, (text) => watchWrites(text, db.prepare(text) as SqliteStatement)),
     exec: (sql) => {
       statements.clear();
@@ -204,13 +193,9 @@ function openNode(file: string, options: OpenOptions): SqliteDatabase {
   }
   const db = new DatabaseSync(file, {
     readOnly: Boolean(options.readonly),
-    // Matches better-sqlite3: constraints are switched on by the pragma the
-    // core module runs, and switched off around schema rebuilds.
     enableForeignKeyConstraints: false,
-    // better-sqlite3's default busy timeout.
     timeout: 5000,
   });
-  // Nested transactions become savepoints, as they do in better-sqlite3.
   let depth = 0;
   const transaction = <A extends unknown[], R>(fn: (...args: A) => R) => {
     return (...args: A): R => {
@@ -250,14 +235,10 @@ function openNode(file: string, options: OpenOptions): SqliteDatabase {
     engine: "node",
     encrypted: false,
     prepare: (sql) => statements.take(sql, (text) => watchWrites(text, prepare(text))),
-    // Cleared for the reason given in wrapNative. The transaction wrapper
-    // above talks to the raw handle, so BEGIN and COMMIT leave the cache be.
     exec: (sql) => {
       statements.clear();
       db.exec(sql);
     },
-    // Cipher and key pragmas are extensions of the native build; plain
-    // SQLite ignores pragmas it does not know, so they simply do nothing.
     pragma: (source) => db.prepare(`PRAGMA ${source}`).all(),
     transaction,
     close: () => {

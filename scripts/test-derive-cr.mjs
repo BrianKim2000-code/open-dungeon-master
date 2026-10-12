@@ -334,7 +334,7 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const contentDbPath = path.resolve(scriptsDir, "../data/content/open5e.sqlite");
 
 if (fs.existsSync(contentDbPath)) {
-  const { default: Database } = await import("better-sqlite3-multiple-ciphers");
+  const { default: Database } = await import("better-sqlite3");
   const { parseMonster } = await import("../src/lib/bestiary/statblock.ts");
   const db = new Database(contentDbPath, { readonly: true });
   const rows = db

@@ -81,7 +81,7 @@ test("suggestEnemies respects the party budget and spreads CRs", () => {
 
 // Content-pack integrity: every catalog slug must exist with a matching CR.
 if (fs.existsSync(contentDbPath)) {
-  const { default: Database } = await import("better-sqlite3-multiple-ciphers");
+  const { default: Database } = await import("better-sqlite3");
   const db = new Database(contentDbPath, { readonly: true });
   const rows = db.prepare("SELECT slug, cr, type FROM monsters").all();
   const crBySlug = new Map(rows.map((row) => [row.slug, row.cr]));

@@ -6,7 +6,7 @@
 // Usage: node scripts/backfill-embeddings.mjs [campaignId]
 // Safe to run while the server is up, but prefer a quiet moment: it shares
 // the SQLite file and a few CPU cores with live turns.
-import Database from "better-sqlite3-multiple-ciphers";
+import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
@@ -16,7 +16,6 @@ import {
   embeddingIndexStale,
   vectorToBuffer,
 } from "../src/lib/embeddings.ts";
-import { serverEnv } from "../src/lib/server-env.ts";
 import { chunkScenes } from "../src/lib/dm/scene-logic.ts";
 
 const dbPath =
@@ -27,22 +26,16 @@ function fail(message) {
   process.exit(1);
 }
 
-const key = serverEnv("DB_ENCRYPTION_KEY");
-if (!key) {
-  fail("DB_ENCRYPTION_KEY is not set in .env.server.");
-}
 if (!existsSync(dbPath)) {
   fail(`No database at ${dbPath}.`);
 }
 
 const db = new Database(dbPath);
-db.pragma("cipher='chacha20'");
-db.pragma(`key='${key.replaceAll("'", "''")}'`);
 try {
   db.prepare("SELECT count(*) FROM sqlite_master").get();
-} catch {
+} catch (error) {
   db.close();
-  fail(`Could not decrypt ${dbPath}: wrong or missing DB_ENCRYPTION_KEY.`);
+  fail(`Could not open ${dbPath}: ${error.message}`);
 }
 
 const hasSceneChunks = db

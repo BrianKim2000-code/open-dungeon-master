@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import Database from "better-sqlite3-multiple-ciphers";
+import Database from "better-sqlite3";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");

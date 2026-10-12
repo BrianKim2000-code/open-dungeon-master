@@ -24,7 +24,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3-multiple-ciphers";
+import Database from "better-sqlite3";
 import { ADDED, DROPPED, REPLACED } from "./lib/magic-item-corrections.mjs";
 import { categoryBase, DAILY_POWERS, GEAR_RIDERS } from "./lib/magic-item-riders.mjs";
 

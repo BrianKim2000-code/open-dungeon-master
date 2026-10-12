@@ -99,20 +99,9 @@ export function resolveTtsBackend(input: TtsBackendInput): TtsBackend {
   };
 }
 
-// The server's saved narration backend. `override` carries the admin form's
-// unsaved values so "Test" tries what is typed, not what was last saved.
-export function ttsBackend(override: Partial<Pick<TtsBackendInput, "provider" | "kokoroUrl" | "openaiUrl" | "model" | "voice">> & { apiKey?: string } = {}): TtsBackend {
-  const speech = getGlobalConfig().speech;
-  const provider = override.provider ?? configValue(speech.ttsProvider, "TTS_PROVIDER");
-  return resolveTtsBackend({
-    provider,
-    kokoroUrl: override.kokoroUrl?.trim() || configValue(speech.kokoroUrl, "KOKORO_URL"),
-    openaiUrl: override.openaiUrl?.trim() || configValue(speech.ttsBaseUrl, "TTS_BASE_URL"),
-    model: override.model?.trim() || configValue(speech.ttsModel, "TTS_MODEL"),
-    apiKey: override.apiKey?.trim() || configValue(speech.ttsApiKey, "TTS_API_KEY"),
-    voice: override.voice?.trim() || configValue(speech.ttsVoice, "TTS_VOICE"),
-    sharedOpenAiKey: openAiSpeechConfig().apiKey,
-  });
+// Simplified: TTS disabled. Always returns off so no network request is made.
+export function ttsBackend(_override: Partial<Pick<TtsBackendInput, "provider" | "kokoroUrl" | "openaiUrl" | "model" | "voice">> & { apiKey?: string } = {}): TtsBackend {
+  return { provider: "off", v1: "", model: "", apiKey: "", defaultVoice: "" };
 }
 
 export type TtsVoice = { id: string; label: string };
