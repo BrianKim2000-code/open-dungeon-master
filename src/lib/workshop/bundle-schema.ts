@@ -101,10 +101,11 @@ const locationSchema = z.object({
   name: z.string().trim().min(1).max(120),
   layoutDescription: z.string().max(8_000).default(""),
   connections: z.array(z.string().trim().max(120)).max(40).default([]),
-  // The map the place stands on, as an index into `maps`, and the sound it
-  // makes (normalised on import by src/lib/battlemap/scene.ts).
+  // The map the place stands on, as an index into `maps`, and the kind of
+  // place it is (src/lib/scenes.ts), which the battle map drawn here takes
+  // its terrain and light from.
   map: indexSchema,
-  ambience: z.record(z.string(), z.unknown()).nullable().default(null),
+  scene: z.string().trim().max(60).nullable().default(null),
   ref: refSchema,
   shared: sharedSchema,
 });
@@ -126,8 +127,6 @@ const npcSchema = z.object({
   // import relies on (src/lib/db/content-import.ts).
   relations: z.string().max(8_000).default(""),
   portrait: bundleImageSchema,
-  // Their read-aloud voice, normalised on import (src/lib/npcs/forge.ts).
-  voice: z.record(z.string(), z.unknown()).nullable().default(null),
   // The stat block they fight with: a published monster's slug, or the name
   // of one of the bundle's own monsters (a "homebrew:" id means nothing on
   // another machine, so the export writes the name).
@@ -201,16 +200,15 @@ const mapSchema = z.object({
   // a bundle written before skins existed still reads; normalised on import.
   skin: z.record(z.string(), z.unknown()).default({}),
   // The scene layer (src/lib/battlemap/scene.ts): labels, props, door
-  // states, light zones, freehand drawings, the DM-only overlay picture and
-  // the sound, plus whether the sky lights it. Each normalised on import
-  // against the map's own grid.
+  // states, light zones, freehand drawings, the DM-only overlay picture,
+  // plus whether the sky lights it. Each normalised on import against the
+  // map's own grid.
   outdoors: z.boolean().nullable().default(null),
   labels: z.array(z.unknown()).max(400).default([]),
   props: z.array(z.unknown()).max(400).default([]),
   doors: z.record(z.string(), z.unknown()).default({}),
   zones: z.array(z.unknown()).max(200).default([]),
   drawings: z.array(z.unknown()).max(400).default([]),
-  ambience: z.record(z.string(), z.unknown()).default({}),
   overlay: bundleImageSchema,
   ref: refSchema,
   shared: sharedSchema,

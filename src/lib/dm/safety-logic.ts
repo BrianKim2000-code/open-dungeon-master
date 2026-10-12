@@ -127,24 +127,3 @@ export function renderGmBlock(gm: GmSettings): string {
   }
   return parts.length ? `GM STYLE:\n- ${parts.join("\n- ")}` : "";
 }
-
-// A bed for the tone when the scene names none (docs/vtt-parity-
-// implementation-plan.md 9.2): eerie rooms drip, epic ones ring.
-const TONE_BED: Partial<Record<Tone, string>> = {
-  eerie: "cave",
-  grim: "rain",
-  epic: "wind",
-  whimsical: "market",
-  political: "tavern",
-  intimate: "camp",
-};
-
-export function toneBedBias(tone: Tone[]): string | null {
-  for (const entry of tone) {
-    const bed = TONE_BED[entry];
-    if (bed) {
-      return bed;
-    }
-  }
-  return null;
-}

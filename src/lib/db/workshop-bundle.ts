@@ -14,10 +14,8 @@ import {
   writeBundleShelf,
   type SharedKind,
 } from "@/lib/db/workshop-bundle-parts";
-import { normalizeAmbience } from "@/lib/battlemap/scene";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
-import { sceneIds } from "@/lib/ambience/catalog";
-import { normalizeNpcVoice } from "@/lib/npcs/forge";
+import { sceneIds } from "@/lib/scenes";
 import { foldName } from "@/lib/language/text-logic";
 import {
   EXTRAS_LIMITS,
@@ -295,7 +293,7 @@ function writeBundleRows(
       db.prepare(
         `INSERT INTO locations
            (id, campaign_id, name, layout_description, connections_json, visited, is_current,
-            prepared_map_id, ambience_json, created_at, updated_at)
+            prepared_map_id, scene, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)`,
       ).run(
         id,
@@ -304,7 +302,7 @@ function writeBundleRows(
         location.layoutDescription,
         JSON.stringify(location.connections),
         idAt(ids.maps, location.map),
-        location.ambience ? JSON.stringify(normalizeAmbience(location.ambience)) : null,
+        location.scene ?? null,
         now,
         now,
       );
@@ -332,13 +330,12 @@ function writeBundleRows(
       }
       usedNpcNames.add(name.toLowerCase());
       const id = crypto.randomUUID();
-      const voice = npc.voice ? normalizeNpcVoice(npc.voice) : null;
       db.prepare(
         `INSERT INTO npcs
            (id, campaign_id, name, attitude, trait, location, role, gender, last_shift_turn,
             aliases_json, personality_json, goals_json, relations_json, bonds_json,
-            pressure_json, arc_cast_id, portrait_url, voice_json, stat_block, archived, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', ?, ?, ?, 0, ?, ?)`,
+            pressure_json, arc_cast_id, portrait_url, stat_block, archived, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', ?, ?, 0, ?, ?)`,
       ).run(
         id,
         workshop.id,
@@ -357,7 +354,6 @@ function writeBundleRows(
         // existed on this machine.
         npc.relations || "[]",
         npcPortraits[index],
-        voice ? JSON.stringify(voice) : null,
         npc.statBlock ?? "",
         now,
         now,

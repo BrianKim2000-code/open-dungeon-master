@@ -2,7 +2,7 @@
 // fight and outside the party's own sheets. Names match the tool names the
 // AI DM is offered exactly.
 import type { CatalogEntry } from "@/lib/dm/catalog-types";
-import { cueOptions, sceneOptions } from "@/lib/ambience/catalog";
+import { sceneOptions } from "@/lib/scenes";
 import { RELATIONSHIP_BEAT_NAMES } from "@/lib/dm/relationship-logic";
 import { TOLD_GENDERS } from "@/lib/gender";
 import {
@@ -30,14 +30,13 @@ const NOTE = {
   placeholder: "One short line for the record",
 };
 
-// The kind of place, from the ambience beds: its sound, battle map and
-// stand-in picture follow it.
+// The kind of place: its battle map and stand-in picture follow it.
 const SCENE_FIELD = {
   name: "scene",
   label: "Kind of place",
   kind: "select",
   options: sceneOptions(),
-  help: "Sets the place's sound, battle map and picture. Blank keeps what it was.",
+  help: "Sets the place's battle map and picture. Blank keeps what it was.",
 } as const;
 
 export const GENDER_FIELD = {
@@ -606,38 +605,10 @@ export const STORY_ADJUDICATIONS: CatalogEntry[] = [
   },
 ];
 
-// The table itself: what the room is hearing. Not the world, because the
-// party cannot act on it, and not the story, because it says nothing about
-// what happened; it is the DM reaching for the volume knob.
+// The table itself. Not the world, because the party cannot act on it, and
+// not the story, because it says nothing about what happened; it is the DM
+// reaching for the table's own furniture.
 export const TABLE_ADJUDICATIONS: CatalogEntry[] = [
-  {
-    name: "set_ambience",
-    label: "Set the sound",
-    category: "table",
-    summary: "Changes the ambience bed, the music, or both. Leave a layer blank to keep it.",
-    fields: [
-      {
-        name: "bed",
-        label: "Where they are",
-        kind: "select",
-        options: [{ value: "none", label: "Silence" }, ...cueOptions("bed")],
-        help: "Blank keeps whatever is already playing.",
-      },
-      {
-        name: "music",
-        label: "Mood",
-        kind: "select",
-        options: [{ value: "none", label: "Silence" }, ...cueOptions("music")],
-        help: "Blank keeps whatever is already playing.",
-      },
-      {
-        name: "hold",
-        label: "Hold it here",
-        kind: "boolean",
-        help: "Stops the engine changing this on its own when the party moves.",
-      },
-    ],
-  },
   {
     name: "show_title",
     label: "Show a title card",
@@ -656,21 +627,6 @@ export const TABLE_ADJUDICATIONS: CatalogEntry[] = [
           { value: "dawn", label: "Dawn (relief)" },
           { value: "plain", label: "Plain" },
         ],
-      },
-    ],
-  },
-  {
-    name: "play_sting",
-    label: "Play a sound",
-    category: "table",
-    summary: "One sound, once, over whatever is playing. Changes nothing else.",
-    fields: [
-      {
-        name: "cue",
-        label: "Sound",
-        kind: "select",
-        required: true,
-        options: cueOptions("sting"),
       },
     ],
   },

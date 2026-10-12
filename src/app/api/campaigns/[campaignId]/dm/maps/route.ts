@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requirePrepAuthority } from "@/lib/campaign-api";
 import { MAP_SIZE, MAP_THEMES } from "@/lib/battlemap/generate";
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import { UVTT_MAX_POINTS, UVTT_SIZE } from "@/lib/battlemap/uvtt";
 import { isBackdropPath } from "@/lib/battlemap/backdrop";
 import { skinById } from "@/lib/battlemap/skins";

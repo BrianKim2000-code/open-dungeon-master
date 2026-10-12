@@ -6,8 +6,6 @@ import { useAutosave, type SaveState } from "@/lib/use-autosave";
 import { mapInput } from "@/app/campaigns/[campaignId]/mapUi";
 import { PanelHead } from "@/app/campaigns/[campaignId]/mapUi";
 import type { PreparedMap } from "@/app/workshop/maps/types";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 
 // The words on a prepared map: name, tags and notes, saved on their own
 // 700 ms after the last keystroke (docs/vtt-parity-implementation-plan.md
@@ -103,18 +101,16 @@ export function MapDetailsPanel({ words, knownTags, children }: { words: MapWord
       </div>
       <div className="space-y-1">
         <span className="font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">Notes</span>
-        <DictateField label="Map notes" onTranscript={(text) => words.setNotes(appendDictation(words.words.notes, text, 4000))}>
-          <textarea
-            value={words.words.notes}
-            aria-label="Notes"
-            maxLength={4000}
-            onChange={(event) => words.setNotes(event.target.value)}
-            onBlur={() => void words.flush()}
-            rows={3}
-            placeholder="What lives here. Nobody but you reads this."
-            className={mapInput}
-          />
-        </DictateField>
+        <textarea
+          value={words.words.notes}
+          aria-label="Notes"
+          maxLength={4000}
+          onChange={(event) => words.setNotes(event.target.value)}
+          onBlur={() => void words.flush()}
+          rows={3}
+          placeholder="What lives here. Nobody but you reads this."
+          className={mapInput}
+        />
       </div>
     </section>
   );

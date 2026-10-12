@@ -17,8 +17,6 @@ import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { TokenFace } from "@/app/campaigns/[campaignId]/BoardChrome";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 import { ROLL_KIND_LABELS, rollChronicleLead, rollToastLead } from "@/lib/roll-labels";
 import { LengthNote } from "@/components/ui/LengthNote";
 import { atBottom, chronicleSignature, chronicleSystemLine, chronicleWindow } from "@/lib/chronicle-logic";
@@ -611,30 +609,23 @@ export function TabletopChronicle({
             ))}
           </div>
           <div className="cine-chronicle-well" data-over={tooLong ? "" : undefined}>
-            <DictateField
-              label="Your move"
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  onSubmit(event);
+                }
+              }}
+              rows={2}
               disabled={inputBlocked}
-              className="min-w-0 flex-1"
-              onTranscript={(text) => setInput(appendDictation(input, text))}
-            >
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    onSubmit(event);
-                  }
-                }}
-                rows={2}
-                disabled={inputBlocked}
-                placeholder={placeholder}
-                aria-label="Your move"
-                aria-describedby={noteId}
-                aria-invalid={tooLong || undefined}
-                className="cine-chronicle-input"
-              />
-            </DictateField>
+              placeholder={placeholder}
+              aria-label="Your move"
+              aria-describedby={noteId}
+              aria-invalid={tooLong || undefined}
+              className="cine-chronicle-input"
+            />
             <button type="submit" disabled={sending || !input.trim() || inputBlocked || tooLong} className="cine-chronicle-send" aria-label="Send">
               Send <span aria-hidden="true">&#10230;</span>
             </button>

@@ -279,7 +279,7 @@ export function MapPanel({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={mapPlaceholder(
-                  { scene: shown.ambience?.bed, genre },
+                  { scene: shown.scene, genre },
                   shown.id,
                 )}
                 alt=""

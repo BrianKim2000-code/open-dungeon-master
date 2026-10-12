@@ -78,20 +78,6 @@ export const gameSettingsSchema = z.object({
   aiStorySetup: z.boolean().default(true),
   campaignLength: z.enum(CAMPAIGN_LENGTHS).default("standard"),
   dicePolicy: z.enum(DICE_POLICIES).default("digital_only"),
-  ttsEnabled: z.boolean().default(true),
-  // Long enough for a custom voice: a blend ("af_heart(30)+af_bella(70)") or
-  // a described one, on servers that take them (issue 89).
-  ttsVoice: z.string().trim().max(120).default("af_heart"),
-  // The narrator's pace, on the scale every speaker's voice uses
-  // (src/lib/tts-segments.ts).
-  ttsSpeed: z.number().min(0.7).max(1.4).default(1),
-  // Character voices (issue 97). Off: only speakers someone chose a voice
-  // for are heard in it. On: anyone who speaks without one is cast from the
-  // server's voices the first time they do, and keeps that voice.
-  ttsAutoCast: z.boolean().default(false),
-  // Theatre inserts (docs/vtt-parity-implementation-plan.md 8.3): the
-  // speaking NPC's portrait over the scene art while their lines play.
-  presentation: z.enum(["plain", "theatre"]).default("plain"),
   // Several characters per player (docs/vtt-parity-implementation-plan.md
   // 11.3): off, one in play at a time (the others wait out fights), or
   // all of them fielded at once for a solo table running a whole party.
@@ -114,14 +100,6 @@ export const gameSettingsSchema = z.object({
       tone: z.array(z.enum(["grim", "hopeful", "whimsical", "epic", "intimate", "pulpy", "eerie", "political"])).max(3).default([]),
     })
     .default({ strictness: "standard", tone: [] }),
-  // The sound library (src/lib/ambience/catalog.ts). On by default and free
-  // to leave on: a table with no audio files fetched hears nothing, because
-  // the client only plays cues the server says are on disk.
-  ambienceEnabled: z.boolean().default(true),
-  // Whether the engine follows the scene on its own: a bed inferred from
-  // each new place, battle music when initiative starts. Off leaves every
-  // change to a deliberate set_ambience call, by the model or by a person.
-  ambienceAuto: z.boolean().default(true),
   // Players may draw on the live board (a plan of attack, a circle round a
   // door); the DM always may (src/lib/battlemap/scene.ts drawings).
   boardDrawing: z.boolean().default(true),
@@ -256,66 +234,6 @@ export const gameSettingsSchema = z.object({
       ammunition: false,
       supplies: false,
       restVariant: "standard",
-    }),
-  // Live voice chat. `enabled` is the table's own switch; the server also has
-  // one (VOICE_ENABLED in src/lib/voice/config.ts) for owners who cannot open
-  // the media port, and the stricter of the two wins.
-  //
-  // `rules` shapes who hears whom. Every entry is a toggle held by whoever
-  // passes requireStoryAuthority, because "players only hear people within 30
-  // feet" is one table's house rule, not a law, and the next table will want a
-  // different one. They are all inputs to one function
-  // (src/lib/voice/audibility.ts) rather than separate features.
-  voice: z
-    .object({
-      enabled: z.boolean().default(true),
-      // How hard the floor (open / hold / spotlight / initiative) is enforced
-      // on microphones. "soft" shows whose turn it is without muting anyone,
-      // and is the default because hard-muting a friend mid-sentence is an
-      // aggressive thing to do to a game night. "strict" pauses the producer
-      // server-side, so the mute is real rather than a greyed-out button.
-      // Rules live in src/lib/voice/turn-logic.ts.
-      turnEnforcement: z.enum(["off", "soft", "strict"]).default("soft"),
-      // Transcription (13.3): each speaker's microphone is cut into rings
-      // and written down with their name. Off by default, and the lobby
-      // says out loud when it is on.
-      transcribe: z.boolean().default(false),
-      rules: z
-        .object({
-          // Distance gates hearing, using the battle map's own geometry.
-          // Off by default: it is a strong effect and a table that has not
-          // asked for it would experience it as broken audio.
-          proximity: z.boolean().default(false),
-          // How far a normal speaking voice carries, in feet. Only consulted
-          // when proximity is on. 30 is a conversational distance in 5e terms.
-          hearingRangeFeet: z.number().int().min(5).max(500).default(30),
-          // Lets a speaker pick whisper (5ft) / normal / shout (120ft).
-          sayRange: z.boolean().default(false),
-          // A wall on the line costs attenuation rather than blocking, so a
-          // conversation through a door is muffled instead of silent.
-          wallsAttenuate: z.boolean().default(false),
-          // A character at 0 HP stops hearing the table.
-          downedGoDeaf: z.boolean().default(false),
-        })
-        .default({
-          proximity: false,
-          hearingRangeFeet: 30,
-          sayRange: false,
-          wallsAttenuate: false,
-          downedGoDeaf: false,
-        }),
-    })
-    .default({
-      enabled: true,
-      turnEnforcement: "soft",
-      transcribe: false,
-      rules: {
-        proximity: false,
-        hearingRangeFeet: 30,
-        sayRange: false,
-        wallsAttenuate: false,
-        downedGoDeaf: false,
-      },
     }),
 });
 

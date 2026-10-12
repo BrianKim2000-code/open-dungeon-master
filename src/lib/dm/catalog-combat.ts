@@ -4,7 +4,7 @@
 // (src/lib/dm/invoke.ts). The board's entries (pets, tokens, legendary
 // creatures) live in catalog-board.ts and are spread in at the end.
 import type { CatalogEntry } from "@/lib/dm/catalog-types";
-import { sceneOptions } from "@/lib/ambience/catalog";
+import { sceneOptions } from "@/lib/scenes";
 import { BOARD_ADJUDICATIONS } from "@/lib/dm/catalog-board";
 import { summonFormNames } from "@/lib/srd/summon-forms";
 import { familiarFormNames } from "@/lib/srd/familiar-forms";

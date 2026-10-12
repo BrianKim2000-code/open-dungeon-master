@@ -12,8 +12,6 @@ import { OptionalNumber } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import type { CatalogField } from "@/lib/dm/invoke-catalog";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 
 // The inputs one console form is built from, one per catalog field kind
 // (src/lib/dm/catalog-types.ts FieldKind). Split out of DmActionForm.tsx so
@@ -389,19 +387,17 @@ export function FieldInput({
       );
     case "longtext":
       return (
-        <DictateField label={field.label} onTranscript={(text) => onChange(appendDictation(String(value ?? ""), text))}>
-          <textarea
-            value={String(value ?? "")}
-            rows={3}
-            placeholder={field.placeholder}
-            aria-label={field.label}
-            onChange={(event) => onChange(event.target.value)}
-            className={cn(ui.input, "resize-y")}
-          />
-        </DictateField>
+        <textarea
+          value={String(value ?? "")}
+          rows={3}
+          placeholder={field.placeholder}
+          aria-label={field.label}
+          onChange={(event) => onChange(event.target.value)}
+          className={cn(ui.input, "resize-y")}
+        />
       );
-    default: {
-      const input = (
+    default:
+      return (
         <input
           type="text"
           value={String(value ?? "")}
@@ -411,14 +407,6 @@ export function FieldInput({
           className={ui.input}
         />
       );
-      return field.dictate ? (
-        <DictateField single label={field.label} onTranscript={(text) => onChange(appendDictation(String(value ?? ""), text))}>
-          {input}
-        </DictateField>
-      ) : (
-        input
-      );
-    }
   }
 }
 

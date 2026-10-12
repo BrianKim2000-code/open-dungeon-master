@@ -1,5 +1,5 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -34,8 +34,6 @@ import { describeParty, normalizeParty } from "@/lib/dm/party-logic";
 import { formationPartyIds } from "@/lib/dm/roster";
 import { getSceneTracker } from "@/lib/db/scene-tracker";
 import { trackerPromptBlock } from "@/lib/dm/scene-tracker-logic";
-import { getAmbience } from "@/lib/db/ambience";
-import { describeAmbience } from "@/lib/ambience/logic";
 import { listEffects } from "@/lib/db/active-effects";
 import { listQuests } from "@/lib/db/quests";
 import { renderQuestsForPrompt } from "@/lib/dm/quest-logic";
@@ -691,17 +689,6 @@ export function buildGameStateBlock(state: DmGameState): string {
   const sceneBlock = trackerPromptBlock(getSceneTracker(campaign.id));
   if (sceneBlock) {
     moment.push(sceneBlock);
-  }
-  // What the table is hearing, so set_ambience is called when the sound
-  // should CHANGE rather than every turn. Omitted entirely when the sound
-  // library is off, which keeps an ordinary table's prompt unchanged.
-  if (campaign.gameSettings.ambienceEnabled) {
-    const ambience = getAmbience(campaign.id);
-    sections.push(
-      `Sound now playing: ${describeAmbience(ambience)}${
-        ambience.held.length ? " The table is holding this; leave it unless they ask." : ""
-      }`,
-    );
   }
   // Lasting effects riding on anyone, and who is mounted. Both are state the
   // model would otherwise narrate around: a blessed character rolling +2 and

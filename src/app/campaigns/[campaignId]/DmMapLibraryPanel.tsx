@@ -239,7 +239,6 @@ export function DmMapLibraryPanel({
         props: original.props,
         zones: original.zones,
         overlayPath: original.overlayPath,
-        ambience: original.ambience,
         ...(original.skin ? { skin: original.skin } : {}),
       };
       if (original.backdrop) {

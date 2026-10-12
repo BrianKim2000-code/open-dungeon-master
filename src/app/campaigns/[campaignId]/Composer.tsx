@@ -20,7 +20,6 @@ import {
   DirectorPresets,
 } from "@/app/campaigns/[campaignId]/DirectorPanel";
 import { PendingRollCard } from "@/app/campaigns/[campaignId]/PendingRollCard";
-import { PushToTalk } from "@/app/campaigns/[campaignId]/PushToTalk";
 import { StoryNudge } from "@/app/campaigns/[campaignId]/StoryNudge";
 import { SpeakerPicker } from "@/app/campaigns/[campaignId]/SpeakerPicker";
 import type { CastMember } from "@/lib/dm/cast";
@@ -347,12 +346,6 @@ function ComposerInner({
               </button>
             </Tooltip>
           ) : null}
-          <PushToTalk
-            disabled={inputBlocked}
-            onTranscript={(text) =>
-              setInput((current) => (current ? `${current} ${text}` : text))
-            }
-          />
           <button
             type="submit"
             disabled={sending || !input.trim() || inputBlocked || tooLong}

@@ -214,22 +214,6 @@ export function weatherTravelFactor(weather: Weather | null): number {
   return 1;
 }
 
-// The bed the room should play when the sky changes, or null to leave it.
-export function weatherBedCue(weather: Weather | null): "storm" | "rain" | "wind" | null {
-  if (!weather) {
-    return null;
-  }
-  if (weather.sky === "storm") {
-    return "storm";
-  }
-  if (weather.sky === "rain" && weather.precipitation >= 1) {
-    return "rain";
-  }
-  if (weather.wind === "gale") {
-    return "wind";
-  }
-  return null;
-}
 
 const SKY_WORDS: Record<Sky, string> = {
   clear: "a clear sky",

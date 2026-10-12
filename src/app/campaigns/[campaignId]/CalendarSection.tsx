@@ -11,8 +11,6 @@ import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { KitButton, LoadFailed, panelField, PanelLoading } from "./PanelKit";
 import type { CalendarDefinition, CampaignClock } from "@/lib/dm/calendar";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 
 // The Calendar section of the Rules panel (docs/vtt-parity-implementation-plan.md
 // 7.1 and 7.2): the year's months, the week's days, the sky's moons and the
@@ -273,9 +271,7 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
             {addingEvent ? null : <Plus className="size-3.5" />} Add
           </KitButton>
         </div>
-        <DictateField label="What the table learns" onTranscript={(text) => setEventDraft((current) => ({ ...current, body: appendDictation(current.body, text, 600) }))}>
-          <textarea value={eventDraft.body} placeholder="What the table learns when it comes round" aria-label="What the table learns when it comes round" rows={2} maxLength={600} onChange={(event) => setEventDraft({ ...eventDraft, body: event.target.value })} className={panelField} />
-        </DictateField>
+        <textarea value={eventDraft.body} placeholder="What the table learns when it comes round" aria-label="What the table learns when it comes round" rows={2} maxLength={600} onChange={(event) => setEventDraft({ ...eventDraft, body: event.target.value })} className={panelField} />
       </div>
     </div>
   );

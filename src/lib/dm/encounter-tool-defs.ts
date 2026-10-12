@@ -2,7 +2,7 @@
 // descriptions and argument schemas. Split from encounter-tools.ts, which
 // offers them (encounterTools) and handles every call.
 
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 
 export type ToolDef = {

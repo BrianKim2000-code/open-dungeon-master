@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { MAP_THEMES, type GeneratedMap, type MapTheme } from "@/lib/battlemap/generate";
 import { Chip, FinePrint } from "@/app/campaigns/[campaignId]/mapUi";
 import { Select } from "@/components/ui/Select";
-import { sceneOptions } from "@/lib/ambience/catalog";
+import { sceneOptions } from "@/lib/scenes";
 import { dieSpins, forgeGenerate, freshSeed } from "@/app/workshop/maps/forge";
 import { THEME_LABELS } from "@/app/workshop/maps/types";
 

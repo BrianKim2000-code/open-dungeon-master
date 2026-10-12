@@ -18,8 +18,6 @@ import { MAX_BEAT_TEXT, type BeatEdit } from "@/lib/dm/arc-edit-logic";
 import { offersStoryModel, useCapabilities } from "@/lib/use-capabilities";
 import { ExportMenu } from "./ExportMenu";
 import { NpcReviewPanel } from "./NpcReviewPanel";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 import { storyPanelArcForCampaign, visibleStoryChapters } from "@/lib/dm/story-panel-logic";
 
 // Confirmation for a chapter rewind (the server answered 409 with the
@@ -203,16 +201,14 @@ function ChapterCard({
             aria-label="Chapter title"
             className={panelField}
           />
-          <DictateField label="Chapter summary" onTranscript={(text) => setSummary((current) => appendDictation(current, text, 4000))}>
-            <textarea
-              value={summary}
-              onChange={(event) => setSummary(event.target.value)}
-              rows={6}
-              maxLength={4000}
-              aria-label="Chapter summary"
-              className={cn(panelField, "leading-5")}
-            />
-          </DictateField>
+          <textarea
+            value={summary}
+            onChange={(event) => setSummary(event.target.value)}
+            rows={6}
+            maxLength={4000}
+            aria-label="Chapter summary"
+            className={cn(panelField, "leading-5")}
+          />
           <div className="flex gap-1.5">
             <KitButton tone="primary" onClick={save} disabled={busy} busy={busy}>
               {busy ? null : <Check className="size-3.5" />}
@@ -459,22 +455,20 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                       if (editingBeat === number) {
                         return (
                           <li key={index} className="list-none">
-                            <DictateField single label="Beat" onTranscript={(text) => setDraft((current) => appendDictation(current, text, MAX_BEAT_TEXT))}>
-                              <input
-                                value={draft}
-                                autoFocus
-                                maxLength={MAX_BEAT_TEXT}
-                                onChange={(event) => setDraft(event.target.value)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    void submitDraft();
-                                  } else if (event.key === "Escape") {
-                                    closeEditor();
-                                  }
-                                }}
-                                className={panelField}
-                              />
-                            </DictateField>
+                            <input
+                              value={draft}
+                              autoFocus
+                              maxLength={MAX_BEAT_TEXT}
+                              onChange={(event) => setDraft(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  void submitDraft();
+                                } else if (event.key === "Escape") {
+                                  closeEditor();
+                                }
+                              }}
+                              className={panelField}
+                            />
                             <div className="mt-1 flex items-center gap-1">
                               <button
                                 type="button"
@@ -636,23 +630,21 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                   </ol>
                   {addingToAct === act ? (
                     <div className="reveal mt-1">
-                      <DictateField single label="Beat" onTranscript={(text) => setDraft((current) => appendDictation(current, text, MAX_BEAT_TEXT))}>
-                        <input
-                          value={draft}
-                          autoFocus
-                          maxLength={MAX_BEAT_TEXT}
-                          placeholder="What happens in this beat"
-                          onChange={(event) => setDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              void submitDraft();
-                            } else if (event.key === "Escape") {
-                              closeEditor();
-                            }
-                          }}
-                          className={panelField}
-                        />
-                      </DictateField>
+                      <input
+                        value={draft}
+                        autoFocus
+                        maxLength={MAX_BEAT_TEXT}
+                        placeholder="What happens in this beat"
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            void submitDraft();
+                          } else if (event.key === "Escape") {
+                            closeEditor();
+                          }
+                        }}
+                        className={panelField}
+                      />
                       <div className="mt-1 flex items-center gap-1">
                         <button
                           type="button"

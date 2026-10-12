@@ -32,7 +32,6 @@ import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { planDeathFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { dismissGuestCompanions } from "@/lib/dm/companion-tools";
-import { followCombatAmbience } from "@/lib/dm/ambience-tools";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The single server-side path for damage landing on an enemy. Used by the
@@ -171,11 +170,6 @@ export function finishEncounter(
     console.error("[encounter] summary failed", error);
   }
   publishPersisted(campaign.id, "encounter_updated", { encounter: null });
-  // The fight is over, so the fight music is. Every way an encounter can
-  // end comes through here, which is why the hook is here and not in the
-  // end_encounter tool: a party wipe and a last enemy dropping are not
-  // end_encounter calls.
-  followCombatAmbience(campaign, false);
   // Clients drop their fogged map view; the archived rows stay for history.
   publishBattleMapUpdate(campaign.id);
   // Guest allies joined for this fight, so the fight ending writes them out;

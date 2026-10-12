@@ -15,7 +15,6 @@ import {
 import { ensureOpenChapter, listChaptersForSnapshot } from "@/lib/db/chapters";
 import { publicCast } from "@/lib/dm/cast";
 import { currentCoordination } from "@/lib/dm/coordination";
-import { getAmbience } from "@/lib/db/ambience";
 import { captureBoundarySnapshot } from "@/lib/db/snapshots";
 import { listRecentCampaignEvents } from "@/lib/db/character-events";
 import { libraryRolesFor, syncProgressToLibrary } from "@/lib/db/characters";
@@ -46,7 +45,6 @@ import { listBlockedUserIds } from "@/lib/db/moderation";
 import { xCardRaised } from "@/lib/dm/safety";
 import { latestEventOfType, publishPersisted, publishWithSeq } from "@/lib/events";
 import type { HandoutShown, TitleCard } from "@/lib/scene/state";
-import { narrationAudioFor } from "@/lib/tts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -150,13 +148,6 @@ export async function GET(
     // is published as an ordinary DM passage (src/lib/dm/beats.ts).
     beats: caps.adjudicates ? listDmBeats(campaignId, 20) : [],
     latestSeq: latestSeq(campaignId),
-    // Which messages already have narration on disk, so read-aloud plays them
-    // straight from a fresh load instead of rendering a second take.
-    narrationAudio: narrationAudioFor(campaignId, messages.map((message) => message.id)),
-    // What is playing. The ambience_changed event keeps it live from here;
-    // without the snapshot a reload mid-scene would sit in silence until the
-    // next place or fight changed it.
-    ambience: getAmbience(campaignId),
     // The sky over the table: hour and weather, so the board and the scene
     // art are lit right from a fresh load (src/lib/dm/sky.ts).
     scene: currentScene(campaign),

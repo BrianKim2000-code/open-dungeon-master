@@ -253,15 +253,14 @@ function ensureSchema(db: SqliteDatabase) {
       ON library_characters(user_id, updated_at);
 
     -- DM personalities (docs/vtt-parity-implementation-plan.md 9.2): a
-    -- preset over strictness, tone and the narrator's voice. user_id NULL
-    -- is a stock preset; a user's own rows sit beside them.
+    -- preset over strictness and tone. user_id NULL is a stock preset; a
+    -- user's own rows sit beside them.
     CREATE TABLE IF NOT EXISTS library_personalities (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       blurb TEXT NOT NULL DEFAULT '',
       gm_json TEXT NOT NULL DEFAULT '{}',
-      tts_voice TEXT NOT NULL DEFAULT 'af_heart',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1370,10 +1369,6 @@ function ensureSchema(db: SqliteDatabase) {
     // (src/lib/dm/scene-tracker-logic.ts). One at a time, like the active
     // encounter, so a column rather than a table.
     ["scene_tracker_json", `TEXT NOT NULL DEFAULT ''`],
-    // What is playing: the ambience bed and music cue the table last set
-    // (src/lib/ambience/logic.ts). '' reads as silence, which is what every
-    // campaign that predates the sound library has.
-    ["ambience_json", `TEXT NOT NULL DEFAULT ''`],
     // The rider's mount, keyed by character id (src/lib/srd/mounts.ts). A
     // campaign-level map rather than a sheet column because a mount is a fact
     // about a scene, not about a character: it is left at the stable, and a
@@ -1689,9 +1684,9 @@ function ensureSchema(db: SqliteDatabase) {
 
   addColumns("locations", [
     // The prepared map this place stands on, so arriving offers the DM a
-    // one-tap deploy, and the sound the place makes.
+    // one-tap deploy, and the kind of place this is (src/lib/scenes.ts).
     ["prepared_map_id", `TEXT`],
-    ["ambience_json", `TEXT`],
+    ["scene", `TEXT`],
   ]);
 
   addColumns("battle_tokens", [
@@ -1735,39 +1730,6 @@ function ensureSchema(db: SqliteDatabase) {
   // The shelf a person wrote by hand (#171), which a restock refills rather
   // than rerolling from the pack. '' is a shop stocked from the pack.
   addColumns("shops", [["prepared_stock_json", `TEXT NOT NULL DEFAULT ''`]]);
-
-  // Transcript lines (docs/vtt-parity-implementation-plan.md 13.3): what
-  // was said at a transcribed table, by whom, on both clocks. Never fed to
-  // the DM prompt.
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS voice_transcript (
-      id TEXT PRIMARY KEY,
-      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL,
-      speaker TEXT NOT NULL,
-      text TEXT NOT NULL,
-      clock_label TEXT NOT NULL DEFAULT '',
-      started_at TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_voice_transcript_campaign ON voice_transcript(campaign_id, started_at);
-  `);
-
-  // Read-aloud voices for speakers who are not NPCs (issue 97): a character
-  // at the table ("pc:<sheet id>") or a kind of monster ("monster:<name>").
-  // An NPC's voice stays on its own row (npcs.voice_json), where the cast
-  // editor and the world packs already keep it.
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS campaign_voices (
-      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-      speaker_key TEXT NOT NULL,
-      name TEXT NOT NULL DEFAULT '',
-      voice_id TEXT NOT NULL,
-      speed REAL NOT NULL DEFAULT 1,
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (campaign_id, speaker_key)
-    );
-  `);
 
   // Calendar events (docs/vtt-parity-implementation-plan.md 7.2): a moment
   // on the in-world clock the world tick fires when the clock crosses it.
@@ -1875,9 +1837,6 @@ function ensureSchema(db: SqliteDatabase) {
     ["doors_json", `TEXT NOT NULL DEFAULT '{}'`],
     ["zones_json", `TEXT NOT NULL DEFAULT '[]'`],
     ["overlay_path", `TEXT NOT NULL DEFAULT ''`],
-    // The sound the place makes: cue ids for the bed and the music, played
-    // when the map goes on the table.
-    ["ambience_json", `TEXT NOT NULL DEFAULT '{}'`],
   ]);
   // Where each enemy starts, who is hidden, hit point and name overrides,
   // and what the fight is worth (src/lib/dm/encounter-template-logic.ts).
@@ -2056,9 +2015,6 @@ function ensureSchema(db: SqliteDatabase) {
   ]);
 
   addColumns("npcs", [
-    // Their own voice for read-aloud (docs/vtt-parity-implementation-plan.md
-    // 8.2): { voiceId, speed }. NULL reads in the narrator's voice.
-    ["voice_json", `TEXT`],
     // The faction they belong to (docs/vtt-parity-implementation-plan.md
     // section 6); '' for none.
     ["faction_id", `TEXT NOT NULL DEFAULT ''`],

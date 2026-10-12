@@ -121,7 +121,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     left: { campaign_id: "the new workshop", updated_at: "now" },
   },
   prepared_maps: {
-    carried: ["name", "notes", "tags_json", "width", "height", "terrain", "ambient", "theme", "lights_json", "seed", "backdrop_path", "backdrop_transform_json", "outdoors", "drawings_json", "skin_json", "labels_json", "props_json", "doors_json", "zones_json", "overlay_path", "ambience_json"],
+    carried: ["name", "notes", "tags_json", "width", "height", "terrain", "ambient", "theme", "lights_json", "seed", "backdrop_path", "backdrop_transform_json", "outdoors", "drawings_json", "skin_json", "labels_json", "props_json", "doors_json", "zones_json", "overlay_path"],
     left: { ...IDENTITY },
   },
   encounter_templates: {
@@ -129,11 +129,11 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     left: { ...IDENTITY, created_by_user_id: "the importer", cued: "a lead's cue is the source table's play" },
   },
   locations: {
-    carried: ["name", "layout_description", "connections_json", "prepared_map_id", "ambience_json"],
+    carried: ["name", "layout_description", "connections_json", "prepared_map_id", "scene"],
     left: { ...IDENTITY, visited: "play", is_current: "play", map_image_json: "a legacy column nothing reads" },
   },
   npcs: {
-    carried: ["name", "attitude", "trait", "location", "role", "gender", "aliases_json", "personality_json", "goals_json", "relations_json", "portrait_url", "voice_json", "faction_id", "stat_block"],
+    carried: ["name", "attitude", "trait", "location", "role", "gender", "aliases_json", "personality_json", "goals_json", "relations_json", "portrait_url", "faction_id", "stat_block"],
     left: {
       ...IDENTITY,
       last_shift_turn: "the source table's clock",
@@ -321,7 +321,7 @@ export function exportWorkshopBundle(
       layoutDescription: str(row.layout_description),
       connections: parseJson<string[]>(str(row.connections_json, "[]"), []),
       map: at(mapIndex, row.prepared_map_id),
-      ambience: row.ambience_json ? parseJson<Record<string, unknown> | null>(str(row.ambience_json), null) : null,
+      scene: row.scene ? str(row.scene) : null,
       ref: refFor(row.home, "locations", str(row.id)),
       shared: row.home !== workshopId,
     })),
@@ -341,7 +341,6 @@ export function exportWorkshopBundle(
       goals: str(row.goals_json),
       relations: str(row.relations_json),
       portrait: loadImage(row.portrait_url, budget),
-      voice: row.voice_json ? parseJson<Record<string, unknown> | null>(str(row.voice_json), null) : null,
       statBlock: portableStatBlock(str(row.stat_block)),
       ref: refFor(row.home, "npcs", str(row.id)),
       shared: row.home !== workshopId,

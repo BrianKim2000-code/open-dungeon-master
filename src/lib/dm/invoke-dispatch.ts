@@ -32,7 +32,6 @@ import { handleNpcReaction, handleSetNpc, handleSocialCheck } from "@/lib/dm/soc
 import { handlePartyStash } from "@/lib/dm/party-tools";
 import { handleClearEffect, handleSetEffect } from "@/lib/dm/effect-tools";
 import { handleEndScene, handleSceneCheck, handleStartScene } from "@/lib/dm/scene-tools";
-import { handlePlaySting, handleSetAmbience } from "@/lib/dm/ambience-tools";
 import { handleDismount, handleMountUp } from "@/lib/dm/mount-tools";
 import {
   handleDamageObject,
@@ -206,10 +205,6 @@ export async function dispatchAdjudication(
       return handleSceneCheck(campaign, rawArguments, sheets, sheetsById);
     case "end_scene":
       return handleEndScene(campaign, rawArguments);
-    case "set_ambience":
-      return handleSetAmbience(campaign, rawArguments);
-    case "play_sting":
-      return handlePlaySting(campaign, rawArguments);
     case "mount_up":
       return handleMountUp(campaign, rawArguments, sheets, sheetsById, turn);
     case "dismount":

@@ -3,8 +3,6 @@ import { normalizeBackdrop, type Backdrop, type BackdropTransform } from "@/lib/
 import type { AmbientLight, MapLight } from "@/lib/battlemap/types";
 import type { MapTheme } from "@/lib/battlemap/generate";
 import {
-  EMPTY_AMBIENCE,
-  normalizeAmbience,
   normalizeDoors,
   normalizeLabels,
   normalizeProps,
@@ -13,7 +11,6 @@ import {
   type LightZone,
   type MapLabel,
   type MapProp,
-  type SceneAmbience,
   normalizeDrawings,
   type MapDrawing,
 } from "@/lib/battlemap/scene";
@@ -63,7 +60,6 @@ export type PreparedMap = {
   doors: DoorStates;
   zones: LightZone[];
   overlayPath: string;
-  ambience: SceneAmbience;
   drawings: MapDrawing[];
   // What it is painted with (src/lib/battlemap/skins.ts). Empty means the
   // default for the campaign's setting and this map's theme.
@@ -91,7 +87,6 @@ type Row = {
   doors_json: string | null;
   zones_json: string | null;
   overlay_path: string | null;
-  ambience_json: string | null;
   outdoors: number | null;
   drawings_json: string | null;
   skin_json: string | null;
@@ -123,7 +118,6 @@ function mapRow(row: Row): PreparedMap {
     doors: normalizeDoors(parseJson<unknown>(row.doors_json ?? "{}", {}), row.terrain, row.width, row.height),
     zones: normalizeZones(parseJson<unknown>(row.zones_json ?? "[]", []), row.width, row.height),
     overlayPath: overlay && isUploadedImagePath(overlay) ? overlay : "",
-    ambience: normalizeAmbience(parseJson<unknown>(row.ambience_json ?? "{}", {})),
     drawings: normalizeDrawings(parseJson<unknown>(row.drawings_json ?? "[]", []), row.width, row.height),
     skin: normalizeMapSkin(parseJson<unknown>(row.skin_json ?? "{}", {})),
     updatedAt: row.updated_at,
@@ -150,7 +144,6 @@ export type PreparedScene = {
   doors?: DoorStates;
   zones?: LightZone[];
   overlayPath?: string;
-  ambience?: SceneAmbience;
   drawings?: MapDrawing[];
 };
 
@@ -182,7 +175,6 @@ function sceneColumns(scene: PreparedScene | undefined, terrain: string, width: 
     doors: JSON.stringify(normalizeDoors(scene?.doors ?? {}, terrain, width, height)),
     zones: JSON.stringify(normalizeZones(scene?.zones ?? [], width, height)),
     overlay: overlay && isUploadedImagePath(overlay) ? overlay : "",
-    ambience: JSON.stringify(normalizeAmbience(scene?.ambience ?? EMPTY_AMBIENCE)),
     drawings: JSON.stringify(normalizeDrawings(scene?.drawings ?? [], width, height)),
   };
 }
@@ -216,9 +208,9 @@ export function createPreparedMap(input: PreparedMapInput): PreparedMap {
     .prepare(
       `INSERT INTO prepared_maps (id, campaign_id, name, notes, tags_json, width, height, terrain,
          ambient, theme, lights_json, seed, backdrop_path, backdrop_transform_json,
-         labels_json, props_json, doors_json, zones_json, overlay_path, ambience_json,
+         labels_json, props_json, doors_json, zones_json, overlay_path,
          created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -240,7 +232,6 @@ export function createPreparedMap(input: PreparedMapInput): PreparedMap {
       scene.doors,
       scene.zones,
       scene.overlay,
-      scene.ambience,
       now,
       now,
     );
@@ -346,7 +337,6 @@ export function updatePreparedMap(
       doors: patch.scene?.doors ?? existing.doors,
       zones: patch.scene?.zones ?? existing.zones,
       overlayPath: patch.scene?.overlayPath ?? existing.overlayPath,
-      ambience: patch.scene?.ambience ?? existing.ambience,
     },
     terrain,
     existing.width,
@@ -358,7 +348,7 @@ export function updatePreparedMap(
       `UPDATE prepared_maps SET name = ?, notes = ?, tags_json = ?, ambient = ?, theme = ?,
          terrain = ?, lights_json = ?, backdrop_path = ?, backdrop_transform_json = ?,
          labels_json = ?, props_json = ?, doors_json = ?, zones_json = ?, overlay_path = ?,
-         ambience_json = ?, updated_at = ?
+         updated_at = ?
        WHERE id = ? AND campaign_id = ?`,
     )
     .run(
@@ -376,7 +366,6 @@ export function updatePreparedMap(
       scene.doors,
       scene.zones,
       scene.overlay,
-      scene.ambience,
       nowIso(),
       mapId,
       campaignId,
@@ -422,9 +411,9 @@ export function copyPreparedMaps(fromCampaignId: string, toCampaignId: string): 
       db.prepare(
         `INSERT INTO prepared_maps (id, campaign_id, name, notes, tags_json, width, height, terrain,
            ambient, theme, lights_json, seed, backdrop_path, backdrop_transform_json,
-           labels_json, props_json, doors_json, zones_json, overlay_path, ambience_json,
+           labels_json, props_json, doors_json, zones_json, overlay_path,
            created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         copyId,
         toCampaignId,
@@ -445,7 +434,6 @@ export function copyPreparedMaps(fromCampaignId: string, toCampaignId: string): 
         JSON.stringify(map.doors),
         JSON.stringify(map.zones),
         map.overlayPath,
-        JSON.stringify(map.ambience),
         now,
         now,
       );
