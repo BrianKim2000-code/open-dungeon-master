@@ -114,7 +114,7 @@ export function AdminReportsPanel() {
         (loadError ? (
           <LoadFailed
             error={loadError}
-            onRetry={() => refresh}
+            onRetry={refresh}
           />
         ) : loaded ? (
           <EmptyState

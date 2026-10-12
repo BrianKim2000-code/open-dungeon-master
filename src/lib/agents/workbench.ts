@@ -343,7 +343,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
       ...campaignIdProp,
       action: { type: "string", enum: ["create", "patch", "delete"] },
       id: { type: "string", description: "The entry id (from odm_lore). Required for patch and delete." },
-      category: { type: "string", enum: ["geography", "factions", "history", "magic", "culture", "religion", "other"] },
+      category: { type: "string", enum: [...WORLD_LORE_CATEGORIES] },
       title: { type: "string", maxLength: 120 },
       body: { type: "string", maxLength: 4000 },
       tags: { type: "array", items: { type: "string" } },
