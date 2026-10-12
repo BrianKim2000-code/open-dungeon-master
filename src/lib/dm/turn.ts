@@ -1,5 +1,6 @@
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { manualTraits } from "@/lib/dm/monster-traits";
+import { clipKeepingEnds } from "@/lib/dm/ask-logic";
 import { findSpellByName } from "@/lib/content";
 import { allSpellNames, spellLevelOf } from "@/lib/srd/spell-lists";
 import { notReadyReason } from "@/lib/srd/spell-prep";
@@ -443,7 +444,18 @@ export async function startDmTurn(campaignId: string) {
   // The table's WorldForge: what it says of who and what the newest messages
   // and the scene put in play, then hidden truths, ties and secrets.
   const world = worldForPrompt(campaignId, {
-    text: [campaign.scene, ...history.slice(-6).map((entry) => entry.content.slice(0, 600))].filter(Boolean).join("\n"),
+    // The newest message whole (to a bound) and the end of each older one:
+    // what a passage ends on is what is in play now, and the first 600
+    // characters of each left out a figure the narration introduced last
+    // (the same cut issue 250 found in Ask).
+    text: [
+      campaign.scene,
+      ...history.slice(-6).map((entry, index, recent) =>
+        clipKeepingEnds(entry.content, index === recent.length - 1 ? 2_400 : 600, 150, () => "..."),
+      ),
+    ]
+      .filter(Boolean)
+      .join("\n"),
   });
   const promptState: DmGameState = {
       campaign,
