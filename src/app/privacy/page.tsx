@@ -77,11 +77,6 @@ export default function PrivacyPage() {
         </p>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-stone-400">
           <li>
-            <span className="text-stone-200">Microphone</span> for voice chat with your party
-            and push-to-talk speech to text. Audio goes directly to the players in your session
-            and, for speech to text, to the server you are connected to. Nothing is recorded.
-          </li>
-          <li>
             <span className="text-stone-200">Camera</span> to scan a QR invite card. Frames
             are read on the device and never stored or sent anywhere.
           </li>

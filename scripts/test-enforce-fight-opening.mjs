@@ -23,7 +23,7 @@ import { aiEngine, call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 import { caster } from "./lib/enforce-spell-kit.mjs";
 
 const { test, finish } = suite("test-enforce-fight-opening");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: {} });
 const kit = await combatKit(world);
 const { unrolledFigure, unrolledDamagePrompt } = await import("../src/lib/dm/engine-boundary.ts");
 const { THIS_MOMENT_HEADING } = await import("../src/lib/prompt-boundary.ts");
@@ -117,7 +117,7 @@ await test("A figure a table note already carries is not sent back: the server d
 
 // A party of three against three, at a console (nothing plays the enemies
 // forward before the board is read).
-const field = await openWorld({ gameSettings: { ttsEnabled: false } });
+const field = await openWorld({ gameSettings: {} });
 const fieldKit = await combatKit(field);
 for (const name of ["Kara", "Brom", "Sage"]) {
   field.addHero({ name, class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED });

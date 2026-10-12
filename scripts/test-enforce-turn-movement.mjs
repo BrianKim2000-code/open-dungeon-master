@@ -17,7 +17,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { aiEngine, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-turn-movement");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: {} });
 const kit = await combatKit(world);
 const { pcMoveBudget } = await import("../src/lib/battlemap/view.ts");
 const { editInitiative } = await import("../src/lib/dm/initiative.ts");
@@ -413,7 +413,7 @@ await test("GAME STATE says nothing of movement for a character with no token on
 
 // A table of its own: a wizard to counterspell, a fighter to grapple, and a
 // Drunken Master whose Tipsy Sway makes standing up cost 5 feet.
-const second = await openWorld({ gameSettings: { ttsEnabled: false } });
+const second = await openWorld({ gameSettings: {} });
 const kit2 = await combatKit(second);
 const kara2 = second.addHero({ name: "Kara", class: "fighter", level: 5, abilities: { str: 16 }, proficiencies: TRAINED, maxHp: 200, speed: 30 });
 const wren = second.addHero({

@@ -10,8 +10,8 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-speech-lines");
-const world = await openWorld({ gameSettings: { ttsEnabled: false, tableLanguage: "italian" } });
-const english = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: { tableLanguage: "italian" } });
+const english = await openWorld({ gameSettings: {} });
 
 const npcs = await import("../src/lib/db/npcs.ts");
 const messages = await import("../src/lib/db/messages.ts");

@@ -16,7 +16,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { fakeModel } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-final-ui");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: {} });
 const model = await fakeModel();
 model.pointAt(world);
 

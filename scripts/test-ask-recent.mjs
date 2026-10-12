@@ -67,7 +67,7 @@ await test("A search finds the passage inside a long message, not only its start
   assert.deepEqual(transcriptPassages(lines, "the and was"), []);
 });
 
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: {} });
 const tavi = world.addHero({ name: "Tavi", class: "rogue", level: 3 });
 const { runAsk } = await import("../src/lib/dm/ask.ts");
 

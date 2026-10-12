@@ -62,7 +62,7 @@ async function assembleEvidence(request: LoreCheckRequest, chapterBudget: number
     evidence.push(`Server-tracked world facts:\n${factLines.join("\n")}`);
   }
 
-  // Semantic recall against the flagged text; keyword scoring as fallback.
+  // Scene recall against the flagged text; keyword scoring as fallback.
   let sceneLines: string[] = [];
   let chapterIndexes: number[] = [];
   try {
@@ -72,7 +72,7 @@ async function assembleEvidence(request: LoreCheckRequest, chapterBudget: number
     );
     chapterIndexes = [...new Set(scenes.map((scene) => scene.chapterIndex))];
   } catch (error) {
-    // embedder unavailable; chapters below still anchor the check
+    // scene search failed; chapters below still anchor the check
     console.error("[lore-check] scene search failed", error);
   }
   const closed = listChapters(campaignId).filter((chapter) => chapter.status === "closed");

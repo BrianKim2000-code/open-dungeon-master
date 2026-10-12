@@ -96,7 +96,7 @@ a secret story arc it regenerates as the campaign moves.
 <tr>
 <td width="50%" valign="top" align="center">
 <img src="public/sidebar-icons/local-data.png" width="56"><br>
-<b>On-device &amp; encrypted</b><br>
+<b>On-device &amp; private</b><br>
 <sub>All state lives in a local SQLite database. No accounts in the cloud, no telemetry — username/password auth (optional Discord), with an admin panel and undoable audit log.</sub>
 </td>
 <td width="50%" valign="top" align="center">
@@ -270,7 +270,7 @@ and clamped by code.
 - **Auth** - session cookies with scrypt hashing, optional Discord OAuth, and reverse-proxy-aware origin resolution.
 - **Login throttle** - a per-username-and-IP lockout with backoff.
 - **Admin panel and global config** - admin-gated settings with database-over-env-over-default precedence and a sign-ups toggle.
-- **Encrypted storage** - single-writer SQLite encrypted at rest (ChaCha20) alongside the read-only Open5e content pack.
+- **Local storage** - single-writer SQLite alongside the read-only Open5e content pack.
 
 ## Requirements
 
@@ -417,21 +417,9 @@ compose file pulls from Docker Hub by default; set
 build the image yourself from a clone rather than pulling it, use
 `docker compose up -d --build`.
 
-Nothing else is required. On first boot the container generates a database encryption
-key, stores it in the data volume, and prints it once:
-
-```
-docker compose logs | head -20
-```
-
-**Back that key up.** The database is encrypted at rest with it and there is no
-recovery path without it. If you would rather manage it yourself, put
-`DB_ENCRYPTION_KEY=...` in a `.env` file next to `docker-compose.yml` before the first
-start; an explicit key always wins over the stored one.
-
-The same log shows the one-time **setup code** that creating the first (admin) account
-needs, and a link that fills it in, in a banner that repeats at every start until that
-account exists:
+Nothing else is required. The log shows the one-time **setup code** that creating
+the first (admin) account needs, and a link that fills it in, in a banner that
+repeats at every start until that account exists:
 
 ```
 docker compose logs | grep -A12 "no accounts yet"
@@ -644,60 +632,6 @@ Log in as an admin and open `/admin` (linked from the account menu):
 
 The "Sign in with Discord" button appears automatically once both are set. Existing
 users can link Discord to their account from Settings.
-
-## Voice chat (optional)
-
-The table can talk over live voice, in the lobby while everyone is still
-building characters and at any point during play. The server runs its own SFU
-(mediasoup) in-process, so there is no third-party service, no account and no
-audio leaving your machine.
-
-Voice is **off by default**: set `VOICE_ENABLED=1` to turn it on. It needs two
-more things, and both are easy to miss:
-
-1. **HTTPS.** Browsers block microphone access on plain http, so voice needs a
-   reverse proxy with a certificate. `localhost` is exempt, so a single-machine
-   install works as-is. (The push-to-talk speech-to-text button has always had
-   this requirement too.)
-2. **One extra open port, UDP and TCP.** Default `44444`. The audio is not HTTP
-   and cannot go through your reverse proxy: open the port on the firewall
-   pointing straight at the host. It is a single port, not a range, however
-   many tables are running.
-
-```bash
-VOICE_ENABLED=1
-VOICE_RTC_PORT=44444
-# The address a player's BROWSER can reach this host on. Required for Docker
-# or any NAT; leave empty only for a localhost-only install.
-VOICE_ANNOUNCED_IP=203.0.113.10
-# Optional: announce a hostname instead of the raw IP. Wins when set.
-VOICE_DOMAIN=voice.example.com
-```
-
-Whatever is announced must resolve directly to the host. If your site sits
-behind a Cloudflare proxy, point voice at the origin IP, or give `VOICE_DOMAIN`
-a DNS-only "grey cloud" record: a proxied hostname resolves to Cloudflare, which
-does not carry UDP, and the call will connect and then stay silent. Full
-details, including the trade this makes with origin-IP privacy, are in
-[docs/configuration.md](docs/configuration.md).
-
-Because the server already knows where every token stands and whose turn it is,
-voice can do things a separate call cannot:
-
-- **Turn-taking** rides the floor the table already has (open, hold, spotlight,
-  initiative). By default the panel just shows whose turn it is; a table that
-  wants it can have players off the floor muted server-side. The DM is never
-  muted, and anyone who cannot speak gets a Raise hand button.
-- **Proximity**, off by default: distance on the battle map decides who hears
-  whom, with whisper (5 ft) / normal / shout (120 ft), walls that muffle rather
-  than block, and an option for downed characters to stop hearing the table.
-  The DM always hears everyone.
-- **Side rooms** the DM can open and move people between, for a private word or
-  a split party. Moving somebody is instant, with no gap in their audio.
-
-Each campaign turns voice and each rule on or off in its settings, and a server
-owner can disable it entirely with `VOICE_ENABLED=0`. Full details in
-[docs/configuration.md](docs/configuration.md).
 
 ## Physical dice
 

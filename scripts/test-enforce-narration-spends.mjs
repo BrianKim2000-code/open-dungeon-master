@@ -17,7 +17,7 @@ import { TRAINED } from "./lib/enforce-combat.mjs";
 import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-narration-spends");
-const world = await openWorld({ gameSettings: { ttsEnabled: false, narrationGuard: true } });
+const world = await openWorld({ gameSettings: { narrationGuard: true } });
 const model = await fakeModel();
 model.pointAt(world);
 

@@ -1,6 +1,6 @@
 # Backup and restore
 
-Open Dungeon Master keeps campaign state in an encrypted SQLite database and stores uploaded/generated media on disk. A useful backup therefore needs both the state tree and the database encryption key.
+Open Dungeon Master keeps campaign state in a SQLite database and stores uploaded/generated media on disk. A useful backup therefore needs both the state tree and the media beside it.
 
 ## Create a backup
 
@@ -12,9 +12,9 @@ node scripts/odm-backup.mjs
 node scripts/odm-backup.mjs /path/to/backups
 ```
 
-The command checks the encrypted database, checkpoints its WAL, copies the persistent state into a staging directory, writes a small backup manifest, and creates a timestamped `tar.gz` archive. It prints the archive SHA-256 after creation.
+The command checks the database, checkpoints its WAL, copies the persistent state into a staging directory, writes a small backup manifest, and creates a timestamped `tar.gz` archive. It prints the archive SHA-256 after creation.
 
-The archive can contain `DB_ENCRYPTION_KEY` (from `.env.server`) or Docker's `data/.db-key`. Treat the archive as a secret. Losing both the key and every backup copy makes the encrypted campaign database unrecoverable.
+The archive can contain `.env.server`, which holds your API keys. Treat the archive as a secret.
 
 The standard backup contains `data/`, uploaded/generated media, local model files, and `.env.server` when present. `SQLITE_DB_PATH` is supported when the database remains inside the ODM root; paths outside the root are rejected so the archive stays portable.
 
@@ -26,7 +26,7 @@ A restore is verified before it is copied to the requested target:
 node scripts/odm-restore.mjs /path/to/odm-backup-....tar.gz /tmp/odm-restore-check
 ```
 
-The restore command rejects absolute or parent-traversal archive paths, extracts into a temporary directory, reads the archived key, opens the encrypted SQLite database, runs `PRAGMA integrity_check`, and reports campaign/user/message counts. A dry-run restore does not modify the live installation.
+The restore command rejects absolute or parent-traversal archive paths, extracts into a temporary directory, opens the SQLite database, runs `PRAGMA integrity_check`, and reports campaign/user/message counts. A dry-run restore does not modify the live installation.
 
 Use an empty target directory for a dry run.
 

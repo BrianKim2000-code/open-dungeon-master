@@ -22,7 +22,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { fakeModel } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-ui-play");
-const world = await openWorld({ gameSettings: { ttsEnabled: false, variantRules: { flanking: true } } });
+const world = await openWorld({ gameSettings: { variantRules: { flanking: true } } });
 // The actions route wakes a DM turn; it must never reach a real backend.
 const model = await fakeModel();
 model.pointAt(world);

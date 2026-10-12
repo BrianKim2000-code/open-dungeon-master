@@ -82,7 +82,7 @@ const campaign = createCampaign(lead.id, {
   startingLevel: 1,
   difficulty: "normal",
   // No voice: a DM turn's narration would call a local speech server.
-  gameSettings: { ttsEnabled: false },
+  gameSettings: {},
 });
 updateStorySettings(campaign.id, { textProvider: "harness", imageGenerationEnabled: false, autoImages: false });
 setCampaignStatus(campaign.id, "active");

@@ -1414,11 +1414,11 @@ function ensureSchema(db: SqliteDatabase) {
     ["must_change_password", `INTEGER NOT NULL DEFAULT 0`],
     // Discord account id for "Sign in with Discord"; NULL when unlinked.
     ["discord_id", `TEXT`],
-    // Per-account preferences (audio volumes and mutes) that should follow
-    // the person between browsers. One JSON blob rather than columns because
-    // every reader wants all of it at once and absent keys mean "use the
-    // default", exactly like the client's localStorage cache of the same
-    // values (src/lib/audio-prefs.ts).
+    // Per-account preferences (the chat-chime toggle, the dice look) that
+    // should follow the person between browsers. One JSON blob rather than
+    // columns because every reader wants all of it at once and absent keys
+    // mean "use the default", exactly like the client's localStorage cache
+    // of the same values (src/lib/audio-prefs.ts).
     ["settings_json", `TEXT NOT NULL DEFAULT '{}'`],
   ]);
   db.exec(

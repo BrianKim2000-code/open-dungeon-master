@@ -6,9 +6,8 @@
 // synchronously, works offline, and survives the server being unreachable;
 // the account copy only exists so a second browser starts where the first
 // left off. So: hydrate localStorage from GET /api/profile once per page
-// load, and write every change through to PATCH /api/profile on a debounce
-// (volume sliders fire continuously). A failed fetch in either direction
-// changes nothing the user can see.
+// load, and write every change through to PATCH /api/profile on a debounce.
+// A failed fetch in either direction changes nothing the user can see.
 //
 
 export type AudioPrefField = "chimeMuted";

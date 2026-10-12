@@ -132,14 +132,8 @@ export function setUserAvatar(userId: string, avatar: UserAvatar | null) {
 
 // Account preferences that follow the person between browsers. Absent keys
 // mean "use the default", so a patch merges rather than replaces: a browser
-// syncing its chime toggle must not erase the volumes another one saved.
+// syncing its chime toggle must not erase the dice look another one saved.
 export type UserSettings = {
-  narrationVolume?: number;
-  narrationMuted?: boolean;
-  ambienceVolume?: number;
-  ambienceMuted?: boolean;
-  ambienceBedLevel?: number;
-  ambienceMusicLevel?: number;
   chimeMuted?: boolean;
   // The player's virtual dice (src/lib/dice/dice-look.ts); absent means
   // the tray's original look.

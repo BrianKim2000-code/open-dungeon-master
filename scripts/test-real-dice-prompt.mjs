@@ -82,8 +82,6 @@ function makeState({ dicePolicy = "digital_only", useRealDice = false } = {}) {
         tableLanguage: "english",
         aiStorySetup: true,
         dicePolicy,
-        ttsEnabled: false,
-        ttsVoice: "af_heart",
         mapsEnabled: false,
         midGameJoinOpen: false,
         holdSubmissions: false,

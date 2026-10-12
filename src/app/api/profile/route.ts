@@ -13,14 +13,12 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const volumeSchema = z.number().min(0).max(1);
-
 // The dice look is checked field by field by the dice module rather than
 // spelled out again here, so the two can never disagree on a texture name.
 const diceLookSchema = z.custom<DiceLook>(isValidDiceLook, "Invalid dice look.");
 
-// Audio preferences synced across browsers (src/lib/audio-prefs.ts) and the
-// player's dice look (src/lib/dice/dice-look-store.ts).
+// The chat-chime toggle synced across browsers (src/lib/audio-prefs.ts) and
+// the player's dice look (src/lib/dice/dice-look-store.ts).
 const settingsSchema = z.object({
   chimeMuted: z.boolean().optional(),
   diceLook: diceLookSchema.optional(),
@@ -40,7 +38,7 @@ const deleteSchema = z.object({
   password: z.string().max(100).optional(),
 });
 
-// The profile as the account holds it. The audio hooks hydrate their
+// The profile as the account holds it. The chime toggle hydrates its
 // localStorage cache from here once per page load.
 export async function GET() {
   const user = await currentUser();

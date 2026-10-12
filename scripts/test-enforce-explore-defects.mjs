@@ -258,7 +258,7 @@ await test("A wand's spell costs what the item says: Wand of Fireballs at 2 char
 await test("GAME STATE shows each character's afflictions (a disease, a madness, a poison waiting) and their lifestyle and downtime progress, so the narrator plays them from the engine's record.", async () => {
   const { fakeModel, reply } = await import("./lib/enforce-narrator.mjs");
   // A table with no voice, so the turn leaves nothing running behind it.
-  const told = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const told = await openWorld({ gameSettings: {} });
   const model = await fakeModel();
   model.pointAt(told);
   const patient = told.addHero({ name: "Oswin", class: "fighter", level: 3 });

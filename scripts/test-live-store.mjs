@@ -1,4 +1,4 @@
-// The live store (the streaming draft and who is speaking) and the
+// The live store (the streaming draft) and the
 // coalesced per-seat refetch, both pure enough to run without a DOM
 // (src/app/campaigns/[campaignId]/liveStore.ts, coalesce.ts).
 import assert from "node:assert/strict";
@@ -12,8 +12,6 @@ const {
   createValueStore,
   dmDraftStore,
   resetLiveStores,
-  setVoiceSpeaking,
-  voiceSpeakingStore,
 } = await import("../src/app/campaigns/[campaignId]/liveStore.ts");
 const { coalesceRefresh } = await import("../src/app/campaigns/[campaignId]/coalesce.ts");
 
@@ -58,10 +56,8 @@ await test("the draft grows per delta, clears on the passage, and resets with th
   clearDmDraft();
   assert.equal(dmDraftStore.get(), "");
   appendDmDraft("again");
-  setVoiceSpeaking({ userId: "u1", at: 5 });
   resetLiveStores();
   assert.equal(dmDraftStore.get(), "");
-  assert.equal(voiceSpeakingStore.get(), null);
   unsubscribe();
 });
 

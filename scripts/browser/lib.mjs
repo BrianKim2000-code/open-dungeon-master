@@ -49,7 +49,6 @@ export async function startServer({ tree, dbPath, key, port, log }) {
     SQLITE_DB_PATH: dbPath,
     DB_ENCRYPTION_KEY: key,
     APP_PUBLIC_URL: `http://127.0.0.1:${port}`,
-    VOICE_ENABLED: "false",
     // No model, no pictures, no speech: the scenarios look at the pages, not
     // at a storyteller. A table whose action would call one gets the same
     // "not configured" the UI already handles.

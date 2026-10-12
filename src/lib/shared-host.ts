@@ -18,7 +18,7 @@ export { isPrivateBackendHost } from "@/lib/backend-host";
 //   the host's key (OpenAI, OpenRouter, a hosted vLLM: text, pictures or
 //   speech) and the agent program, which runs on the admin's plan. A
 //   backend on this machine or the local network is the host's own, keyed
-//   or not (a llama-server behind a key, Ollama, ComfyUI, Kokoro, Whisper),
+//   or not (a llama-server behind a key, Ollama, ComfyUI),
 //   and stays open to every table. A player who wants a paid model at their
 //   own table brings their own key in the client app, which is what it is
 //   for.

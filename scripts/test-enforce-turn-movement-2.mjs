@@ -12,7 +12,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { aiEngine } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-turn-movement-2");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: {} });
 const kit = await combatKit(world);
 const { pcMoveBudget } = await import("../src/lib/battlemap/view.ts");
 const { allocateSeq } = await import("../src/lib/db/campaigns.ts");

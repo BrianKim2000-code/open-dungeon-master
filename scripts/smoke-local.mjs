@@ -305,7 +305,7 @@ async function playRun(runNumber) {
     startingLevel: 3,
     difficulty: "normal",
     // Nothing outside the text model: no narration audio.
-    gameSettings: { ttsEnabled: false },
+    gameSettings: {},
   });
   updateStorySettings(campaign.id, {
     textProvider: PROVIDER,

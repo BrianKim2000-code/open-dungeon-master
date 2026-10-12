@@ -122,7 +122,7 @@ test("an out-of-range targetParty does not poison the whole settings blob", () =
   // normalizeGameSettings falls back to defaults wholesale when the parse
   // fails, so the guard that matters is that the rest of the settings are
   // still usable rather than that this one field is preserved.
-  const settings = normalizeGameSettings({ targetParty: { size: 99, level: 3 }, ttsEnabled: false });
+  const settings = normalizeGameSettings({ targetParty: { size: 99, level: 3 } });
   assert.equal(typeof settings.targetParty.size, "number");
   assert.ok(settings.targetParty.size >= 1 && settings.targetParty.size <= 8);
 });
