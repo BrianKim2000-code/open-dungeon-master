@@ -1,6 +1,7 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { MessageIntent } from "@/lib/dm/intent-logic";
 import { findSpellByName } from "@/lib/content";
+import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { spellNames } from "@/lib/battlemap/hand-spells";
 import { acknowledgesDrop, spellsNamedIn, type ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
 
@@ -20,7 +21,13 @@ export function concentrationSwapFor(
   if (!current || action.kind !== "do") {
     return null;
   }
-  const concentrates = (name: string) => findSpellByName(name, authors)?.concentration === true;
+  // The pack's row (or a homebrew spell's), else the bundled SRD facts, as
+  // the spell book's marks read it: a server without the content pack still
+  // knows Spirit Guardians needs concentration.
+  const concentrates = (name: string) => {
+    const row = findSpellByName(name, authors);
+    return row ? row.concentration === true : bundledSpellFacts(name)?.concentration === true;
+  };
   const same = (name: string) => name.trim().toLowerCase() === current.toLowerCase();
   if (action.intent) {
     const spell = action.intent.card === "spell" ? (action.intent.spell ?? "").trim() : "";
