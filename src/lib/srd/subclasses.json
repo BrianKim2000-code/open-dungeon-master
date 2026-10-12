@@ -505,7 +505,7 @@
           "1": [
             {
               "n": "Blessings of Knowledge",
-              "d": "Two extra languages and proficiency plus expertise in two knowledge skills."
+              "d": "Two extra languages, and proficiency plus expertise in two of Arcana, History, Nature and Religion."
             }
           ],
           "2": [
@@ -633,7 +633,7 @@
           "1": [
             {
               "n": "Acolyte of Nature",
-              "d": "One druid cantrip and proficiency in one nature-facing skill."
+              "d": "One druid cantrip and proficiency in Animal Handling, Nature or Survival."
             },
             {
               "n": "Bonus Proficiency (heavy armor)",
@@ -1736,7 +1736,7 @@
           "3": [
             {
               "n": "Bonus Proficiency (Cavalier)",
-              "d": "One skill from a knightly list or proficiency with land vehicles."
+              "d": "Proficiency in Animal Handling, History, Insight, Performance or Persuasion, or one language of your choice."
             },
             {
               "n": "Born to the Saddle",
@@ -1783,7 +1783,7 @@
           "3": [
             {
               "n": "Bonus Proficiency (Samurai)",
-              "d": "Proficiency in one social skill or a language."
+              "d": "Proficiency in History, Insight, Performance or Persuasion, or one language of your choice."
             },
             {
               "n": "Fighting Spirit",
@@ -1793,7 +1793,7 @@
           "7": [
             {
               "n": "Elegant Courtier",
-              "d": "Wisdom saving throws use your Charisma modifier if it is better, and you gain proficiency in Persuasion or expertise if already proficient."
+              "d": "Add your Wisdom modifier to Persuasion checks, and gain proficiency in Wisdom saving throws (Intelligence or Charisma if you already have it)."
             }
           ],
           "10": [
@@ -3025,7 +3025,7 @@
             },
             {
               "n": "Otherworldly Glamour",
-              "d": "Add your Wisdom modifier to Charisma checks, and gain proficiency in one Charisma skill."
+              "d": "Add your Wisdom modifier to Charisma checks, and gain proficiency in Deception, Performance or Persuasion."
             },
             {
               "n": "Fey Wanderer Magic",
@@ -4805,7 +4805,7 @@
           "3": [
             {
               "n": "Tool Proficiency (Armorer)",
-              "d": "Proficiency with smith's tools."
+              "d": "Proficiency with heavy armor and smith's tools."
             },
             {
               "n": "Arcane Armor",
