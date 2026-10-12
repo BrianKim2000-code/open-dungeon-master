@@ -137,4 +137,4 @@ export const TABLE_LANGUAGE_LABELS: Record<TableLanguage, string> = Object.fromE
 
 // Shared by the create dialog and the settings panel.
 export const TABLE_LANGUAGE_HELP =
-  "The Dungeon Master writes the story in this language, and the server reads the story and your messages in it. The app, the rules and the rulebook stay in English. Any language but English needs a multilingual embedding model on the server (EMBEDDING_MODEL in the README).";
+  "The Dungeon Master writes the story in this language, and the server reads the story and your messages in it. The app, the rules and the rulebook stay in English.";

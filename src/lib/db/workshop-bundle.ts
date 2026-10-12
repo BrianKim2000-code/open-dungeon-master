@@ -494,9 +494,9 @@ function writeBundleRows(
     setCommonWorkshop(workshop, sharedHome.id);
   }
 
-  // House rules land outside the transaction because setHouseRules chunks the
-  // prose and queues an embedding, which is the same reason runContentImport
-  // writes them after its own transaction closes.
+  // House rules land outside the transaction because setHouseRules chunks
+  // the prose, which is the same reason runContentImport writes them after
+  // its own transaction closes.
   if (bundle.houseRulesText.trim()) {
     setHouseRules(workshop.id, bundle.houseRulesText);
     copied += 1;

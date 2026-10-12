@@ -21,7 +21,6 @@
     "resources:generate": "node scripts/generate-class-resources.mjs",
     "test:dice": "node scripts/test-dice.mjs",
     "setup": "node scripts/setup.mjs",
-    "fetch-model": "node scripts/fetch-embedding-model.mjs",
     "postinstall": "node scripts/copy-dice-assets.mjs && node scripts/ensure-better-sqlite3-shim.mjs"
   },
   "dependencies": {

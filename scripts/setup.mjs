@@ -1,6 +1,6 @@
 // npm run setup: everything a fresh clone needs before its first start, in
-// one command, safe to run again. It replaces the README's old list (make a
-// key, build the content pack, fetch the embedding model, build) and ends by
+// one command, safe to run again. It replaces the README's old list (build
+// the content pack, build) and ends by
 // saying how to start the server; the browser takes over from there with
 // the one-time setup link the server prints and the guided setup
 // (src/app/setup).
@@ -22,7 +22,7 @@ const dim = (text) => (process.stdout.isTTY ? `\x1b[2m${text}\x1b[0m` : text);
 const step = (n, total, text) => console.log(`\n${gold(`[${n}/${total}]`)} ${bold(text)}`);
 const note = (text) => console.log(`      ${text}`);
 
-const total = build ? 5 : 4;
+const total = build ? 4 : 3;
 const warnings = [];
 
 function run(script, extra = []) {
@@ -65,17 +65,9 @@ step(3, total, "The content pack (spells, feats, items, monsters)");
   }
 }
 
-// 4. The embedding model behind story recall and lore search. The app
-// fetches it on first use anyway; fetching it now means an offline table
-// never waits on it.
-step(4, total, "The memory model (story recall and lore search)");
-if (!run("fetch-embedding-model.mjs")) {
-  warnings.push("The memory model did not download. The app fetches it the first time it needs it, or run: npm run fetch-model");
-}
-
-// 5. The production build.
+// 4. The production build.
 if (build) {
-  step(5, total, "Building the app (a few minutes, once)");
+  step(4, total, "Building the app (a few minutes, once)");
   const result = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], {
     cwd: root,
     stdio: "inherit",

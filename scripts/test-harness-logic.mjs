@@ -137,7 +137,7 @@ test("the child environment is an allowlist: no server secret ever reaches a pro
   const codex = buildChildEnv(parent, "codex", "/usr/bin");
   assert.equal(codex.OPENAI_API_KEY, "sk-openai-admin");
   assert.equal(codex.ANTHROPIC_API_KEY, undefined);
-  assert.equal(leaksServerSecret({ ...claude, SNEAKY: `prefix-${parent.DB_ENCRYPTION_KEY}` }, parent), "SNEAKY");
+  assert.equal(leaksServerSecret({ ...claude, SNEAKY: `prefix-${parent.OPENAI_COMPAT_API_KEY}` }, parent), "SNEAKY");
 });
 
 test("Claude Code is started with no built-in tools and only ODM's MCP server", () => {

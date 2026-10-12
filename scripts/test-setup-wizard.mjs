@@ -127,14 +127,12 @@ try {
     assert.equal(logic.keyForListing({ savedKey: "", savedBaseUrl: "", typed: "", baseUrl: "" }), "");
   });
 
-  await test("ComfyUI checkpoints and Kokoro voices are read from their own answers", () => {
+  await test("ComfyUI checkpoints are read from their own answers", () => {
     assert.deepEqual(
       logic.readComfyCheckpoints({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [["a.safetensors", "b.ckpt"], {}] } } } }),
       ["a.safetensors", "b.ckpt"],
     );
     assert.deepEqual(logic.readComfyCheckpoints({}), []);
-    assert.deepEqual(logic.readKokoroVoices({ voices: ["af_heart", "bm_george", 3] }), ["af_heart", "bm_george"]);
-    assert.deepEqual(logic.readKokoroVoices(null), []);
   });
 
   await test("Z-Image Turbo's three files are found under whatever names and folders ComfyUI lists", () => {
@@ -226,7 +224,7 @@ try {
     assert.ok("error" in patches.storyPatch({ kind: "local", baseUrl: "http://x:1", model: " ", apiKey: "" }));
   });
 
-  await test("pictures, narration, name and joining patches", () => {
+  await test("pictures, name and joining patches", () => {
     assert.deepEqual(patches.picturesPatch({ kind: "comfyui", url: "http://127.0.0.1:8188/", checkpoint: "a.safetensors" }), {
       images: { defaultBackend: "comfyui", comfyUrl: "http://127.0.0.1:8188", comfyCheckpoint: "a.safetensors", comfyWorkflowPreset: "checkpoint" },
     });
@@ -237,19 +235,14 @@ try {
     assert.equal(patches.picturesPatch({ kind: "openai", apiKey: "sk-i" }).images.openaiApiKey, "sk-i");
     assert.deepEqual(patches.picturesPatch({ kind: "agent" }), { images: { defaultBackend: "harness" }, harness: { images: "native" } });
     assert.deepEqual(patches.picturesPatch({ kind: "none" }), { images: { defaultBackend: "", comfyUrl: "" } });
-    assert.deepEqual(patches.narrationPatch({ kind: "kokoro", url: "http://127.0.0.1:8880/", voice: "af_heart" }), {
-      speech: { ttsProvider: "kokoro", kokoroUrl: "http://127.0.0.1:8880", ttsVoice: "af_heart" },
-    });
-    assert.equal("ttsApiKey" in patches.narrationPatch({ kind: "openai", apiKey: "" }).speech, false);
-    assert.deepEqual(patches.narrationPatch({ kind: "off" }), { speech: { ttsProvider: "off" } });
     assert.deepEqual(patches.joiningPatch({ signupMode: "invite", publicUrl: "https://keep.example/" }), {
       signupMode: "invite",
       publicUrl: "https://keep.example",
     });
     assert.deepEqual(patches.namePatch("  The Keep "), { serverName: "The Keep" });
     assert.deepEqual(
-      patches.mergePatches(patches.narrationPatch({ kind: "off" }), { speech: { sttUrl: "off" } }, { text: { provider: "none" } }),
-      { speech: { ttsProvider: "off", sttUrl: "off" }, text: { provider: "none" } },
+      patches.mergePatches(patches.picturesPatch({ kind: "none" }), { text: { provider: "none" } }),
+      { images: { defaultBackend: "", comfyUrl: "" }, text: { provider: "none" } },
     );
   });
 

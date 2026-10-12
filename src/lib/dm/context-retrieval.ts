@@ -1,9 +1,8 @@
 import type { TableLanguage } from "@/lib/schemas/game-settings";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { CampaignMessage } from "@/lib/db/messages";
-import { listLoreWithEmbeddings } from "@/lib/db/lore";
-import { listRuleChunksWithEmbeddings } from "@/lib/db/rules";
-import { embed, similarityOf } from "@/lib/embeddings";
+import { listLoreEntries } from "@/lib/db/lore";
+import { listRuleChunks } from "@/lib/db/rules";
 import { probeCustomContextWindow, storyContextTokens } from "@/lib/model-client";
 import { renderLoreForPrompt, type WorldLoreEntry } from "@/lib/dm/world-lore-logic";
 import { computeBudgets, promptWindowTokens } from "@/lib/dm/context-budget";
@@ -11,19 +10,10 @@ import { selectRuleChunks } from "@/lib/dm/rules-activation-logic";
 import { renderHouseRules, renderVariantRules } from "@/lib/dm/rules-logic";
 import { computeIdf, fuseRanked, lexicalScore } from "@/lib/dm/fusion-logic";
 
-// Per-turn retrieval for the DM prompt: one local embed of the current
-// moment (latest player messages + scene) is fused with IDF-weighted lexical
-// scoring over the enabled house-rule chunks and world-lore entries; only the
-// most relevant few ride the prompt. Pinned items skip retrieval entirely.
-// Every path tolerates NULL embeddings and an unavailable embedder, so
-// retrieval can never break a turn.
-//
-// This used to be strictly either/or: cosine when an embedding existed and
-// keyword overlap only when it did not, which threw the lexical signal away
-// on every healthy turn. It also compared cosine similarities and keyword
-// fractions against the same 0.3 threshold, two scales that never meant the
-// same thing. Both are now handled by rank fusion (src/lib/dm/fusion-logic.ts),
-// which reads order rather than magnitude.
+// Per-turn retrieval for the DM prompt: IDF-weighted lexical scoring over
+// the enabled house-rule chunks and world-lore entries against the current
+// moment (latest player messages + scene); only the most relevant few ride
+// the prompt. Pinned items skip retrieval entirely.
 
 const RULES_TOP = 3;
 const LORE_TOP = 2;
@@ -49,11 +39,10 @@ function buildQuery(campaign: Campaign, history: CampaignMessage[]): string {
   return [campaign.scene, ...playerLines].filter(Boolean).join("\n").slice(0, 1_200);
 }
 
-// Fuses one corpus and returns the picked entries in fused order.
+// Ranks one corpus and returns the picked entries in score order.
 function pickFused<T>(
-  entries: Array<{ id: string; text: string; embedding: Buffer | null; value: T }>,
+  entries: Array<{ id: string; text: string; value: T }>,
   query: string,
-  queryVector: Float32Array | null,
   limit: number,
   language: TableLanguage,
 ): T[] {
@@ -68,7 +57,6 @@ function pickFused<T>(
     entries.map((entry) => ({
       id: entry.id,
       lexical: lexicalScore(query, entry.text, idf, language),
-      similarity: similarityOf(queryVector, entry.embedding),
     })),
     { limit },
   );
@@ -103,30 +91,17 @@ export async function buildTurnRetrieval(
   let houseRulesBlock = "";
   let loreBlock = "";
   try {
-    const rules = listRuleChunksWithEmbeddings(campaign.id).filter(
-      (entry) => entry.chunk.enabled,
-    );
-    const lore = listLoreWithEmbeddings(campaign.id);
+    const rules = listRuleChunks(campaign.id).filter((chunk) => chunk.enabled);
+    const lore = listLoreEntries(campaign.id);
     if (rules.length || lore.length) {
       const query = buildQuery(campaign, history);
-      let queryVector: Float32Array | null = null;
-      const anyEmbedding =
-        rules.some((entry) => entry.embedding) || lore.some((entry) => entry.embedding);
-      if (query && anyEmbedding) {
-        try {
-          [queryVector] = await embed([query]);
-        } catch (error) {
-          // Embedder unavailable; keyword fallback carries the turn.
-          console.error("[context-retrieval] embedding failed", error);
-        }
-      }
 
       // Pinned chunks and any whose trigger keyword appears in the query are
       // admitted outright; only what is left competes for the retrieval
       // slots. A small enough rules document rides whole and skips retrieval
       // (src/lib/dm/rules-activation-logic.ts).
       const activation = selectRuleChunks(
-        rules.map((entry) => entry.chunk),
+        rules,
         query,
         computeBudgets(contextLimitTokens).retrieval,
       );
@@ -135,33 +110,29 @@ export async function buildTurnRetrieval(
       const retrievedRules = activation.verbatim
         ? []
         : pickFused(
-        rules
-          .filter((entry) => !forcedIds.has(entry.chunk.id))
-          .map((entry) => ({
-            id: entry.chunk.id,
-            text: `${entry.chunk.heading} ${entry.chunk.text}`,
-            embedding: entry.embedding,
-            value: entry.chunk,
-          })),
-        query,
-        queryVector,
-        RULES_TOP,
-        campaign.gameSettings.tableLanguage,
-      );
+            rules
+              .filter((chunk) => !forcedIds.has(chunk.id))
+              .map((chunk) => ({
+                id: chunk.id,
+                text: `${chunk.heading} ${chunk.text}`,
+                value: chunk,
+              })),
+            query,
+            RULES_TOP,
+            campaign.gameSettings.tableLanguage,
+          );
       houseRulesBlock = renderHouseRules(pinnedRules, retrievedRules);
 
-      const pinnedLore = lore.filter((entry) => entry.entry.pinned).map((entry) => entry.entry);
+      const pinnedLore = lore.filter((entry) => entry.pinned);
       const retrievedLore = pickFused(
         lore
-          .filter((entry) => !entry.entry.pinned)
+          .filter((entry) => !entry.pinned)
           .map((entry) => ({
-            id: entry.entry.id,
-            text: `${entry.entry.title} ${entry.entry.tags.join(" ")} ${entry.entry.body}`,
-            embedding: entry.embedding,
-            value: entry.entry as WorldLoreEntry,
+            id: entry.id,
+            text: `${entry.title} ${entry.tags.join(" ")} ${entry.body}`,
+            value: entry as WorldLoreEntry,
           })),
         query,
-        queryVector,
         LORE_TOP,
         campaign.gameSettings.tableLanguage,
       );

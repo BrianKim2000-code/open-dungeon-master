@@ -1,28 +1,25 @@
 // Shaping for the DM's assist rail: turning a player's stated intent into a
 // shortlist of adjudications, and reading back what the model proposed.
 //
-// The shortlist is ranked by meaning, not by words: the intent and each
-// catalog entry are embedded (src/lib/embeddings.ts, on the server, no model
-// call), so a DM typing in Italian gets the same help as one typing in
-// English. An entry also carries the SRD's text for each choice it offers (a
-// skill check, the Athletics paragraph: "climb a sheer or slippery
-// cliff..."), because its summary says what it does to the sheet, never what
-// a player says that calls for it. The model call that follows picks from the
-// whole catalog, so a shortlist that missed still leaves the right action
-// reachable.
+// The shortlist is ranked by words shared with the stated intent, scored
+// against the SRD's text for each choice an entry offers (a skill check, the
+// Athletics paragraph: "climb a sheer or slippery cliff..."), because its
+// summary says what it does to the sheet, never what a player says that
+// calls for it. The model call that follows picks from the whole catalog,
+// so a shortlist that missed still leaves the right action reachable.
 //
 // Pure and dependency-free apart from the catalog's own types, so
 // scripts/test-assist.mjs can import it.
 
 import type { CatalogEntry } from "@/lib/dm/catalog-types";
 
-// What an entry is embedded as: its name as words, its label and its summary.
+// What an entry is matched on: its name as words, its label and its summary.
 export function catalogEntryText(entry: CatalogEntry): string {
   return `${entry.name.replace(/_/g, " ")}: ${entry.label}. ${entry.summary}`;
 }
 
 // How much of an SRD section an entry carries: the opening of a long one is
-// what says what it covers, and the embedding models read no further.
+// what says what it covers, and a shortlist does not need more.
 const SECTION_CHARS = 1200;
 
 // Every titled stretch of the SRD's rules pages, by lowercased title: a
@@ -94,29 +91,18 @@ export function availableEntries(entries: readonly CatalogEntry[], inEncounter: 
   return entries.filter((entry) => inEncounter || !entry.needsEncounter);
 }
 
-function dot(a: Float32Array, b: Float32Array): number {
-  let sum = 0;
-  for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
-    sum += a[index] * b[index];
-  }
-  return sum;
-}
-
-// Nearest first, by cosine (the vectors are unit-normalized), an entry
-// scored by its nearest passage. Order only: no similarity value decides
-// anything, so no threshold depends on the embedding model or the language.
-// Ties keep catalog order, which groups by category and puts the common
-// things first inside each one.
-export function rankBySimilarity(
-  intent: Float32Array,
+// Nearest first by the caller's score, an entry scored by its nearest
+// passage. Order only: no score threshold decides anything. Ties keep
+// catalog order, which groups by category and puts the common things first
+// inside each one.
+export function rankByScore(
   entries: readonly CatalogEntry[],
-  vectors: ReadonlyMap<string, readonly Float32Array[]>,
+  score: (entry: CatalogEntry) => number,
   limit: number,
 ): CatalogEntry[] {
   return entries
-    .map((entry, index) => ({ entry, index, passages: vectors.get(entry.name) ?? [] }))
-    .filter(({ passages }) => passages.length > 0)
-    .map(({ entry, index, passages }) => ({ entry, index, score: Math.max(...passages.map((vector) => dot(intent, vector))) }))
+    .map((entry, index) => ({ entry, index, score: score(entry) }))
+    .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, limit)
     .map(({ entry }) => entry);

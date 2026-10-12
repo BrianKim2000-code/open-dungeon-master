@@ -35,7 +35,7 @@ test("E1: a rolls refetch replaces the visible list", () => {
 
 test("an unknown seq-less event returns the same state object", () => {
   assert.equal(campaignReducer(loaded, event("battle_map_updated")), loaded);
-  assert.equal(campaignReducer(loaded, event("voice_speaking", { userId: "u1" })), loaded);
+  assert.equal(campaignReducer(loaded, event("unknown_event", { x: 1 })), loaded);
   assert.equal(campaignReducer(loaded, event("side_activity")), loaded);
 });
 
@@ -109,27 +109,6 @@ test("E2: the snapshot carries the scene, the active sheet, the handout, the pau
   assert.deepEqual(next.safetyPause, { at: 2, reason: "x_card" });
   assert.equal(next.titleCard.id, "t1");
 });
-
-// Issue 88: narration status has its own slot. It used to share mediaStatus
-// with the picture for the same message, so a voice that failed turned a
-// picture still being painted into "Illustration failed".
-{
-  const media = (payload) => event("media_status", { startedAt: "2026-10-05T00:00:00.000Z", ...payload });
-  let state = campaignReducer(loaded, media({ kind: "image", targetId: "m1", state: "generating" }));
-  state = campaignReducer(state, media({ kind: "tts", targetId: "m1", state: "failed", reason: "The speech server could not be reached at 127.0.0.1:8880." }));
-  assert.equal(state.mediaStatus.m1.kind, "image");
-  assert.equal(state.mediaStatus.m1.state, "generating");
-  assert.deepEqual(state.narrationStatus.m1, {
-    state: "failed",
-    reason: "The speech server could not be reached at 127.0.0.1:8880.",
-  });
-  // The voice arriving clears its own failure and leaves the picture alone.
-  state = campaignReducer(state, event("tts_ready", { messageId: "m1", url: "/generated-audio/c/m1.mp3" }, 11));
-  assert.equal(state.narrationStatus.m1, undefined);
-  assert.equal(state.mediaStatus.m1.state, "generating");
-  passed += 1;
-  console.log("ok: a narration failure is kept apart from the picture's status");
-}
 
 // Issue 193: a table that allows several characters each has one player
 // owning two sheets. An update to one used to drop the other from the list

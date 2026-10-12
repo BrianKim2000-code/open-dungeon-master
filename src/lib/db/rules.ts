@@ -1,5 +1,4 @@
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { embed, vectorToBuffer } from "@/lib/embeddings";
 import {
   HOUSE_RULES_MAX,
   carryChunkFlags,
@@ -8,8 +7,7 @@ import {
 
 // Rules manager storage: campaigns.house_rules_text is the lead-edited
 // source of truth; rule_chunks holds its retrieval pieces. Saving rechunks
-// everything (flags carry over by fuzzy match) and re-embeds in the
-// background; NULL embeddings only mean keyword fallback.
+// everything (flags carry over by fuzzy match).
 
 export type RuleChunk = {
   id: string;
@@ -76,20 +74,8 @@ export function listRuleChunks(campaignId: string): RuleChunk[] {
   return rows.map(mapChunk);
 }
 
-export function listRuleChunksWithEmbeddings(
-  campaignId: string,
-): Array<{ chunk: RuleChunk; embedding: Buffer | null }> {
-  const rows = getDatabase()
-    .prepare(
-      `SELECT ${CHUNK_COLUMNS}, embedding FROM rule_chunks
-       WHERE campaign_id = ? ORDER BY chunk_index ASC`,
-    )
-    .all(campaignId) as Array<RuleChunkRow & { embedding: Buffer | null }>;
-  return rows.map((row) => ({ chunk: mapChunk(row), embedding: row.embedding }));
-}
-
 // Saves the house-rules text and rebuilds its chunks; enabled/pinned flags
-// survive by heading or leading-text match. Embeddings refill async.
+// survive by heading or leading-text match.
 export function setHouseRules(campaignId: string, text: string): RuleChunk[] {
   const db = getDatabase();
   const clipped = text.slice(0, HOUSE_RULES_MAX);
@@ -132,7 +118,6 @@ export function replaceSourceChunks(
       );
     });
   })();
-  void embedRuleChunks(campaignId);
 }
 
 export function deleteSourceChunks(campaignId: string, source: string): void {
@@ -163,33 +148,4 @@ export function setRuleChunkFlags(
     .prepare(`SELECT ${CHUNK_COLUMNS} FROM rule_chunks WHERE id = ?`)
     .get(chunkId) as RuleChunkRow;
   return mapChunk(updated);
-}
-
-// Background embedding pass over any chunks still missing a vector.
-export async function embedRuleChunks(campaignId: string) {
-  try {
-    const db = getDatabase();
-    const pending = db
-      .prepare(
-        `SELECT id, heading, text FROM rule_chunks
-         WHERE campaign_id = ? AND embedding IS NULL`,
-      )
-      .all(campaignId) as Array<{ id: string; heading: string; text: string }>;
-    if (!pending.length) {
-      return;
-    }
-    const vectors = await embed(
-      pending.map((chunk) => (chunk.heading ? `${chunk.heading}\n${chunk.text}` : chunk.text)),
-      { background: true },
-    );
-    const update = db.prepare(`UPDATE rule_chunks SET embedding = ? WHERE id = ?`);
-    pending.forEach((chunk, index) => {
-      const vector = vectors[index];
-      if (vector) {
-        update.run(vectorToBuffer(vector), chunk.id);
-      }
-    });
-  } catch (error) {
-    console.error("[rules] embedding failed", error);
-  }
 }

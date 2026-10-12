@@ -774,7 +774,7 @@ function ensureSchema(db: SqliteDatabase) {
     -- may read a fact through the API: 'party' (everyone), 'dm' (prompt-only
     -- secret), or a JSON array of character ids. Superseding keeps history:
     -- a new fact about the same subject retires the old row instead of
-    -- editing it. embedding stays NULL until the semantic index fills it.
+    -- editing it.
     CREATE TABLE IF NOT EXISTS world_facts (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -789,19 +789,16 @@ function ensureSchema(db: SqliteDatabase) {
       source TEXT NOT NULL DEFAULT 'chapter'
         CHECK (source IN ('chapter','compaction','manual','simulation')),
       source_seq INTEGER,
-      embedding BLOB,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_world_facts
       ON world_facts(campaign_id, status, category);
 
-    -- Semantic memory index: verbatim transcript spans ("scenes") from
-    -- closed chapters with local embeddings (384-dim Float32 BLOBs),
-    -- built at chapter close by src/lib/dm/memory-index.ts. Two-phase
-    -- recall: cosine over chapter-summary embeddings picks chapters, then
-    -- cosine over their scenes returns verbatim text. Brute-force JS math;
-    -- no vector extension.
+    -- Memory index: verbatim transcript spans ("scenes") from closed
+    -- chapters, built at chapter close by src/lib/dm/memory-index.ts.
+    -- Two-phase recall: chapter titles and summaries pick the chapters,
+    -- then a lexical search over their scenes returns verbatim text.
     CREATE TABLE IF NOT EXISTS scene_chunks (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -809,7 +806,6 @@ function ensureSchema(db: SqliteDatabase) {
       seq_start INTEGER NOT NULL,
       seq_end INTEGER NOT NULL,
       text TEXT NOT NULL,
-      embedding BLOB NOT NULL,
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_scene_chunks
@@ -834,7 +830,7 @@ function ensureSchema(db: SqliteDatabase) {
 
     -- Lead-authored world lore (the world bible): structured entries the DM
     -- prompt samples from and search_lore queries. Pinned entries always
-    -- reach the prompt; the rest compete on embedding similarity.
+    -- reach the prompt; the rest compete on lexical relevance.
     CREATE TABLE IF NOT EXISTS lore_entries (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -844,7 +840,6 @@ function ensureSchema(db: SqliteDatabase) {
       body TEXT NOT NULL,
       tags_json TEXT NOT NULL DEFAULT '[]',
       pinned INTEGER NOT NULL DEFAULT 0,
-      embedding BLOB,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -889,7 +884,7 @@ function ensureSchema(db: SqliteDatabase) {
     -- House-rules chunks: campaigns.house_rules_text split into retrievable
     -- pieces (src/lib/dm/rules-logic.ts). Rechunked on every save; enabled and
     -- pinned flags survive by fuzzy match. Pinned chunks always reach the
-    -- prompt; enabled ones compete on embedding similarity per turn.
+    -- prompt; enabled ones compete on lexical relevance per turn.
     CREATE TABLE IF NOT EXISTS rule_chunks (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -898,7 +893,6 @@ function ensureSchema(db: SqliteDatabase) {
       text TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
       pinned INTEGER NOT NULL DEFAULT 0,
-      embedding BLOB,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1054,7 +1048,7 @@ function ensureSchema(db: SqliteDatabase) {
     --
     -- The body is ALSO inserted as a campaign_messages row (author_type 'dm',
     -- message_id below), and that message is what chapters, compaction,
-    -- scene-chunk embedding, retrieval, recap and the export all read. This
+    -- the scene index, retrieval, recap and the export all read. This
     -- table is the provenance the transcript cannot carry: which DM passages
     -- were summaries rather than live narration, what kind of story each one
     -- recorded, and whether the DM typed it, spoke it, or accepted a draft.
@@ -1913,8 +1907,6 @@ function ensureSchema(db: SqliteDatabase) {
     // on author_user_id forces those rows to carry the campaign owner's id,
     // so this flag is what distinguishes them in the UI.
     ["author_kind", `TEXT NOT NULL DEFAULT 'user'`],
-    // Embedding of title+body for search_lore; NULL until indexed.
-    ["embedding", `BLOB`],
   ]);
 
   addColumns("dm_whispers", [
@@ -1939,9 +1931,6 @@ function ensureSchema(db: SqliteDatabase) {
   ]);
 
   addColumns("chapters", [
-    // Embedding of the chapter summary, for phase-1 chapter picking
-    // in semantic recall. NULL until the chapter is indexed.
-    ["embedding", `BLOB`],
     // The in-world date the chapter closed on, for the timeline.
     ["clock_label", `TEXT NOT NULL DEFAULT ''`],
   ]);

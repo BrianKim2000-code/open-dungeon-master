@@ -64,10 +64,10 @@ test("the DM tour walks the console top to bottom before the shared tabs", () =>
 
 test("every step points at a known anchor or none", () => {
   const known = new Set([
-    "composer-modes", "composer-input", "composer-talk", "battle-hand", "ask-dm",
+    "composer-modes", "composer-input", "battle-hand", "ask-dm",
     "party-rail", "initiative-ribbon", "quest-glance",
     "tab-party", "tab-story", "tab-map", "tab-battle", "tab-chat", "tab-dm",
-    "header-dice", "header-voice", "header-help", "header-stage",
+    "header-dice", "header-help", "header-stage",
     "dm-floor", "dm-beats", "dm-delegation", "dm-queue", "dm-console-tabs",
   ]);
   for (const step of [...PLAYER_TOUR, ...DM_TOUR]) {

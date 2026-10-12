@@ -9,14 +9,14 @@ import { arcTextTimeoutMs } from "@/lib/model-client";
 import { requestUtilityMessage } from "@/lib/dm/model";
 import { ADJUDICATIONS } from "@/lib/dm/invoke-catalog";
 import type { CatalogEntry } from "@/lib/dm/catalog-types";
-import { embed } from "@/lib/embeddings";
+import { computeIdf, lexicalScore } from "@/lib/dm/fusion-logic";
 import { rulebookPages } from "@/lib/rulebook/book";
 import {
   availableEntries,
   candidateLine,
   catalogPassages,
   parseSuggestionJson,
-  rankBySimilarity,
+  rankByScore,
   srdSections,
   type ParsedSuggestion,
 } from "@/lib/dm/assist-logic";
@@ -44,63 +44,12 @@ const SUGGEST_SYSTEM =
 // How many of the nearest actions the DM is shown before the model answers.
 const SHORTLIST = 5;
 
-// Survives dev-mode HMR, same pattern as the embedder (src/lib/embeddings.ts).
-declare global {
-  var __odmAssistCatalogVectors: Promise<Map<string, Float32Array[]>> | undefined;
-}
-
-// Texts per embedding call when the catalog is embedded. One call pads
-// every text to the longest SRD section; short texts batched with their own
-// length took a fifth of the time (about 2 seconds instead of 9 on CPU).
-const EMBED_BATCH = 16;
-
-async function embedByLength(texts: readonly string[]): Promise<Float32Array[]> {
-  const order = texts.map((text, index) => ({ text, index })).sort((a, b) => a.text.length - b.text.length);
-  const vectors = new Array<Float32Array>(texts.length);
-  for (let start = 0; start < order.length; start += EMBED_BATCH) {
-    const batch = order.slice(start, start + EMBED_BATCH);
-    const embedded = await embed(batch.map((item) => item.text));
-    batch.forEach((item, at) => {
-      vectors[item.index] = embedded[at];
-    });
-  }
-  return vectors;
-}
-
-// The catalog's passage vectors, embedded once per process: the catalog
-// and the SRD only change with the code.
-function catalogVectorsOnce(): Promise<Map<string, Float32Array[]>> {
-  if (globalThis.__odmAssistCatalogVectors) {
-    return globalThis.__odmAssistCatalogVectors;
-  }
-  const sections = srdSections(rulebookPages());
-  const passages = ADJUDICATIONS.flatMap((entry) =>
-    catalogPassages(entry, sections).map((text) => ({ name: entry.name, text })),
-  );
-  globalThis.__odmAssistCatalogVectors = embedByLength(passages.map((passage) => passage.text)).then(
-    (vectors) => {
-      const byName = new Map<string, Float32Array[]>();
-      passages.forEach((passage, index) => {
-        byName.set(passage.name, [...(byName.get(passage.name) ?? []), vectors[index]]);
-      });
-      return byName;
-    },
-    (error: unknown) => {
-      globalThis.__odmAssistCatalogVectors = undefined;
-      throw error;
-    },
-  );
-  return globalThis.__odmAssistCatalogVectors;
-}
-
 export type AssistSuggestion = { suggestions: SuggestedAdjudication[]; picked: ParsedSuggestion | null };
 
-// The actions nearest the intent by meaning (embedded on this server, no
-// model call), then one small model call that picks from every action this
-// moment allows and prefills it: a shortlist cut by embedding would tie the
-// pick to the operator's embedding model. The shortlist is what the DM sees
-// if the model is slow, unreachable or wrong; with neither an embedder nor a
-// model there is nothing to suggest, and the DM is told so.
+// The actions nearest the intent by shared words (matched on this server,
+// no model call), then one small model call that picks from every action
+// this moment allows and prefills it. The shortlist is what the DM sees if
+// the model is slow, unreachable or wrong.
 export async function suggestAdjudication(
   campaign: Campaign,
   intent: string,
@@ -112,18 +61,33 @@ export async function suggestAdjudication(
     label: entry.label,
     summary: entry.summary,
   });
-  let suggestions: SuggestedAdjudication[] = [];
-  let embedded = true;
-  try {
-    const [vectors, [intentVector]] = await Promise.all([catalogVectorsOnce(), embed([intent])]);
-    suggestions = rankBySimilarity(intentVector, available, vectors, SHORTLIST).map(toSuggestion);
-  } catch (error) {
-    embedded = false;
-    console.error("[assist] the embedder failed; the shortlist is empty", error);
-  }
-  const unavailable = { error: "Suggestions are unavailable: the embedding model could not be loaded." };
+  const language = campaign.gameSettings.tableLanguage;
+  const sections = srdSections(rulebookPages());
+  const passagesOf = new Map<string, string[]>(
+    available.map((entry) => [entry.name, catalogPassages(entry, sections)]),
+  );
+  const idf = computeIdf(
+    available.flatMap((entry) => passagesOf.get(entry.name) ?? []),
+    language,
+  );
+  const scoreOf = (entry: CatalogEntry) =>
+    Math.max(
+      0,
+      ...(passagesOf.get(entry.name) ?? []).map((text) =>
+        lexicalScore(intent, text, idf, language),
+      ),
+    );
+  let suggestions: SuggestedAdjudication[] = rankByScore(available, scoreOf, SHORTLIST).map(
+    toSuggestion,
+  );
+  // With neither a matching action nor a reachable model there is nothing to
+  // suggest, and the DM is told so.
+  const unavailable = {
+    error:
+      "Suggestions are unavailable: no action matched the words and the model could not be reached.",
+  };
   if (options.useModel === false) {
-    return embedded ? { suggestions, picked: null } : unavailable;
+    return suggestions.length ? { suggestions, picked: null } : unavailable;
   }
 
   const candidates = available.map(candidateLine).join("\n");
@@ -149,11 +113,17 @@ export async function suggestAdjudication(
     { timeoutMs: arcTextTimeoutMs() },
   );
   const parsed = error ? null : parseSuggestionJson(stripReasoningArtifacts(String(message?.content ?? "")));
+  // The model not answering (an error, or nothing parseable) is the
+  // unreachable case; with nothing ranked there is nothing to suggest.
+  if (!parsed) {
+    return suggestions.length ? { suggestions, picked: null } : unavailable;
+  }
   // A pick that names no action this moment allows is discarded rather than
   // trusted: the console would render a form for an action it cannot run.
-  const entry = parsed ? available.find((candidate) => candidate.name === parsed.name) : undefined;
-  if (!parsed || !entry) {
-    return embedded ? { suggestions, picked: null } : unavailable;
+  // The model answered; only its pick is dropped, and the shortlist stays.
+  const entry = available.find((candidate) => candidate.name === parsed.name);
+  if (!entry) {
+    return { suggestions, picked: null };
   }
   // The model's pick leads the list, prefilled, whether or not the
   // shortlist had it.

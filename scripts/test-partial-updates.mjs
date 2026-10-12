@@ -99,13 +99,11 @@ const PORTRAIT = { url: "/uploads/mira.png" };
 const CUSTOM_SETTINGS = {
   campaignLength: "epic",
   dicePolicy: "real_allowed",
-  ttsEnabled: false,
-  ttsVoice: "am_adam",
+  tableLanguage: "italian",
   mapsEnabled: false,
   worldSimulation: false,
   dmAssist: { monsters: false, narration: false, cover: false },
   safety: { xCard: false, lines: ["spiders"], veils: ["gore"], boundaries: "mature" },
-  voice: { rules: { proximity: false, hearingRangeFeet: 60, sayRange: true } },
 };
 
 async function newCampaign(gameSettings, startingLevel) {
@@ -139,9 +137,9 @@ const eventsSince = (campaignId, seq) =>
 await test("a one-field settings edit changes only that field", async () => {
   const stored = normalizeGameSettings(CUSTOM_SETTINGS);
   for (const patch of [
-    { ttsEnabled: true },
+    { mapsEnabled: true },
     { dicePolicy: "digital_only" },
-    { ttsVoice: "af_heart" },
+    { tableLanguage: "spanish" },
     { dmAssist: { ...stored.dmAssist, monsters: true } },
     { safety: { ...stored.safety, lines: [] } },
   ]) {
@@ -157,7 +155,7 @@ await test("a one-field settings edit changes only that field", async () => {
     }
     assert.equal(after.campaignLength, "epic");
     assert.equal(after.dicePolicy, "dicePolicy" in patch ? "digital_only" : "real_allowed");
-    assert.equal(after.ttsVoice, "ttsVoice" in patch ? "af_heart" : "am_adam");
+    assert.equal(after.tableLanguage, "tableLanguage" in patch ? "spanish" : "italian");
   }
 });
 
@@ -166,7 +164,7 @@ await test("an unrelated toggle leaves a human-run table with its DM", async () 
   const before = getCampaignById(campaignId);
   assert.equal(before.dmUserId, lead.id);
   const seq = lastSeq(campaignId);
-  const response = await call(settingsRoute, "PATCH", { ttsEnabled: true }, { campaignId });
+  const response = await call(settingsRoute, "PATCH", { mapsEnabled: true }, { campaignId });
   assert.equal(response.status, 200);
   const after = getCampaignById(campaignId);
   assert.equal(after.gameSettings.dmMode, "human");
@@ -184,7 +182,7 @@ await test("an unrelated toggle leaves a human-run table with its DM", async () 
   assert.equal(handed.dmUserId, null);
   const seat = eventsSince(campaignId, seq).find((event) => event.type === "dm_seat_changed");
   assert.deepEqual(JSON.parse(seat.payload_json), { seat: "dm", userId: null });
-  assert.equal(handed.gameSettings.ttsVoice, "am_adam");
+  assert.equal(handed.gameSettings.tableLanguage, "italian");
 });
 
 await test("settings: an invalid value and a player are refused as before", async () => {
@@ -193,7 +191,7 @@ await test("settings: an invalid value and a player are refused as before", asyn
   const invalid = await call(settingsRoute, "PATCH", { dicePolicy: "loaded" }, { campaignId });
   assert.deepEqual(invalid, { status: 400, json: { error: "Invalid game settings." } });
   await joinAs(player, campaignId);
-  const refused = await call(settingsRoute, "PATCH", { ttsEnabled: true }, { campaignId });
+  const refused = await call(settingsRoute, "PATCH", { mapsEnabled: true }, { campaignId });
   assert.equal(refused.status, 403);
   assert.equal(storedSettingsJson(campaignId), stored);
 });

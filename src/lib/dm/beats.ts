@@ -29,7 +29,7 @@ import { rollerName } from "@/lib/roll-labels";
 // compose.
 //
 // The important design decision is that a beat is published as an ordinary DM
-// message. Chapters, compaction, scene-chunk embedding, retrieval, recap, the
+// message. Chapters, compaction, the scene index, retrieval, recap, the
 // export and Ask all read campaign_messages and none of them needs to learn
 // what a beat is. dm_beats carries only the provenance the transcript cannot.
 

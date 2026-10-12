@@ -134,59 +134,28 @@ test("rankByFusion is stable for equal scores", () => {
   assert.deepEqual(first, rankByFusion(fused));
 });
 
-test("fuseRanked keeps a lexical-only hit that cosine missed", () => {
-  // The classic failure of pure-cosine recall: a rare proper noun sits close
-  // to every other name in vector space, but it is unmistakable lexically.
+test("fuseRanked ranks by lexical score and never returns a zero-lexical candidate", () => {
+  // A rare proper noun is unmistakable lexically; a candidate sharing no
+  // word with the query is not a hit at all.
   const picked = fuseRanked(
     [
-      { id: "rare-name", lexical: 0.9, similarity: 0.11 },
-      { id: "vague-paraphrase", lexical: 0, similarity: 0.62 },
-      { id: "unrelated", lexical: 0, similarity: 0.04 },
+      { id: "rare-name", lexical: 0.9 },
+      { id: "weak-overlap", lexical: 0.1 },
+      { id: "unrelated", lexical: 0 },
     ],
     { limit: 2 },
   );
-  assert.deepEqual(picked.sort(), ["rare-name", "vague-paraphrase"]);
-});
-
-test("fuseRanked has no cosine floor: a low cosine with no overlap is still ranked, within the limit", () => {
-  // Whether it is relevant is for the reader to judge; what a cosine of 0.05
-  // means depends on the embedding model.
-  assert.deepEqual(
-    fuseRanked(
-      [
-        { id: "a", lexical: 0, similarity: 0.05 },
-        { id: "b", lexical: 0, similarity: null },
-      ],
-      { limit: 3 },
-    ),
-    ["a"],
-  );
+  assert.deepEqual(picked, ["rare-name", "weak-overlap"]);
+  assert.deepEqual(fuseRanked([{ id: "none", lexical: 0 }], { limit: 3 }), []);
   assert.deepEqual(fuseRanked([], { limit: 3 }), []);
 });
 
-test("fuseRanked keeps a strong cosine-only match over weak overlap with a weak cosine", () => {
-  // A paraphrase sharing no word with the query against candidates that
-  // share a word and score low. Fused over full lists, each weak one sits in
-  // both rankings and outscores the answer, which sits in one; each ranking
-  // is cut to the limit first, so the answer keeps its place.
+test("fuseRanked degrades to a plain lexical order", () => {
   const picked = fuseRanked(
     [
-      { id: "answer", lexical: 0, similarity: 0.56 },
-      { id: "weak-1", lexical: 0.1, similarity: 0.25 },
-      { id: "weak-2", lexical: 0.08, similarity: 0.24 },
-      { id: "weak-3", lexical: 0.05, similarity: 0.3 },
-    ],
-    { limit: 2 },
-  );
-  assert.ok(picked.includes("answer"), `answer pushed out: ${picked.join(", ")}`);
-});
-
-test("fuseRanked degrades to lexical-only with no embeddings", () => {
-  const picked = fuseRanked(
-    [
-      { id: "a", lexical: 0.2, similarity: null },
-      { id: "b", lexical: 0.8, similarity: null },
-      { id: "c", lexical: 0, similarity: null },
+      { id: "a", lexical: 0.2 },
+      { id: "b", lexical: 0.8 },
+      { id: "c", lexical: 0 },
     ],
     { limit: 2 },
   );
@@ -197,7 +166,6 @@ test("fuseRanked honours the limit", () => {
   const candidates = Array.from({ length: 10 }, (_, index) => ({
     id: `id${index}`,
     lexical: 1 - index / 10,
-    similarity: 0.9 - index / 20,
   }));
   assert.equal(fuseRanked(candidates, { limit: 3 }).length, 3);
 });

@@ -1,15 +1,14 @@
 // The DM's assist rail: what a player said turned into a shortlist of
-// adjudications ranked by meaning (each entry with the SRD text of the choices
-// it offers), and what the model proposed read back.
-// The ranking reads only vector order, so here it is fed hand-made vectors;
-// the embedder and the model are exercised against fakes in
-// test-table-language-calls.mjs.
+// adjudications ranked by shared words (each entry with the SRD text of the
+// choices it offers), and what the model proposed read back.
+// The ranking reads only caller-supplied scores; the scoring and the model
+// are exercised against fakes in test-table-language-calls.mjs.
 import assert from "node:assert/strict";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { availableEntries, candidateLine, catalogEntryText, catalogPassages, parseSuggestionJson, rankBySimilarity, srdSections } =
+const { availableEntries, candidateLine, catalogEntryText, catalogPassages, parseSuggestionJson, rankByScore, srdSections } =
   await import("../src/lib/dm/assist-logic.ts");
 const { ADJUDICATIONS } = await import("../src/lib/dm/invoke-catalog.ts");
 const { rulebookPages } = await import("../src/lib/rulebook/book.ts");
@@ -20,12 +19,7 @@ function test(name, fn) {
   passed += 1;
 }
 
-const unit = (...values) => {
-  const length = Math.hypot(...values);
-  return Float32Array.from(values.map((value) => value / length));
-};
-
-test("an entry is embedded as its name in words, its label and its summary", () => {
+test("an entry is matched on its name in words, its label and its summary", () => {
   const attack = ADJUDICATIONS.find((entry) => entry.name === "pc_attack");
   const text = catalogEntryText(attack);
   assert.ok(text.startsWith("pc attack: "));
@@ -69,19 +63,18 @@ test("fight tools are not offered when there is no fight", () => {
   assert.equal(availableEntries(ADJUDICATIONS, true).length, ADJUDICATIONS.length);
 });
 
-test("the nearest entries come first by their nearest passage, the list stays short, and ties keep catalog order", () => {
+test("the highest-scored entries come first, the list stays short, and ties keep catalog order", () => {
   const [a, b, c, d] = ADJUDICATIONS;
-  const vectors = new Map([
-    // a's own text is far, but one of its passages is the nearest of all.
-    [a.name, [unit(0, 1), unit(1, 0.01)]],
-    [b.name, [unit(1, 0.1)]],
-    [c.name, [unit(1, 0.1)]],
-    [d.name, [unit(1, 0.05)]],
+  const scores = new Map([
+    [a.name, 0.9],
+    [b.name, 0.4],
+    [c.name, 0.4],
+    [d.name, 0.55],
   ]);
-  const ranked = rankBySimilarity(unit(1, 0), [a, b, c, d], vectors, 3).map((entry) => entry.name);
+  const ranked = rankByScore([a, b, c, d], (entry) => scores.get(entry.name) ?? 0, 3).map((entry) => entry.name);
   assert.deepEqual(ranked, [a.name, d.name, b.name]);
-  // An entry with no vector is never ranked.
-  assert.deepEqual(rankBySimilarity(unit(1, 0), [a, b], new Map([[a.name, [unit(0, 1)]]]), 5).map((entry) => entry.name), [a.name]);
+  // An entry with no score is never ranked.
+  assert.deepEqual(rankByScore([a, b], (entry) => (entry === a ? 0.2 : 0), 5).map((entry) => entry.name), [a.name]);
 });
 
 test("a model's JSON pick is read, fences and all", () => {

@@ -44,13 +44,9 @@ const DRAFT = {
   descriptionTouched: false,
   aiStorySetup: true,
   dicePolicy: "digital_only",
-  ttsEnabled: true,
   mapsEnabled: true,
-  ambienceEnabled: true,
-  ambienceAuto: true,
   boardDrawing: true,
   enemyIntent: true,
-  presentation: "plain",
   multiCharacter: "off",
   multiclassingEnabled: true,
   worldSimulation: true,
@@ -66,7 +62,6 @@ const TABLE = {
   aiNarrates: true,
   storyKnownMissing: false,
   storyUnreachable: false,
-  ttsAvailable: true,
   mapsAvailable: true,
 };
 const ALL_ON = { ...DRAFT, inventoryApprovals: true, vitalsApprovals: true, midGameJoinOpen: true, holdSubmissions: true };
@@ -168,13 +163,13 @@ function rowsOf(draft, gates) {
   return tableSheet(draft, gates).flatMap((group) => group.rows);
 }
 
-test("featuresOn still counts fourteen", () => {
-  assert.equal(featuresOn(ALL_ON, TABLE), 14);
-  assert.equal(countableRows(TABLE), 14);
-  assert.equal(rowsOf(ALL_ON, TABLE).filter((row) => row.counted).length, 14);
+test("featuresOn still counts eleven", () => {
+  assert.equal(featuresOn(ALL_ON, TABLE), 11);
+  assert.equal(countableRows(TABLE), 11);
+  assert.equal(rowsOf(ALL_ON, TABLE).filter((row) => row.counted).length, 11);
   // The four that are shown but uncounted stay uncounted.
   const uncounted = rowsOf(ALL_ON, TABLE).filter((row) => !row.counted).map((row) => row.key);
-  assert.deepEqual(uncounted.sort(), ["boardDrawing", "enemyIntent", "multiCharacter", "presentation"]);
+  assert.deepEqual(uncounted.sort(), ["boardDrawing", "enemyIntent", "multiCharacter"]);
 });
 
 test("the dots on the sheet always add up to featuresOn", () => {
@@ -183,14 +178,14 @@ test("the dots on the sheet always add up to featuresOn", () => {
     { ...TABLE, solo: true },
     { ...TABLE, aiNarrates: false },
     { ...TABLE, solo: true, aiNarrates: false },
-    { ...TABLE, ttsAvailable: false, mapsAvailable: false },
+    { ...TABLE, mapsAvailable: false },
   ];
   const drafts = [
     DRAFT,
     ALL_ON,
-    { ...ALL_ON, ambienceEnabled: false },
+    { ...ALL_ON, aiStorySetup: false },
     { ...ALL_ON, relationships: "off" },
-    { ...ALL_ON, romance: "off", ttsEnabled: false, mapsEnabled: false },
+    { ...ALL_ON, romance: "off", mapsEnabled: false },
     { ...DRAFT, aiStorySetup: false, worldSimulation: false, narrationGuard: false },
   ];
   for (const gates of gateSets) {
@@ -204,7 +199,7 @@ test("the dots on the sheet always add up to featuresOn", () => {
 
 test("gating is the old gating", () => {
   const keys = (draft, gates) => rowsOf(draft, gates).map((row) => row.key);
-  assert.equal(keys(ALL_ON, TABLE).length, 18);
+  assert.equal(keys(ALL_ON, TABLE).length, 14);
   const human = keys(ALL_ON, { ...TABLE, aiNarrates: false });
   for (const key of ["aiStorySetup", "narrationGuard", "worldSimulation"]) {
     assert.ok(!human.includes(key), `${key} shows with a human narrator`);
@@ -212,16 +207,12 @@ test("gating is the old gating", () => {
   assert.ok(!tableSheet(ALL_ON, { ...TABLE, aiNarrates: false }).some((group) => group.id === "narration"));
   const solo = keys(ALL_ON, { ...TABLE, solo: true });
   assert.ok(!solo.includes("midGameJoinOpen") && !solo.includes("holdSubmissions"));
-  assert.ok(!keys({ ...ALL_ON, ambienceEnabled: false }, TABLE).includes("ambienceAuto"));
   assert.ok(!keys({ ...ALL_ON, relationships: "off" }, TABLE).includes("romance"));
 });
 
-test("a missing backend disables its row and says why; maps stay choosable and wait for pictures", () => {
-  const rows = rowsOf(DRAFT, { ...TABLE, ttsAvailable: false, mapsAvailable: false });
-  const tts = rows.find((row) => row.key === "ttsEnabled");
+test("maps stay choosable and wait for pictures when the server cannot paint yet", () => {
+  const rows = rowsOf(DRAFT, { ...TABLE, mapsAvailable: false });
   const maps = rows.find((row) => row.key === "mapsEnabled");
-  assert.equal(tts.disabled, true);
-  assert.equal(tts.hint, "No speech service on this server");
   // A campaign made before the server had pictures keeps its maps on, so
   // they draw once a picture backend exists (src/lib/image-backend-rescue.ts).
   assert.equal(maps.disabled, false);
@@ -235,7 +226,6 @@ test("a press flips, and the tri-state walks its three stops", () => {
   assert.deepEqual(flipRow(DRAFT, "relationships"), { relationships: "off" });
   assert.deepEqual(flipRow({ ...DRAFT, relationships: "off" }, "relationships"), { relationships: "on" });
   assert.deepEqual(flipRow(DRAFT, "romance"), { romance: "off" });
-  assert.deepEqual(flipRow(DRAFT, "presentation"), { presentation: "theatre" });
   assert.deepEqual(flipRow(DRAFT, "enemyIntent"), { enemyIntent: false });
   let draft = DRAFT;
   const stops = [];

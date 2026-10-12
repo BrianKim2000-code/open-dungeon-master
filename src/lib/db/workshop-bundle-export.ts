@@ -147,7 +147,6 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     carried: ["category", "title", "body", "tags_json", "pinned", "visibility", "image_path", "style"],
     left: {
       ...IDENTITY,
-      embedding: "recomputed on import",
       audience_json: "names the source table's people",
       attachment_path: "an attached PDF stays behind; bundles carry pictures only",
     },

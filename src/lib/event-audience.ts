@@ -124,7 +124,6 @@ export const EVENT_AUDIENCE: Readonly<Record<string, Audience>> = {
   whisper_activity: TABLE,
   side_activity: TABLE,
   ask_activity: TABLE,
-  transcript_updated: TABLE,
   // The director's arm is published already redacted.
   director_armed: TABLE,
   // Members and seats.

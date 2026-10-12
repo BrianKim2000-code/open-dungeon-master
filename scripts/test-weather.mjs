@@ -13,7 +13,6 @@ const {
   describeWeather,
   normalizeWeather,
   rollWeather,
-  weatherBedCue,
   weatherExposure,
   weatherObscurementTiles,
   weatherPerceptionRider,
@@ -135,13 +134,6 @@ test("frigid and hot air are the exposure hazards; snow and storm slow a march",
   assert.equal(weatherTravelFactor({ sky: "storm", temperature: "cold", wind: "gale", precipitation: 3 }), 0.5);
   assert.equal(weatherTravelFactor({ sky: "rain", temperature: "cold", wind: "calm", precipitation: 1 }), 0.75);
   assert.equal(weatherTravelFactor({ sky: "clear", temperature: "mild", wind: "calm", precipitation: 0 }), 1);
-});
-
-test("the room follows the sky: storm, rain and gale beds", () => {
-  assert.equal(weatherBedCue({ sky: "storm", temperature: "mild", wind: "gale", precipitation: 3 }), "storm");
-  assert.equal(weatherBedCue({ sky: "rain", temperature: "mild", wind: "calm", precipitation: 1 }), "rain");
-  assert.equal(weatherBedCue({ sky: "clear", temperature: "mild", wind: "gale", precipitation: 0 }), "wind");
-  assert.equal(weatherBedCue({ sky: "clear", temperature: "mild", wind: "calm", precipitation: 0 }), null);
 });
 
 test("the sentence the prompt and the client share", () => {

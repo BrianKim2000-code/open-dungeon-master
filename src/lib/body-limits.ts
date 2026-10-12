@@ -48,17 +48,6 @@ export const BODY_LIMIT_RULES: Rule[] = [
     limit: 17 * MIB,
     why: "a 16 MB world pack manifest",
   },
-  { pattern: /^\/api\/stt\/?$/, limit: 9 * MIB, why: "an 8 MB recording as a form" },
-  {
-    pattern: new RegExp(`^/api/campaigns/${SEGMENT}/voice/transcript/?$`),
-    limit: 7 * MIB,
-    why: "a 6 MB ring of call audio as a form",
-  },
-  {
-    pattern: new RegExp(`^/api/campaigns/${SEGMENT}/voice/mesh/signal/?$`),
-    limit: 64 * KIB,
-    why: "a WebRTC offer or answer",
-  },
 ];
 
 // The largest budget in the table: what next.config.ts must let the proxy

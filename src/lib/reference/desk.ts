@@ -29,9 +29,8 @@ import {
 // The gathering is deliberately dumb and cheap. Content rows are found by
 // NAME against the words in the question, which is what the content database
 // indexes, and the ranking that decides what actually reaches the model is
-// the pure keyword score in desk-logic.ts. No embeddings: the campaign
-// memory index exists per campaign and this desk is not in one, and a
-// question about a spell almost always contains that spell's name.
+// the pure keyword score in desk-logic.ts. A question about a spell almost
+// always contains that spell's name.
 //
 // Everything the model gets back is checked against what it was given
 // before it reaches a person. See desk-logic.ts for why that matters.

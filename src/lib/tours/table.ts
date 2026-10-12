@@ -42,13 +42,6 @@ export const PLAYER_TOUR: TourStep[] = [
     prepare: "show-chat",
   },
   {
-    id: "talk",
-    title: "Hold to talk",
-    body: "Hold the microphone and dictate instead of typing; the words land in the box for you to check before sending.",
-    anchors: ["composer-talk"],
-    prepare: "show-chat",
-  },
-  {
     id: "ask",
     title: "Ask the DM",
     body: "Questions about the story, the rules or your sheet go here, not in the message box. Asking never moves the story on, so it works even while the floor is locked.",
@@ -113,12 +106,6 @@ export const PLAYER_TOUR: TourStep[] = [
     title: "Dice",
     body: "Every roll is made by the server, never invented, and the latest one flashes up over the story with its total. This menu turns the tumbling 3D dice on or off, opens the editor for your own dice colours, and on a phone lets you shake to roll.",
     anchors: ["header-dice"],
-  },
-  {
-    id: "voice",
-    title: "Voice chat",
-    body: "Join the call from here and talk to the table without another app. It stays up whichever panel you switch to.",
-    anchors: ["header-voice"],
   },
   {
     id: "help",

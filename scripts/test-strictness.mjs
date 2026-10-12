@@ -7,7 +7,7 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { dcForDifficulty } = await import("../src/lib/srd/dc.ts");
-const { normalizeGm, reactionBias, renderGmBlock, strictnessShift, toneBedBias } = await import("../src/lib/dm/safety-logic.ts");
+const { normalizeGm, reactionBias, renderGmBlock, strictnessShift } = await import("../src/lib/dm/safety-logic.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -34,12 +34,6 @@ test("reactions lean a step and the block names the lean and the tone", () => {
   assert.match(block, /Rulings lean hard/);
   assert.match(block, /grim and unsparing/);
   assert.equal(renderGmBlock(normalizeGm({})), "", "nothing to say by the book with no tone");
-});
-
-test("tone picks a bed when the scene names none", () => {
-  assert.equal(toneBedBias(["eerie"]), "cave");
-  assert.equal(toneBedBias(["hopeful"]), null);
-  assert.equal(toneBedBias(["hopeful", "epic"]), "wind");
 });
 
 console.log(`test-strictness: ${passed} passed`);

@@ -1,7 +1,6 @@
 import { campaignLanguage } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
-import { listLoreWithEmbeddings } from "@/lib/db/lore";
-import { embed, similarityOf } from "@/lib/embeddings";
+import { listLoreEntries } from "@/lib/db/lore";
 import { searchScenes } from "@/lib/dm/memory-index";
 import { computeIdf, fuseRanked, lexicalScore } from "@/lib/dm/fusion-logic";
 import { hasWorldDoc, worldView } from "@/lib/db/world-forge";
@@ -65,11 +64,9 @@ const FACT_CATEGORY_MAP: Record<string, string[]> = {
   religion: ["lore", "world"],
 };
 
-// One candidate from any source. Everything competes in a single fused
-// ranking: previously each source was scored on whichever scale happened to
-// apply (cosine when it had an embedding, a keyword fraction when it did
-// not, and searchScenes' own similarity for chapters), then all four were
-// sorted against each other as though those numbers meant the same thing.
+// One candidate from any source. Everything competes in a single lexical
+// ranking (fusion-logic.ts), so the sources never have to agree on what a
+// score means.
 type LoreCandidate = {
   id: string;
   source: string;
@@ -77,9 +74,6 @@ type LoreCandidate = {
   text: string;
   // What lexical scoring reads, which is usually wider than the shown text.
   haystack: string;
-  embedding: Buffer | null;
-  // Pre-computed similarity for sources that already did the cosine work.
-  similarity?: number | null;
 };
 
 export async function handleSearchLore(
@@ -98,14 +92,6 @@ export async function handleSearchLore(
   }
   const category = String(args.category ?? "any");
 
-  let queryVector: Float32Array | null = null;
-  try {
-    [queryVector] = await embed([query]);
-  } catch (error) {
-    // Keyword fallback carries the search.
-    console.error("[lore-search] embedding failed", error);
-  }
-
   const candidates: LoreCandidate[] = [];
   const db = getDatabase();
 
@@ -114,7 +100,7 @@ export async function handleSearchLore(
     category === "any" ||
     ["geography", "factions", "history", "magic", "culture", "religion"].includes(category)
   ) {
-    for (const { entry, embedding } of listLoreWithEmbeddings(campaignId)) {
+    for (const entry of listLoreEntries(campaignId)) {
       if (category !== "any" && entry.category !== category) {
         continue;
       }
@@ -124,7 +110,6 @@ export async function handleSearchLore(
         ref: `${entry.category}: ${entry.title}`,
         text: entry.body.slice(0, TEXT_CLIP),
         haystack: `${entry.title} ${entry.tags.join(" ")} ${entry.body}`,
-        embedding,
       });
     }
   }
@@ -143,7 +128,7 @@ export async function handleSearchLore(
   const factCategories = category === "any" ? null : (FACT_CATEGORY_MAP[category] ?? null);
   const factRows = db
     .prepare(
-      `SELECT id, category, subject, fact, embedding FROM world_facts
+      `SELECT id, category, subject, fact FROM world_facts
        WHERE campaign_id = ? AND status = 'active'`,
     )
     .all(campaignId) as Array<{
@@ -151,7 +136,6 @@ export async function handleSearchLore(
     category: string;
     subject: string;
     fact: string;
-    embedding: Buffer | null;
   }>;
   for (const row of factRows) {
     if (factCategories && !factCategories.includes(row.category)) {
@@ -163,14 +147,13 @@ export async function handleSearchLore(
       ref: `${row.category}${row.subject ? `: ${row.subject}` : ""}`,
       text: row.fact.slice(0, TEXT_CLIP),
       haystack: `${row.subject} ${row.fact}`,
-      embedding: row.embedding,
     });
   }
 
   // Public active party notes (never private notes or pending suggestions).
   const noteRows = db
     .prepare(
-      `SELECT id, title, body, embedding FROM campaign_notes
+      `SELECT id, title, body FROM campaign_notes
        WHERE campaign_id = ? AND character_id IS NULL
          AND visibility = 'public' AND status = 'active'`,
     )
@@ -178,7 +161,6 @@ export async function handleSearchLore(
     id: string;
     title: string;
     body: string;
-    embedding: Buffer | null;
   }>;
   for (const row of noteRows) {
     candidates.push({
@@ -187,11 +169,10 @@ export async function handleSearchLore(
       ref: row.title || "note",
       text: row.body.slice(0, TEXT_CLIP),
       haystack: `${row.title} ${row.body}`,
-      embedding: row.embedding,
     });
   }
 
-  // Chapter memory: verbatim scenes from the semantic index, already fused
+  // Chapter memory: verbatim scenes from the memory index, already fused
   // and MMR-diversified in searchScenes. They join the same pool so a
   // transcript excerpt can genuinely outrank a lore entry.
   try {
@@ -203,8 +184,6 @@ export async function handleSearchLore(
         ref: `chapter ${scene.chapterIndex}`,
         text: scene.text.slice(0, TEXT_CLIP),
         haystack: scene.text,
-        embedding: null,
-        similarity: scene.similarity || null,
       });
     }
   } catch {
@@ -218,10 +197,6 @@ export async function handleSearchLore(
     candidates.map((candidate) => ({
       id: candidate.id,
       lexical: lexicalScore(query, candidate.haystack, idf, language),
-      similarity:
-        candidate.similarity !== undefined
-          ? candidate.similarity
-          : similarityOf(queryVector, candidate.embedding),
     })),
     { limit: RESULT_LIMIT },
   )
@@ -277,7 +252,6 @@ function worldForgeCandidates(campaignId: string, category: string): LoreCandida
       ref: `${type.name}: ${entity.name}`,
       text: body.slice(0, TEXT_CLIP),
       haystack: `${entity.name} ${entity.aliases.join(" ")} ${entity.entry.aliases.join(" ")} ${entity.tags.join(" ")} ${body}`,
-      embedding: null,
     });
   }
   if (category === "any" || category === "history") {
@@ -290,7 +264,6 @@ function worldForgeCandidates(campaignId: string, category: string): LoreCandida
         ref: `${event.when.year ? `${event.when.year}: ` : ""}${event.title}`,
         text: `${event.body}${names ? ` (involves ${names})` : ""}`.slice(0, TEXT_CLIP),
         haystack: `${event.title} ${event.era} ${event.body} ${names}`,
-        embedding: null,
       });
     }
   }

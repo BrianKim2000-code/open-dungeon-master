@@ -12,12 +12,8 @@ import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-table-language-calls");
 
-// A stand-in embedder: every text the same vector, so the assist shortlist is
-// the catalog's first entries in order, and no model is loaded from disk.
-const sameVector = (texts) => Promise.resolve({ tolist: () => texts.map(() => [1, ...new Array(383).fill(0)]) });
-globalThis.__odmEmbedderPromise = Promise.resolve(sameVector);
-const italian = await openWorld({ gameSettings: { ttsEnabled: false, tableLanguage: "italian" } });
-const english = await openWorld({ gameSettings: { ttsEnabled: false } });
+const italian = await openWorld({ gameSettings: { tableLanguage: "italian" } });
+const english = await openWorld({ gameSettings: {} });
 
 const { languageDirective } = await import("../src/lib/dm/table-language-logic.ts");
 const { suggestAdjudication, generateRollTable } = await import("../src/lib/dm/assist.ts");
@@ -124,11 +120,6 @@ await test("An Italian question needs no English word to reach the rules, the sh
 });
 
 await test("The assist's model picks from every action with each pick list's values, its pick leads the shortlist, and a pick this moment does not allow is dropped.", async () => {
-  // Resting and camping share a direction; everything else shares another.
-  const restful = (texts) =>
-    Promise.resolve({ tolist: () => texts.map((text) => (/take rest|accampiamo/i.test(text) ? [1, 0, ...new Array(382).fill(0)] : [0, 1, ...new Array(382).fill(0)])) });
-  globalThis.__odmEmbedderPromise = Promise.resolve(restful);
-  globalThis.__odmAssistCatalogVectors = undefined;
   const model = await fakeModel();
   model.pointAt(italian);
   const { ADJUDICATIONS } = await import("../src/lib/dm/invoke-catalog.ts");
@@ -147,39 +138,25 @@ await test("The assist's model picks from every action with each pick list's val
     model.script([reply({ text: JSON.stringify({ name: fightOnly.name, args: {}, why: "x" }) })]);
     const dropped = await suggestAdjudication(italian.campaign(), "Ci accampiamo per la notte", { inEncounter: false });
     assert.equal(dropped.picked, null);
-    assert.equal(dropped.suggestions[0].name, "take_rest");
+    assert.ok(!dropped.suggestions.some((entry) => entry.name === fightOnly.name), "a fight-only action was suggested with no fight");
   } finally {
-    globalThis.__odmEmbedderPromise = Promise.resolve(sameVector);
-    globalThis.__odmAssistCatalogVectors = undefined;
     model.close();
   }
 });
 
-await test("An embedder that fails is logged: the model's pick still answers, and with no model the DM is told suggestions are unavailable.", async () => {
-  const failing = Promise.reject(new Error("the embedding model could not be loaded"));
-  failing.catch(() => {});
-  globalThis.__odmEmbedderPromise = failing;
+await test("With no matching action and no model the DM is told suggestions are unavailable; the model's pick still answers when it is there.", async () => {
   const model = await fakeModel();
   model.pointAt(italian);
-  const errors = [];
-  const original = console.error;
-  console.error = (...parts) => errors.push(parts.join(" "));
-  try {
-    const offline = await suggestAdjudication(italian.campaign(), "Cerco trappole", { inEncounter: false, useModel: false });
-    assert.match(offline.error, /unavailable/);
-    model.script([reply({ text: '{"name":"request_roll","args":{},"why":"cerca"}' })]);
-    const picked = await suggestAdjudication(italian.campaign(), "Cerco trappole", { inEncounter: false });
-    assert.deepEqual(picked.suggestions.map((entry) => entry.name), ["request_roll"]);
-    // With nothing ranked, the model still picks from everything.
-    const { ADJUDICATIONS } = await import("../src/lib/dm/invoke-catalog.ts");
-    const offered = model.requests.at(-1).messages.at(-1).content.split("\n").filter((line) => line.startsWith("- ")).length;
-    assert.equal(offered, ADJUDICATIONS.filter((entry) => !entry.needsEncounter).length);
-  } finally {
-    console.error = original;
-    globalThis.__odmEmbedderPromise = Promise.resolve(sameVector);
-    model.close();
-  }
-  assert.ok(errors.some((line) => line.includes("[assist] the embedder failed")), errors.join("\n"));
+  const offline = await suggestAdjudication(italian.campaign(), "Cerco trappole", { inEncounter: false, useModel: false });
+  assert.match(offline.error, /unavailable/);
+  model.script([reply({ text: '{"name":"request_roll","args":{},"why":"cerca"}' })]);
+  const picked = await suggestAdjudication(italian.campaign(), "Cerco trappole", { inEncounter: false });
+  assert.deepEqual(picked.suggestions.map((entry) => entry.name), ["request_roll"]);
+  // With nothing ranked, the model still picks from everything.
+  const { ADJUDICATIONS } = await import("../src/lib/dm/invoke-catalog.ts");
+  const offered = model.requests.at(-1).messages.at(-1).content.split("\n").filter((line) => line.startsWith("- ")).length;
+  assert.equal(offered, ADJUDICATIONS.filter((entry) => !entry.needsEncounter).length);
+  model.close();
 });
 
 await test("A system line keeps the icon its writer stored; one written before icons were stored has none.", async () => {

@@ -8,10 +8,6 @@ export async function register() {
     const { startJobRunner } = await import("@/lib/jobs");
     startJobRunner();
 
-    // Runs before the first request, so no search ever compares vectors from
-    // two embedding models (src/lib/dm/embedding-reindex.ts). The re-embed
-    // itself is left running in the background. A failure here must not stop
-    // the server: the worst case is the keyword fallback search already has.
     if (process.env.NEXT_PHASE !== "phase-production-build") {
       // Event loop delay for the admin's metrics (src/lib/metrics.ts).
       const { startProcessMetrics } = await import("@/lib/metrics");
@@ -34,18 +30,6 @@ export async function register() {
         announceSetupCode();
       } catch (error) {
         console.error("[setup] could not check for a first account", error);
-      }
-
-      try {
-        const { embedMissingVectors, reconcileEmbeddingModel } = await import(
-          "@/lib/dm/embedding-reindex"
-        );
-        reconcileEmbeddingModel();
-        void embedMissingVectors().catch((error) => {
-          console.error("[embeddings] catch-up failed", error);
-        });
-      } catch (error) {
-        console.error("[embeddings] could not check the stored vectors against the model", error);
       }
 
       // Rules PDFs read by the old first-page-only reader get their whole

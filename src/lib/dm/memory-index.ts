@@ -1,8 +1,7 @@
 import { campaignLanguage } from "@/lib/db/campaigns";
 import {
   getChapter,
-  listChapterEmbeddings,
-  setChapterEmbedding,
+  listClosedChapterTexts,
   type Chapter,
 } from "@/lib/db/chapters";
 import { listMessagesInSeqRange } from "@/lib/db/messages";
@@ -10,11 +9,8 @@ import {
   chapterHasChunks,
   insertSceneChunks,
   listSceneChunksForChapters,
-  listSceneChunksMissingVectors,
-  setSceneChunkEmbedding,
 } from "@/lib/db/scene-chunks";
 import { getDatabase } from "@/lib/db/core";
-import { bufferToVector, cosine, embed, similarityOf, vectorToBuffer } from "@/lib/embeddings";
 import { chunkScenes } from "@/lib/dm/scene-logic";
 import {
   applyMmr,
@@ -32,12 +28,11 @@ import {
 import { detectWitnesses } from "@/lib/dm/witness-logic";
 import { listNpcs } from "@/lib/db/npcs";
 
-// The semantic memory index. Chapter close hands each sealed chapter here:
-// its transcript is chunked into verbatim scenes, embedded on the CPU, and
-// stored; the chapter summary gets its own embedding for phase-1 picking.
-// Recall then runs two-phase: cosine over chapter-summary embeddings picks
-// the likely chapters, cosine over their scene rows returns the verbatim
-// spans. All brute-force JS over a few thousand 384-dim vectors, sub-10ms.
+// The memory index. Chapter close hands each sealed chapter here: its
+// transcript is chunked into verbatim scenes and stored. Recall then runs
+// two-phase: lexical scoring over chapter titles and summaries picks the
+// likely chapters, lexical scoring over their scene rows returns the
+// verbatim spans.
 
 // Counts what the server recorded inside each scene's seq range, so
 // importance is read off the record rather than inferred from the prose.
@@ -125,7 +120,7 @@ function gatherSceneSignals(
 
 // Indexes one closed chapter. Idempotent (skips chapters that already have
 // chunks) and safe to fire-and-forget: any failure just leaves the chapter
-// to the keyword fallback and the backfill script.
+// to keyword scoring over the raw transcript.
 export async function indexChapter(campaignId: string, chapterId: string): Promise<void> {
   try {
     const chapter = getChapter(chapterId);
@@ -136,7 +131,6 @@ export async function indexChapter(campaignId: string, chapterId: string): Promi
       const messages = listMessagesInSeqRange(campaignId, chapter.seqStart, chapter.seqEnd);
       const scenes = chunkScenes(messages);
       if (scenes.length) {
-        const vectors = await embed(scenes.map((scene) => scene.text), { background: true });
         const signals = gatherSceneSignals(
           campaignId,
           { seqStart: chapter.seqStart, seqEnd: chapter.seqEnd },
@@ -156,70 +150,15 @@ export async function indexChapter(campaignId: string, chapterId: string): Promi
             seqStart: scene.seqStart,
             seqEnd: scene.seqEnd,
             text: scene.text,
-            embedding: vectorToBuffer(vectors[index]),
             importance: scoreSceneImportance(signals[index]),
             witnesses: detectWitnesses(scene.text, roster),
           })),
         );
       }
     }
-    const summaryText = chapterSummaryText(chapter);
-    if (summaryText) {
-      const [vector] = await embed([summaryText]);
-      setChapterEmbedding(chapterId, vectorToBuffer(vector));
-    }
-    await embedPendingFacts(campaignId);
   } catch (error) {
     console.error("[memory-index] indexing failed", error);
   }
-}
-
-// What phase-1 recall embeds for a chapter; "" when there is nothing to embed.
-function chapterSummaryText(chapter: { title: string; summary: string }): string {
-  const text = `${chapter.title}. ${chapter.summary}`.trim();
-  return text.length > 1 ? text : "";
-}
-
-// Scene chunks per embed call on a re-embed pass. A long campaign holds
-// thousands of them; batching keeps each turn on the shared embed queue
-// short, so a live table never waits behind the whole backlog.
-const REEMBED_BATCH = 16;
-
-// Re-embeds the chunks of already indexed chapters whose vector is missing,
-// in place: text, importance and witnesses stay as indexing wrote them. This
-// is how an embedding-model change catches up (src/lib/dm/embedding-reindex.ts).
-export async function reembedSceneChunks(campaignId: string): Promise<number> {
-  const pending = listSceneChunksMissingVectors(campaignId);
-  for (let start = 0; start < pending.length; start += REEMBED_BATCH) {
-    const batch = pending.slice(start, start + REEMBED_BATCH);
-    const vectors = await embed(batch.map((chunk) => chunk.text), { background: true });
-    batch.forEach((chunk, index) => {
-      setSceneChunkEmbedding(chunk.id, vectorToBuffer(vectors[index]));
-    });
-  }
-  return pending.length;
-}
-
-// Closed chapters whose summary has no vector yet, the phase-1 half of the
-// same catch-up.
-export async function embedPendingChapterSummaries(campaignId: string): Promise<number> {
-  const pending = getDatabase()
-    .prepare(
-      `SELECT id, COALESCE(title, '') AS title, COALESCE(summary, '') AS summary FROM chapters
-       WHERE campaign_id = ? AND status = 'closed' AND embedding IS NULL`,
-    )
-    .all(campaignId) as Array<{ id: string; title: string; summary: string }>;
-  let embedded = 0;
-  for (const chapter of pending) {
-    const text = chapterSummaryText(chapter);
-    if (!text) {
-      continue;
-    }
-    const [vector] = await embed([text]);
-    setChapterEmbedding(chapter.id, vectorToBuffer(vector));
-    embedded += 1;
-  }
-  return embedded;
 }
 
 export type RecalledScene = {
@@ -227,27 +166,20 @@ export type RecalledScene = {
   seqStart: number;
   seqEnd: number;
   text: string;
-  similarity: number;
   // Tracked NPCs on screen for this span; see src/lib/dm/witness-logic.ts.
   witnesses: string[];
 };
 
-const PHASE1_CHAPTERS = 3;
-const PHASE2_SCENES = 3;
-// Scene chunks are cut from a continuous transcript, so pull a wider fused
-// set and let MMR thin it: without that, the three best matches for "the
-// vault" are routinely three overlapping windows onto the same conversation.
-const PHASE2_CANDIDATES = 8;
+const RECALL_SCENES = 3;
+// Scene chunks are cut from a continuous transcript, so pull a wider set and
+// let MMR thin it: without that, the three best matches for "the vault" are
+// routinely three overlapping windows onto the same conversation.
+const RECALL_CANDIDATES = 8;
 const MMR_LAMBDA = 0.7;
 
-// Two-phase recall, each phase fusing IDF-weighted lexical scoring with
-// cosine (src/lib/dm/fusion-logic.ts). Phase 1 picks the likely chapters from
-// their title and summary, phase 2 returns verbatim scenes from those
-// chapters, diversified by MMR.
-//
-// Both phases degrade cleanly: an unavailable embedder or a NULL embedding
-// simply removes the semantic ranking and leaves the lexical one, which is
-// the case pure-cosine recall could not serve at all. Returns [] when the
+// Recall over the memory index: every sealed scene is scored against the
+// query with IDF-weighted lexical scoring (src/lib/dm/fusion-logic.ts), and
+// the best are returned verbatim, diversified by MMR. Returns [] when the
 // index is empty, and the caller falls back to keyword chapter scoring.
 export async function searchScenes(
   campaignId: string,
@@ -257,49 +189,25 @@ export async function searchScenes(
   if (!trimmed) {
     return [];
   }
-  const chapters = listChapterEmbeddings(campaignId);
+  const chapters = listClosedChapterTexts(campaignId);
   if (!chapters.length) {
-    return [];
-  }
-
-  // One embed per recall, shared by both phases. A failure here is not fatal:
-  // it drops the search to lexical-only rather than losing the whole recall.
-  let queryVector: Float32Array | null = null;
-  try {
-    [queryVector] = await embed([trimmed]);
-  } catch (error) {
-    // embedder unavailable; lexical ranking carries the search
-    console.error("[memory-index] embedding failed", error);
-  }
-
-  const language = campaignLanguage(campaignId);
-  const chapterIdf = computeIdf(chapters.map((row) => `${row.title} ${row.summary}`), language);
-  const pickedIds = fuseRanked(
-    chapters.map((row) => ({
-      id: row.id,
-      lexical: lexicalScore(trimmed, `${row.title} ${row.summary}`, chapterIdf, language),
-      similarity: similarityOf(queryVector, row.embedding),
-    })),
-    { limit: PHASE1_CHAPTERS },
-  );
-  if (!pickedIds.length) {
     return [];
   }
   const chapterIndexById = new Map(chapters.map((row) => [row.id, row.index]));
 
-  const scenes = listSceneChunksForChapters(campaignId, pickedIds);
+  const scenes = listSceneChunksForChapters(campaignId, chapters.map((row) => row.id));
   if (!scenes.length) {
     return [];
   }
+  const language = campaignLanguage(campaignId);
   const sceneIdf = computeIdf(scenes.map((scene) => scene.text), language);
   const sceneById = new Map(scenes.map((scene) => [scene.id, scene]));
   const fusedSceneIds = fuseRanked(
     scenes.map((scene) => ({
       id: scene.id,
       lexical: lexicalScore(trimmed, scene.text, sceneIdf, language),
-      similarity: similarityOf(queryVector, scene.embedding),
     })),
-    { limit: PHASE2_CANDIDATES },
+    { limit: RECALL_CANDIDATES },
   );
 
   const shortlist = fusedSceneIds
@@ -325,17 +233,13 @@ export async function searchScenes(
     .filter((scene): scene is NonNullable<typeof scene> => scene !== undefined)
     .map((scene) => ({ id: scene.id, text: scene.text, scene }));
 
-  return applyMmr(candidates, PHASE2_SCENES, language, MMR_LAMBDA).map(({ scene }) => {
-    const vector = bufferToVector(scene.embedding);
-    return {
-      chapterIndex: chapterIndexById.get(scene.chapterId) ?? 0,
-      seqStart: scene.seqStart,
-      seqEnd: scene.seqEnd,
-      text: scene.text,
-      similarity: vector && queryVector ? cosine(queryVector, vector) : 0,
-      witnesses: scene.witnesses,
-    };
-  });
+  return applyMmr(candidates, RECALL_SCENES, language, MMR_LAMBDA).map(({ scene }) => ({
+    chapterIndex: chapterIndexById.get(scene.chapterId) ?? 0,
+    seqStart: scene.seqStart,
+    seqEnd: scene.seqEnd,
+    text: scene.text,
+    witnesses: scene.witnesses,
+  }));
 }
 
 // Convenience for the backfill script and chapter close.
@@ -347,28 +251,3 @@ export async function indexClosedChapters(campaignId: string, chapters: Chapter[
   }
 }
 
-// Embeds every active fact that lacks a vector. Facts are written without
-// one; this runs when a chapter is indexed, before an extraction call ranks
-// the facts on file (src/lib/dm/fact-consolidation.ts), and from the
-// re-embed pass.
-export async function embedPendingFacts(campaignId: string): Promise<number> {
-  const db = getDatabase();
-  const missing = (
-    db
-      .prepare(
-        `SELECT id, fact, embedding FROM world_facts
-         WHERE campaign_id = ? AND status = 'active'
-         ORDER BY created_at ASC, id ASC`,
-      )
-      .all(campaignId) as Array<{ id: string; fact: string; embedding: Buffer | null }>
-  ).filter((row) => !bufferToVector(row.embedding));
-  if (!missing.length) {
-    return 0;
-  }
-  const vectors = await embed(missing.map((row) => row.fact), { background: true });
-  const update = db.prepare(`UPDATE world_facts SET embedding = ? WHERE id = ?`);
-  missing.forEach((row, index) => {
-    update.run(vectorToBuffer(vectors[index]), row.id);
-  });
-  return missing.length;
-}
