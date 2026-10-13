@@ -1,4 +1,3 @@
-import { openAiImagesConfigured } from "@/lib/openai-images";
 import { configuredDefaultStorySettings } from "@/lib/runtime-defaults";
 import { isDeviceWorld } from "@/lib/server-env";
 import { isLocalTextModelId, isTextProvider } from "@/lib/text-models";
@@ -146,7 +145,7 @@ export function withoutAdminOnlyFields<T extends Partial<StorySettings>>(patch: 
 // player would be pasting it into each older one by hand. Applied where
 // settings are read rather than copied into each row, so the next change on
 // the device reaches every campaign too. The keys stay blank: model-client
-// and openai-images attach the device's own at request time.
+// attaches the device's own at request time.
 function deviceBackend(device: StorySettings): Partial<StorySettings> {
   return {
     textProvider: device.textProvider,
@@ -201,7 +200,7 @@ export function maskStorySettings(
     ...rest,
     hasCustomApiKey: customApiKey !== "",
     hasUtilityApiKey: utilityApiKey !== "",
-    imagesReady: settings.imageBackend === "openai" ? openAiImagesConfigured(settings) : true,
+    imagesReady: false,
     deviceManaged: isDeviceWorld(),
     serverManaged: !isDeviceWorld() && !viewer.isAdmin,
   };

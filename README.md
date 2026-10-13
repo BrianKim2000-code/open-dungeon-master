@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-d4ab3a?labelColor=151229&style=flat-square)](LICENSE)
 [![Node 22+](https://img.shields.io/badge/node-22%2B-d4ab3a?labelColor=151229&style=flat-square)](package.json)
-[![Ruleset: D&D 5e SRD 5.1](https://img.shields.io/badge/ruleset-D%26D%205e%20SRD%205.1-d4ab3a?labelColor=151229&style=flat-square)](docs/rules-coverage.md)
+![Ruleset: D&D 5e SRD 5.1](https://img.shields.io/badge/ruleset-D%26D%205e%20SRD%205.1-d4ab3a?labelColor=151229&style=flat-square)
 [![Runs: fully on-device](https://img.shields.io/badge/runs-fully%20on--device-d4ab3a?labelColor=151229&style=flat-square)](#requirements)
 [![AI: local, API or CLI agent](https://img.shields.io/badge/AI-local%20%C2%B7%20API%20%C2%B7%20CLI%20agent-d4ab3a?labelColor=151229&style=flat-square)](#requirements)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-e0703a?labelColor=151229&style=flat-square)](#)
@@ -90,7 +90,7 @@ a secret story arc it regenerates as the campaign moves.
 <td width="50%" valign="top" align="center">
 <img src="public/sidebar-icons/images.png" width="56"><br>
 <b>Battle maps &amp; scene art</b><br>
-<sub>Optional ComfyUI drives character portraits, inline scene art and top-down battle maps with per-character line of sight. Missing? It fails soft to a placeholder.</sub>
+<sub>Top-down battle maps with per-character line of sight, and the art you upload: portraits, NPC faces, covers and map images, with placeholder plates for anything unpainted.</sub>
 </td>
 </tr>
 <tr>
@@ -133,8 +133,9 @@ a secret story arc it regenerates as the campaign moves.
   plot advances without the model rewriting history. Player-safe pieces surface as
   the quest log; DM-only hooks stay hidden.
 
-The authoritative ledger of exactly what is enforced, what is guidance, and what is
-out of scope is [docs/rules-coverage.md](docs/rules-coverage.md).
+The server enforces the rules it can compute (attack rolls, saves, spell slots,
+conditions, movement, encumbrance) and hands the model the rest as guidance; the
+`enforce-*` test suite is the ledger of exactly what is checked.
 
 ## Systems &amp; engines
 
@@ -241,15 +242,14 @@ and clamped by code.
 - **Per-role sampling** - separate story and utility sampling with named profiles, and a cloud-safe versus local-only parameter split so a local-only key never reaches a strict endpoint.
 - **Per-stage engine toggles** - every optional pipeline stage (compaction, recall, retrieval, chapter summary) is switchable per campaign with an engine-versus-model cost badge.
 - **Background-work visibility** - compaction, chapter seals, world ticks, lore checks and Asks surface as labelled chips with elapsed time instead of an opaque wait.
-- **Portrait generation** - a one-shot ComfyUI character portrait at creation, with an icon fallback.
-- **Table language** - each campaign plays in one of 15 languages (English, Danish, Dutch, Finnish, French, German, Hungarian, Indonesian, Irish, Italian, Norwegian, Portuguese, Russian, Spanish, Swedish). The DM narrates and every prose call writes in it; nothing reads story text through English word lists: one utility call per narrated reply reads its claims (a hit, a kill, a spell, a roll asked in words) for the engine to check, word matching stems with each language's Snowball stemmer and stop list, and a place's kind of scene is picked from a list rather than read from its name. Rules names, the interface and the SRD rulebook stay English, and image prompts are rewritten into English.
+- **Table language** - each campaign plays in one of 15 languages (English, Danish, Dutch, Finnish, French, German, Hungarian, Indonesian, Irish, Italian, Norwegian, Portuguese, Russian, Spanish, Swedish). The DM narrates and every prose call writes in it; nothing reads story text through English word lists: one utility call per narrated reply reads its claims (a hit, a kill, a spell, a roll asked in words) for the engine to check, word matching stems with each language's Snowball stemmer and stop list, and a place's kind of scene is picked from a list rather than read from its name. Rules names, the interface and the SRD rulebook stay English.
 
 ### Human DM and the workshop
 
 - **Viewer roles and caps** - one pure decision for who sees the secret arc, real enemy numbers, and the unfogged map: the lead at an AI table, the DM seat at a human one.
 - **Adjudication facade** - a catalog of 64 engine adjudications the human DM invokes from the console, the same handlers the AI reaches through tools.
 - **Assisted-mode delegation** - the DM hands the AI the monsters' turns, beat read-alouds, or a counted cover stretch while they step away; the AI spends one answer per turn it takes.
-- **Story-beat capture** - a cadence nudge reminds the DM to jot beats between voice narration, and beats feed the same chapter summaries, recaps and exports an AI table gets.
+- **Story-beat capture** - a cadence nudge reminds the DM to jot beats between scenes, and beats feed the same chapter summaries, recaps and exports an AI table gets.
 - **DM console panels** - initiative editing, bestiary and NPC forges, a map studio and map library, roll tables, encounter prep with live difficulty, odds, effects and scene tracking.
 - **Roll visibility** - public, DM-only, blind and self rolls, redacted rather than hidden so a secret roll still visibly happened.
 - **Workshop kind** - a campaign row that never plays: same content tables, same editors, no AI turns, measured against a stand-in target party.
@@ -263,7 +263,6 @@ and clamped by code.
 ### Platform and multiplayer
 
 - **Event bus (SSE)** - per-campaign publish/subscribe, the real-time multiplayer backbone.
-- **Media queue** - a global serial GPU queue (one ComfyUI job at a time) since the iGPU shares memory with the DM model.
 - **Whispers and side-chat** - one-way DM-to-player whispers and private player-to-player threads that never enter the DM prompt or the shared stream.
 - **Ask, and the note back** - out-of-character questions answered from the campaign record without moving the story, plus a one-turn note a player can hand the DM. The note is drafted from your own thread, shown in an editable box, and only sent once you confirm the exact text.
 - **Turn, lead, and pending-roll flow** - lead controls, turn coalescing, and parked physical-dice roll requests.
@@ -288,11 +287,9 @@ and clamped by code.
     Pick it in **Admin > Agent program**. Works for a server started with npm or
     systemd, not inside the Docker image
     ([docs/agent-harness.md](docs/agent-harness.md)).
-- **Optional services** (each feature simply stays off, or falls back to a
-  placeholder, without it):
-  - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) at `:8188` for character
-    portraits, inline scene art, and battle maps
-    ([docs/image-generation.md](docs/image-generation.md))
+- **No image generator needed.** Pictures at the table are the ones people
+  upload: character portraits, NPC faces, campaign covers and map images all
+  come from files the table provides, and everything works without any.
 
 ## Quick start
 
@@ -315,8 +312,6 @@ takes it from there, one question at a time:
   opencode, Grok Build): it shows whether each is installed and signed in, and the
   exact command to fix it when not. Or choose a person at the table. Each choice is
   tested the way a campaign uses it before you move on.
-- **Pictures.** ComfyUI is found the same way, with its checkpoints listed to
-  pick from. One OpenAI key covers pictures too.
 - **Players.** The addresses to send your friends, and whether accounts take an
   invite code.
 - **Your own agent.** Connect Claude Code, Codex or opencode to the server over
@@ -575,20 +570,14 @@ ollama create qwen3.6-dm -f models/qwen3.6-dm.Modelfile
 
 More backends and model guidance: [docs/text-backends.md](docs/text-backends.md).
 
-## Image generation (ComfyUI)
+## Pictures
 
-ComfyUI at `COMFYUI_URL` (default `http://127.0.0.1:8188`) drives three things:
-character portraits generated once at character creation, inline scene art during
-play, and the top-down battle maps. Any checkpoint works; the genre preset supplies
-the art style. If ComfyUI is down or busy, these features fail soft to a placeholder
-or a plain icon and the session keeps going.
-
-All GPU-heavy media (ComfyUI images) runs on a **single serial media queue**.
-On a shared-memory iGPU the image model and the DM model compete for the same pool,
-so jobs are serialized to avoid out-of-memory stalls rather than run in parallel.
-Details in [docs/image-generation.md](docs/image-generation.md). Installing ComfyUI
-and pointing the server at it, step by step:
-[docs/media-setup.md](docs/media-setup.md).
+There is no image generator in this repository: pictures are files the table
+brings. Upload a portrait in the builder or the party panel, an NPC's face in the
+cast editor, a campaign cover when creating a campaign, or a map image in the map
+panel; anything without a picture falls back to the bundled placeholder plates and
+icons. All art assets ship as committed WebP files, so a server with no GPU at all
+runs the whole table.
 
 ## Configuration and settings precedence
 
@@ -608,12 +597,11 @@ or the admin panel, never in code or `.env.local`.
 
 Log in as an admin and open `/admin` (linked from the account menu):
 
-- **Guided setup**: the storyteller, pictures, players, sign-ups and your own agent,
+- **Guided setup**: the storyteller, players, sign-ups and your own agent,
   one question at a time, with what runs on the computer found and filled in (see
   [Quick start](#quick-start)).
-- **Server settings**: default text model backend / URL / API key, ComfyUI and
-  image-worker URLs and checkpoint, Discord sign-in credentials, and
-  the sign-up toggle (close registration once your party is in).
+- **Server settings**: default text model backend / URL / API key, Discord sign-in
+  credentials, and the sign-up toggle (close registration once your party is in).
 - **Users**: list everyone, promote / demote admins, delete accounts, and reset
   passwords; a temporary password is shown once, and the user must set a new one at
   their next login.

@@ -43,14 +43,6 @@ function rows(input: {
                   : "Saved, but not answering yet: start the model server, then check again.",
               step: steps.story,
             };
-  const pictures: Row =
-    draft.pictures === "none"
-      ? { key: "pictures", title: "Pictures", tone: "off", text: "Painted placeholders", step: steps.pictures }
-      : wait
-        ? { key: "pictures", title: "Pictures", tone: "wait", text: "Asking…", step: steps.pictures }
-        : caps.images.configured && caps.images.reachable
-          ? { key: "pictures", title: "Pictures", tone: "ok", text: draft.pictures === "comfyui" ? "ComfyUI paints them" : draft.pictures === "openai" ? "OpenAI paints them, on the key" : "The agent paints them", step: steps.pictures }
-          : { key: "pictures", title: "Pictures", tone: "warn", text: "Saved, but not answering yet. Tables use placeholders until it does.", step: steps.pictures };
   const players: Row = {
     key: "players",
     title: "Players",
@@ -61,7 +53,7 @@ function rows(input: {
   const agent: Row = input.agentConnected
     ? { key: "agent", title: "Your agent", tone: "ok", text: "Connection made", step: steps.agent }
     : { key: "agent", title: "Your agent", tone: "off", text: "Not connected (optional)", step: steps.agent };
-  return [story, pictures, players, agent];
+  return [story, players, agent];
 }
 
 // The last step: what the server can do now, asked live, each line with a
@@ -143,7 +135,7 @@ export function ReadyStep({
       ) : draft.story === "agent" && draft.agent.id ? (
         <div className="su-row flex-col items-stretch">
           <span className="text-sm text-stone-200">Try the agent with one tiny real turn</span>
-          <HarnessTestPanel saved paints={false} picturesVerified={false} onVerified={check} />
+          <HarnessTestPanel saved onVerified={check} />
         </div>
       ) : null}
     </div>

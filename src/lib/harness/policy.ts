@@ -6,7 +6,6 @@
 import { getUserById } from "@/lib/db/users";
 import { paidAiAllowedForLead } from "@/lib/shared-host";
 import { ADAPTERS, harnessConfig } from "./status.ts";
-import { harnessImagesReady } from "./images.ts";
 import { isHarnessId } from "./types.ts";
 
 export type HarnessOffer = {
@@ -38,5 +37,5 @@ export function harnessOfferFor(campaign: { leadUserId: string }): HarnessOffer 
       reason: `The server's ${label} is kept for campaigns an administrator leads.`,
     };
   }
-  return { offered: true, pictures: harnessImagesReady(), label, model: config.model };
+  return { offered: true, pictures: false, label, model: config.model };
 }

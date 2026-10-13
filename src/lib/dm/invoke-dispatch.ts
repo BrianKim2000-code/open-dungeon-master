@@ -56,7 +56,6 @@ import {
   handleRecordEvent,
   handleRequestPlayerInput,
 } from "@/lib/dm/turn";
-import { handleGenerateImage } from "@/lib/dm/images";
 import { handleRequestRoll } from "@/lib/dm/invoke-roll";
 import { handleSplitDamage } from "@/lib/dm/split-damage";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
@@ -227,8 +226,6 @@ export async function dispatchAdjudication(
     }
     case "request_player_input":
       return handleRequestPlayerInput(campaign, rawArguments, sheets, sheetsById);
-    case "generate_image":
-      return handleGenerateImage(campaign, rawArguments);
     case "record_event":
       return handleRecordEvent(campaign, rawArguments, sheets, sheetsById);
     case "complete_beat": {

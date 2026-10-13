@@ -1,20 +1,15 @@
 "use client";
 
-import { AlignLeft, Bot, Image as ImageIcon, Wrench } from "lucide-react";
+import { AlignLeft, Bot, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
-import { ImagesNote } from "@/app/campaigns/[campaignId]/ImagesNote";
 import { Select } from "@/components/ui/Select";
 import type { MaskedStorySettings } from "@/lib/db/settings";
 import type { HarnessOffer } from "@/lib/harness/policy";
 import { endpointKind } from "@/lib/dm/sampling-logic";
 import { shellHost } from "@/lib/shell-host";
 import type { TextProvider } from "@/lib/text-models";
-import {
-  PROSE_SIZE_VALUES,
-  type ImageBackend,
-  type StorySettings,
-} from "@/lib/types";
+import { PROSE_SIZE_VALUES, type StorySettings } from "@/lib/types";
 
 // A secret field never receives its stored value; SECRET_KEPT means "leave it
 // as is" and the field is simply omitted from the PATCH. Same contract as the
@@ -25,14 +20,6 @@ const PROVIDER_LABELS: Record<TextProvider, string> = {
   local: "Local (Ollama)",
   custom: "Custom backend",
   none: "No AI storyteller",
-  harness: "The server's agent",
-};
-
-const BACKEND_LABELS: Record<ImageBackend, string> = {
-  comfyui: "ComfyUI",
-  openai: "OpenAI-compatible",
-  "mflux-hs": "MFLUX (home server)",
-  "sdnq-hs": "SDNQ (home server)",
   harness: "The server's agent",
 };
 
@@ -55,12 +42,6 @@ export function StoryAiPanel({
   const [error, setError] = useState("");
   const [hasCustomKey, setHasCustomKey] = useState(false);
   const [hasUtilityKey, setHasUtilityKey] = useState(false);
-  // Defaults to true so the warning never flashes while the answer is in
-  // flight on servers that are fine.
-  const [imagesConfigured, setImagesConfigured] = useState(true);
-  // This campaign's own backend, which for a table on its own OpenAI key is
-  // ready even when the server has no image backend of its own.
-  const [imagesReady, setImagesReady] = useState(true);
   // A world an app hosts: the backend is chosen once for the device and every
   // campaign follows it, so this panel shows it instead of editing it. null
   // until the answer lands, so the editable rows never flash on a device.
@@ -94,7 +75,6 @@ export function StoryAiPanel({
         if (!cancelled && data?.settings) {
           setHasCustomKey(data.settings.hasCustomApiKey);
           setHasUtilityKey(data.settings.hasUtilityApiKey);
-          setImagesReady(data.settings.imagesReady);
           setServerManaged(data.settings.serverManaged === true);
         }
         if (!cancelled && data?.harness) {
@@ -110,14 +90,6 @@ export function StoryAiPanel({
           setDeviceManaged(false);
         }
       });
-    void fetch("/api/capabilities")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { images?: { configured?: boolean } } | null) => {
-        if (!cancelled && data?.images) {
-          setImagesConfigured(data.images.configured !== false);
-        }
-      })
-      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -144,7 +116,6 @@ export function StoryAiPanel({
       if (data.settings) {
         setHasCustomKey(data.settings.hasCustomApiKey);
         setHasUtilityKey(data.settings.hasUtilityApiKey);
-        setImagesReady(data.settings.imagesReady);
       }
       if (data.harness) {
         setHarness(data.harness);
@@ -185,9 +156,6 @@ export function StoryAiPanel({
       : settings.textProvider === "harness"
         ? harnessName
         : PROVIDER_LABELS[settings.textProvider];
-  const imagesSummary = settings.imageGenerationEnabled
-    ? `${BACKEND_LABELS[settings.imageBackend]}${settings.autoImages ? ", automatic" : ""}`
-    : "off";
 
   if (!steersStory) {
     return (
@@ -201,10 +169,6 @@ export function StoryAiPanel({
           <span className="flex items-center gap-1.5">
             <Wrench className="size-3.5 text-amber-200" />
             Utility model: {settings.utilityModel || "off"}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <ImageIcon className="size-3.5 text-amber-200" />
-            Images: {imagesSummary}
           </span>
           <span className="flex items-center gap-1.5">
             <AlignLeft className="size-3.5 text-amber-200" />
@@ -425,88 +389,6 @@ export function StoryAiPanel({
 
           </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-2 border-t border-stone-800/60 pt-3">
-          <span className={labelClass}>Images</span>
-          <Select<ImageBackend | "off">
-            value={settings.imageGenerationEnabled ? settings.imageBackend : "off"}
-            label="Images"
-            size="sm"
-            options={[
-              { value: "off", label: "Off" },
-              // On a device the backend follows the device; only on and off
-              // are this campaign's to choose.
-              ...(deviceManaged
-                ? [settings.imageBackend]
-                : (Object.keys(BACKEND_LABELS) as ImageBackend[]).filter(
-                    (backend) => backend !== "harness" || harness?.pictures || settings.imageBackend === "harness",
-                  )
-              ).map((backend) => ({ value: backend, label: BACKEND_LABELS[backend] })),
-            ]}
-            onChange={(value) => {
-              // "Off" is imageGenerationEnabled, not a backend: picking a
-              // backend again switches images back on in the same PATCH.
-              void patch(
-                value === "off"
-                  ? { imageGenerationEnabled: false }
-                  : { imageBackend: value, imageGenerationEnabled: true },
-              );
-            }}
-          />
-          {settings.imageGenerationEnabled ? (
-            <>
-              <Select<StorySettings["aspect"]>
-                value={settings.aspect}
-                onChange={(aspect) => patch({ aspect })}
-                options={[
-                  { value: "square", label: "Square" },
-                  { value: "portrait", label: "Portrait" },
-                  { value: "landscape", label: "Landscape" },
-                ]}
-                label="Picture shape"
-                size="sm"
-              />
-              <Select<StorySettings["imageMode"]>
-                value={settings.imageMode}
-                onChange={(imageMode) => patch({ imageMode })}
-                options={[
-                  { value: "fast", label: "Fast" },
-                  { value: "slow", label: "Slow (higher quality)" },
-                ]}
-                label="Picture speed"
-                size="sm"
-              />
-              <button
-                type="button"
-                onClick={() => patch({ autoImages: !settings.autoImages })}
-                className={cn(
-                  "rounded-md border px-2 py-1",
-                  settings.autoImages
-                    ? "border-amber-700 bg-amber-950/50 text-amber-200"
-                    : "border-stone-700 text-stone-400",
-                )}
-              >
-                Auto scenes
-              </button>
-            </>
-          ) : null}
-        </div>
-        {settings.imageGenerationEnabled && settings.imageBackend === "openai" && !imagesReady ? (
-          <p className="reveal text-amber-400/90">
-            {deviceManaged
-              ? "No OpenAI API key is saved on this device. Add one from Story AI on the app's home screen and it covers narration and pictures in every campaign."
-              : serverManaged
-                ? "The OpenAI picture backend has no API key. An admin adds one in Admin > Image generation."
-                : "The OpenAI picture backend has no API key. Add one in Admin > Image generation, or point this story's text model at OpenAI so its key covers pictures too."}
-          </p>
-        ) : settings.imageGenerationEnabled && !imagesConfigured && imagesReady ? (
-          <p className="reveal text-amber-400/90">
-            The server has no image backend configured; these settings will not take effect
-            until it does.
-          </p>
-        ) : settings.imageGenerationEnabled && !deviceManaged ? (
-          <ImagesNote backend={settings.imageBackend} />
-        ) : null}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-stone-800/60 pt-3">
           <span className={labelClass}>Passages</span>

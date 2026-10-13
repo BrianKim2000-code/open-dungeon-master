@@ -6,7 +6,6 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Sheet } from "@/components/ui/Sheet";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { draftCount, worldPackDraftSchema, type WorldPackDraft } from "@/lib/worlds/draft";
 import { ArtSection } from "@/app/workshop/plugin/ArtSection";
 import { IdentitySection } from "@/app/workshop/plugin/IdentityFields";
@@ -54,10 +53,6 @@ export function PluginPanel({
   // The draft the server has, so a save only goes out when something moved.
   const savedJson = useRef("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useTourPrepare((name) => {
-    if (name === "open-plugin-wizard") setWizardOpen(true);
-  });
 
   const load = useCallback(
     () =>

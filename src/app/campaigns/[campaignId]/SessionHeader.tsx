@@ -26,27 +26,18 @@ export const SessionHeader = memo(function SessionHeader({
   title,
   scene,
   user,
-  dice3d,
-  onToggleDice3d,
-  onCustomizeDice,
   onRollDice,
   shake,
-  onHelp,
   ribbon,
   stage,
 }: {
   title: string;
   scene: string;
   user: AccountMenuUser;
-  dice3d: boolean;
-  onToggleDice3d: () => void;
-  // Opens the editor for the player's own dice colours.
-  onCustomizeDice: () => void;
   // Opens the dice tray: loose dice, rolled for the table or in secret.
   onRollDice: () => void;
   // Shake to roll, offered only where the device can be shaken.
   shake: { supported: boolean; on: boolean; onToggle: () => void };
-  onHelp: () => void;
   // The initiative ribbon during a fight (CinematicParts.tsx), laid along
   // the middle of the bar from md up; the phone keeps the banner above the
   // composer instead.
@@ -79,7 +70,7 @@ export const SessionHeader = memo(function SessionHeader({
                 type="button"
                 aria-label="Dice"
                 data-tour="header-dice"
-                className={headerButtonClass(dice3d)}
+                className={headerButtonClass(false)}
               >
                 <HeaderGlyph glyph="tab-dice" />
               </button>
@@ -95,18 +86,6 @@ export const SessionHeader = memo(function SessionHeader({
                 </span>
               </DropdownMenu.Item>
               <DropdownMenu.Separator className="my-1 h-px bg-stone-700/60" />
-              <DropdownMenu.CheckboxItem
-                checked={dice3d}
-                onCheckedChange={onToggleDice3d}
-                className={diceItem}
-              >
-                <span className="flex size-4 items-center justify-center">
-                  <DropdownMenu.ItemIndicator>
-                    <Check className="size-3.5 text-amber-300" />
-                  </DropdownMenu.ItemIndicator>
-                </span>
-                3D dice animation
-              </DropdownMenu.CheckboxItem>
               {shake.supported ? (
                 <DropdownMenu.CheckboxItem
                   checked={shake.on}
@@ -121,11 +100,6 @@ export const SessionHeader = memo(function SessionHeader({
                   Shake to roll
                 </DropdownMenu.CheckboxItem>
               ) : null}
-              <DropdownMenu.Separator className="my-1 h-px bg-stone-700/60" />
-              <DropdownMenu.Item className={diceItem} onSelect={onCustomizeDice}>
-                <GameIcon icon={{ kind: "glyph", key: "die-d20" }} size="size-6" />
-                Customise my dice
-              </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
@@ -144,17 +118,6 @@ export const SessionHeader = memo(function SessionHeader({
           </Tooltip>
         ) : null}
         <RulebookButton />
-        <Tooltip content="How everything works, and the guided tours" side="bottom">
-          <button
-            type="button"
-            onClick={onHelp}
-            aria-label="Help"
-            data-tour="header-help"
-            className={headerButtonClass(false)}
-          >
-            <HeaderGlyph glyph="tab-reference" />
-          </button>
-        </Tooltip>
         </div>
         <Tooltip content="All campaigns" side="bottom">
           <Link
@@ -167,7 +130,7 @@ export const SessionHeader = memo(function SessionHeader({
           </Link>
         </Tooltip>
         <AppHomeButton className="hidden sm:block" />
-        <AccountMenu user={user} onHelp={onHelp} />
+        <AccountMenu user={user} />
       </div>
     </header>
   );

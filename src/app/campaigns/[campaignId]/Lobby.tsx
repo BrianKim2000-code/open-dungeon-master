@@ -7,7 +7,6 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { roomCodeRefused } from "@/lib/shell-host";
 import { useShellShare } from "@/lib/use-shell-share";
-import { ScheduleSection } from "@/components/ScheduleSection";
 import { ui } from "@/lib/ui";
 import { GameSettingsPanel } from "@/app/campaigns/[campaignId]/GameSettingsPanel";
 import { LobbyActions } from "@/app/campaigns/[campaignId]/LobbyActions";
@@ -560,19 +559,6 @@ export function Lobby({ state, refresh }: { state: CampaignState; refresh: () =>
             />
           ) : null}
 
-          {/* When the humans actually meet. Solo campaigns schedule nothing. */}
-          {!isSolo ? (
-            <ScheduleSection
-              campaignId={campaign.id}
-              meUserId={me.id}
-              isLead={isLead}
-              usernames={Object.fromEntries(members.map((member) => [member.userId, member.username]))}
-              avatars={Object.fromEntries(members.map((member) => [member.userId, member.avatar?.url]))}
-              version={state.scheduleVersion}
-              className="lobby-enter order-5"
-              style={enter(2)}
-            />
-          ) : null}
 
           {campaign.gameSettings.dicePolicy === "real_allowed" && mySheet ? (
             <LobbyRealDice

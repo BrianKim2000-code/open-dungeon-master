@@ -8,7 +8,6 @@ import {
 import { admitSheet, refusal } from "@/lib/characters/admit";
 import { createCharacter } from "@/lib/db/characters";
 import { removeUnreferencedFiles } from "@/lib/image-files";
-import { portraitStatus, queueLibraryPortrait } from "@/lib/portrait";
 import { admitUpload, uploadRefusalResponse } from "@/lib/upload-budget";
 import { writeUploadedImage } from "@/lib/uploads-store";
 
@@ -19,9 +18,7 @@ export const dynamic = "force-dynamic";
 //
 // A character file from GET /api/characters/[characterId]/export, possibly
 // from another server, becomes a new library character of the caller's. The
-// inlined portrait is written to public/uploads like any upload; when the
-// file carried one, no painted portrait is queued, since the player already
-// chose a face.
+// inlined portrait is written to public/uploads like any upload.
 //
 // A file is a request somebody could have written by hand, so it comes
 // through the same legality check a new character does
@@ -85,11 +82,8 @@ export async function POST(request: Request) {
     }
     throw error;
   }
-  if (!unpacked.carriedPortrait) {
-    queueLibraryPortrait(character);
-  }
   return Response.json(
-    { character: { ...character, portraitStatus: portraitStatus(character.id), campaigns: [] } },
+    { character: { ...character, campaigns: [] } },
     { status: 201 },
   );
 }

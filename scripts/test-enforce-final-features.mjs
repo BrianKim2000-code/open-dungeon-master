@@ -348,7 +348,7 @@ await test("The prompt and the tool schemas teach the recount's features: the Mu
   assert.match(text, /Peerless Skill, Quivering Palm \(targetEnemyId; once to set the vibrations after an unarmed hit, again to end them\), Draconic Presence/);
   assert.match(text, /the server applies Favored Enemy, Natural Explorer, Stonecunning, Artificer's Lore, Stone Camouflage and Supreme Sneak from it/);
   assert.match(requestRollTool.function.parameters.properties.reason.description, /naming what a check is about/);
-  const tools = dmTurnToolCatalogue(world.campaign(), true, false);
+  const tools = dmTurnToolCatalogue(world.campaign(), false);
   const tool = (name) => tools.find((entry) => entry.function.name === name)?.function;
   const attack = tool("pc_attack").parameters.properties;
   assert.ok(attack.whirlwind && attack.volley, "pc_attack takes no whirlwind or volley");
@@ -371,7 +371,7 @@ await test("Every tool description reaches an agent program whole: none is longe
     storyArc: campaign.storyArc ?? { beats: [] },
     gameSettings: { ...campaign.gameSettings, worldSimulation: true, relationships: "on", romance: "on", companions: "full" },
   };
-  const tools = [...dmTurnToolCatalogue(everything, true, false), runPreparedEncounterTool];
+  const tools = [...dmTurnToolCatalogue(everything, false), runPreparedEncounterTool];
   assert.ok(tools.length > 90, `the whole catalogue (${tools.length} tools)`);
   for (const tool of tools) {
     assert.ok(tool.function.description.length <= 2048, `${tool.function.name}: ${tool.function.description.length} characters`);

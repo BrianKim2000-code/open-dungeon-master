@@ -2,8 +2,7 @@ import { z } from "zod";
 import { isErrorResponse, requireDm, requirePrepAuthority } from "@/lib/campaign-api";
 import { createNpcFromDraft, listNpcs } from "@/lib/db/npcs";
 import { publishCast } from "@/lib/dm/cast";
-import { describePersonality, normalizeNpcDraft, relationGraph } from "@/lib/npcs/forge";
-import { queueNpcPortrait } from "@/lib/portrait";
+import { normalizeNpcDraft, relationGraph } from "@/lib/npcs/forge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,9 +22,6 @@ export const dynamic = "force-dynamic";
 // how the two drift apart.
 const bodySchema = z.object({
   draft: z.record(z.string(), z.unknown()),
-  // Renders a face on the shared media queue. Off by default: it costs GPU
-  // time on the same device the DM model runs on.
-  portrait: z.boolean().optional(),
 });
 
 export async function GET(
@@ -81,14 +77,5 @@ export async function POST(
 
   const npc = createNpcFromDraft(campaignId, outcome.draft);
   publishCast(campaignId);
-  if (parsed.data.portrait) {
-    queueNpcPortrait(context.campaign, {
-      id: npc.id,
-      trait: npc.trait,
-      // The axes as adjectives, which is what a render prompt can use;
-      // "warmth: -2" would mean nothing to it.
-      personality: describePersonality(outcome.draft.personality),
-    });
-  }
   return Response.json({ ok: true, npc }, { status: 201 });
 }

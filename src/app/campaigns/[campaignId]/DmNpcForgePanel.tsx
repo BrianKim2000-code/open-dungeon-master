@@ -30,7 +30,6 @@ import {
 import { Sheet } from "@/components/ui/Sheet";
 import { RelationGraph as RelationGraphView } from "@/app/campaigns/[campaignId]/RelationGraph";
 import { CastChips, CastRows, type Npc } from "@/app/workshop/cast/CastList";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { NpcEditorFields } from "@/app/workshop/cast/NpcEditorFields";
 import { compareNames } from "@/lib/language/text-logic";
 
@@ -153,9 +152,6 @@ export function DmNpcForgePanel({
   const selected = npcs.find((npc) => npc.id === selectedId) ?? null;
 
   // The tour's "open the editor" step, answered where the editor is a sheet.
-  useTourPrepare((name) => {
-    if (name === "open-npc-editor" && rows && !editorOpen) open(null);
-  });
 
   function open(npc: Npc | null) {
     setError("");

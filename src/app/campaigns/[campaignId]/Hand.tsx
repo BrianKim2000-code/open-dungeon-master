@@ -14,7 +14,6 @@ import { HandCardFace, HandPlayedCard } from "@/app/campaigns/[campaignId]/HandC
 import { HandArrange } from "@/app/campaigns/[campaignId]/HandArrange";
 import { HandMoreSheet } from "@/app/campaigns/[campaignId]/HandMoreSheet";
 import { useHandLayout } from "@/app/campaigns/[campaignId]/useHandLayout";
-import { HAND_TUTORIAL_ID, HandTutorial } from "@/app/campaigns/[campaignId]/HandTutorial";
 import { useHandSpells } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandReactPrompt } from "@/app/campaigns/[campaignId]/HandReactPrompt";
 import { HandPips } from "@/app/campaigns/[campaignId]/HandPips";
@@ -35,7 +34,6 @@ import { turnFromEncounter, turnPips, turnSignature } from "@/lib/battlemap/hand
 
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
 import { replayAnimation } from "@/lib/motion/replay";
-import { markTourSeen, tourSeen } from "@/lib/tours/logic";
 import type { InputKind } from "@/lib/campaign-types";
 import type { Floor } from "@/lib/db/campaigns";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
@@ -167,9 +165,6 @@ function HandInner({
   const noticeRef = useRef<HTMLParagraphElement>(null);
 
   const collapsed = useSyncExternalStore(subscribeStore, () => readFlag(COLLAPSED_KEY), () => false);
-  const tutorialSeen = useSyncExternalStore(subscribeStore, () => tourSeen(window.localStorage, HAND_TUTORIAL_ID), () => true);
-  const [tutorialAsked, setTutorialAsked] = useState(false);
-  const showTutorial = !collapsed && (tutorialAsked || (!tutorialSeen && myTurn));
 
   // A card that stopped being playable (the turn moved on) drops out of aim.
   const picked = cards.find((card) => card.id === pickedId && !card.disabled) ?? null;
@@ -380,7 +375,6 @@ function HandInner({
     <section
       className="hand"
       data-tour="battle-hand"
-      data-tutorial={showTutorial ? "true" : undefined}
       aria-label="Your hand"
       onKeyDown={(event) => {
         if (event.key === "Escape" && picked) {
@@ -408,7 +402,6 @@ function HandInner({
               type="button"
               onClick={() => {
                 if (collapsed) writeFlag(COLLAPSED_KEY, false);
-                setTutorialAsked(true);
               }}
               aria-label="How the hand works"
               className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
@@ -458,16 +451,6 @@ function HandInner({
           </Tooltip>
         </span>
       </div>
-
-      {showTutorial ? (
-        <HandTutorial
-          onDismiss={() => {
-            markTourSeen(window.localStorage, HAND_TUTORIAL_ID);
-            window.dispatchEvent(new Event(STORE_EVENT));
-            setTutorialAsked(false);
-          }}
-        />
-      ) : null}
 
       {/* A reaction the moment offers (an attack just hit you or an ally):
           above the fan, even while the hand is put away, because it is gone

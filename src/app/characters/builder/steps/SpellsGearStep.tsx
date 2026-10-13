@@ -168,7 +168,7 @@ function SpellsSection({
       spells: [...spells.filter((entry) => !isGranted(entry)), name].map(schoolOf),
     });
   const suggested = new Set(
-    [...(starters?.cantrips ?? []), ...(starters?.spells ?? [])].map((entry) => lower(entry.n)),
+    [...(starters?.cantrips ?? []), ...(starters?.spells ?? [])].map((entry: { n: string }) => lower(entry.n)),
   );
 
   function toggleCantrip(name: string) {
@@ -239,14 +239,14 @@ function SpellsSection({
     }
     const cantripRoom = cantripCap === null ? Infinity : cantripCap - chosenCantrips.length;
     const newCantrips = starters.cantrips
-      .map((entry) => entry.n)
-      .filter((name) => !has(cantrips, name) && !isRacial(name))
+      .map((entry: { n: string }) => entry.n)
+      .filter((name: string) => !has(cantrips, name) && !isRacial(name))
       .slice(0, Math.max(0, cantripRoom));
     const cap = wizard ? bookCap : spellCap;
     const spellRoom = cap === null ? Infinity : cap - chosenSpells.length;
     const newSpells = starters.spells
-      .map((entry) => entry.n)
-      .filter((name) => !has(spells, name) && !isGranted(name))
+      .map((entry: { n: string }) => entry.n)
+      .filter((name: string) => !has(spells, name) && !isGranted(name))
       .slice(0, Math.max(0, spellRoom));
     setLimitNote("");
     setCantrips((current) => [...current, ...newCantrips]);

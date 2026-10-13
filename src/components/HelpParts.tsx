@@ -29,7 +29,7 @@ function sectionId(title: string): string {
   return `help-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
 
-// Exported (through HelpDialog) for HowToPlayDialog, which is the short orientation read to this
+// Exported for the orientation dialogs that read the same help parts.
 // dialog's full reference. Both used to carry byte-identical private copies,
 // so a styling change had to be made twice or the two drifted apart.
 export function Section({

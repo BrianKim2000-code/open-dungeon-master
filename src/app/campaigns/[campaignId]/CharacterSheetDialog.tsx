@@ -4,10 +4,9 @@ import { owedChoices } from "@/lib/srd/owed-choices";
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { GameIcon } from "@/components/ui/GameIcon";
-import { FileDown, Minus, Plus, PawPrint, Wrench, X } from "lucide-react";
+import { Minus, Plus, PawPrint, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { CharacterPortrait, ui } from "@/lib/ui";
-import { downloadCharacterSheetPdf } from "@/lib/pdf/download";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import {
@@ -141,7 +140,6 @@ export function CharacterSheetDialog({
   const anyEquipped = sheet.equipment.some((item) => item.equipped);
   const speedNote = speedState.notes.length ? speedState.notes.join(" ") : "Their walking speed.";
   const [busy, setBusy] = useState(false);
-  const [pdfBusy, setPdfBusy] = useState(false);
   // The Carried tile's breakdown (issue #206), drawn from the same sheet and
   // load as the tile, so a change to either redraws both.
   const [loadOpen, setLoadOpen] = useState(false);
@@ -155,15 +153,6 @@ export function CharacterSheetDialog({
   const spends = mine || corrects;
   // The usage route's own refusal for a dead character's spend.
   const deadNote = dead && !corrects ? `${sheet.name} is dead and spends nothing.` : null;
-
-  async function handleDownloadPdf() {
-    setPdfBusy(true);
-    try {
-      await downloadCharacterSheetPdf(sheet);
-    } finally {
-      setPdfBusy(false);
-    }
-  }
 
   // Fire-and-forget: the sheet_updated SSE event refreshes the sheet prop,
   // so the new counts render without local reconciliation.
@@ -599,15 +588,6 @@ export function CharacterSheetDialog({
           ) : null}
 
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              disabled={pdfBusy}
-              className={ui.btnSmall}
-              title="Download this character sheet as a fillable PDF"
-            >
-              <FileDown className="size-3.5" /> {pdfBusy ? "Preparing..." : "Download PDF"}
-            </button>
             {steersStory && onAdjust ? (
               <button
                 type="button"

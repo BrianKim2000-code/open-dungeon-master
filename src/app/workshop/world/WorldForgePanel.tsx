@@ -4,7 +4,6 @@ import { BookOpenText, Download, Hourglass, Lock, Map as MapIcon, MessageCircleQ
 import { useRef, useState } from "react";
 import { IconRail, type IconRailItem } from "@/components/ui/IconRail";
 import { KitButton, Listed, PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { useWorld } from "./useWorld";
 import { WikiView } from "./WikiView";
 import { WebView } from "./WebView";
@@ -70,13 +69,7 @@ export function WorldForgePanel({ campaignId, onOpenSystem }: { campaignId: stri
   const world = api.world;
 
   // The tour and the palette ask for a view, or for a new entry, by name
-  // (src/lib/tours/prepare.ts).
-  useTourPrepare((name) => {
-    if (name === "open-world-entry") setView("wiki");
-    const asked = name.startsWith("world-view-") ? (name.slice("world-view-".length) as View) : null;
-    // A tour step for a view this server does not offer has nothing to show.
-    if (asked && VIEWS.some((entry) => entry.value === asked)) setView(asked);
-  });
+  // (a window event from the hub).
 
   const open = (ref: string | null) => {
     setFocus(ref);

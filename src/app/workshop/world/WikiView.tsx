@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { KitButton, PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import { SHELF_LABELS, newId } from "@/lib/worldforge/model";
 import { folderAndBelow, folderTree, removeFolder } from "@/lib/worldforge/tree";
@@ -44,10 +43,6 @@ export function WikiView({
   const [newType, setNewType] = useState(doc.types[0]?.id ?? "");
   const [newName, setNewName] = useState("");
   const [folderName, setFolderName] = useState<string | null>(null);
-
-  useTourPrepare((name) => {
-    if (name === "open-world-entry") setMaking(true);
-  });
 
   const shown = useMemo(() => {
     const words = query.trim().toLowerCase();

@@ -34,7 +34,6 @@ import { abilityMod, findClass, findRace, suggestedStartingHp, type SrdClass } f
 import { abilityPriority } from "@/lib/srd/companion-build";
 import { startingKitFor } from "@/lib/srd/starting-kit";
 import { legalCompanionSheet } from "@/lib/dm/companion-level";
-import { queueCompanionPortrait } from "@/lib/portrait";
 import { settingClassIds } from "@/lib/classes";
 import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
 import { presetFor, packFor } from "@/lib/worlds/preset";
@@ -428,19 +427,6 @@ export function finalizeNewCompanion(
     kind: "story",
     summary: `${sheet.name} joined the party as an AI companion (${kind}).`,
   });
-  // Guests are transient and the render queue shares the one iGPU with the DM
-  // model, so only lasting party members are worth a portrait; a sheet built
-  // with its own portrait already (manual build) keeps it.
-  if (kind === "party" && !sheet.portrait) {
-    queueCompanionPortrait(campaign, {
-      id: sheet.id,
-      name: sheet.name,
-      race: sheet.race,
-      class: sheet.class,
-      background: sheet.background,
-      personality,
-    });
-  }
 
   // Mid-combat arrival: a real initiative slot and a token beside the party,
   // exactly like add_enemies does for the other side.

@@ -121,7 +121,7 @@ export function checkRoster(rows: TemplateEnemy[]): { rows: TemplateEnemy[] } | 
 // EMPTY_TEMPLATE_MAP spread in src/lib/db/encounter-templates.ts, so no
 // migration.
 //
-// scene is the kind of ground the fight is on (an ambience bed id), handed
+// scene is the kind of ground the fight is on, handed
 // to start_encounter when the template deploys; null leaves the board to the
 // current place's own.
 export type TemplateMap = {

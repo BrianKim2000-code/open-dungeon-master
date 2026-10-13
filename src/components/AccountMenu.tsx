@@ -3,13 +3,12 @@
 import { forgetBrowserTableFeats } from "@/lib/srd/feat-effects";
 import { forgetBrowserSpecies } from "@/lib/srd/race-id";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { AppWindow, BookOpen, CircleHelp, Info, LogOut, SlidersHorizontal, UserRound } from "lucide-react";
+import { AppWindow, BookOpen, Info, LogOut, SlidersHorizontal, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { AboutDialog } from "@/components/AboutDialog";
-import { HelpDialog } from "@/components/HelpDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { headerButtonClass } from "@/app/campaigns/[campaignId]/headerButton";
 import { GameIcon } from "@/components/ui/GameIcon";
@@ -92,17 +91,12 @@ const itemClass =
 export function AccountMenu({
   user,
   onLogout,
-  onHelp,
 }: {
   user: AccountMenuUser;
   // The home page swaps back to the login screen in place; every other page
   // just leaves. Omitting the prop gets the redirect.
   onLogout?: () => void;
-  // A page with its own Help (the table, whose dialog also offers the
-  // tours) opens that instead of the menu's plain copy.
-  onHelp?: () => void;
 }) {
-  const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const pathname = usePathname();
   // Inside the desktop or Android app the menu grows a door back to the
@@ -220,12 +214,6 @@ export function AccountMenu({
                 </Link>
               </DropdownMenu.Item>
             ) : null}
-            <DropdownMenu.Item
-              onSelect={() => (onHelp ? onHelp() : setHelpOpen(true))}
-              className={itemClass}
-            >
-              <CircleHelp className="size-4" /> Help
-            </DropdownMenu.Item>
             {/* What this server is running, and whether a newer release is
                 out (issue 102). */}
             <DropdownMenu.Item onSelect={() => setAboutOpen(true)} className={itemClass}>
@@ -258,7 +246,6 @@ export function AccountMenu({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      {onHelp ? null : <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />}
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </>
   );

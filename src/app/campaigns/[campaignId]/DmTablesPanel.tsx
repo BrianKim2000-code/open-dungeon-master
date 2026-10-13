@@ -21,7 +21,6 @@ import {
 import type { RollTable } from "@/lib/db/roll-tables";
 import { offersStoryModel, useCapabilities } from "@/lib/use-capabilities";
 import { Sheet } from "@/components/ui/Sheet";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { appendLine } from "@/lib/workshop/pickers";
 import { RefPicker } from "@/app/workshop/tables/RefPicker";
 import { inputClass, StatblockFinder } from "@/app/workshop/tables/StatblockFinder";
@@ -260,9 +259,6 @@ export function DmTablesPanel({
   // typed new table survives closing and reopening the sheet; it is only
   // thrown away when a saved table had taken its place.
   // The tour's "open the editor" step, answered where the editor is a sheet.
-  useTourPrepare((name) => {
-    if (name === "open-table-editor" && rows && !editorOpen) open(null);
-  });
 
   function open(table: RollTable | null) {
     setError("");

@@ -26,7 +26,7 @@ export function isUploadedPdfPath(value: unknown): value is string {
   return typeof value === "string" && PDF_PATH.test(value);
 }
 
-// A picture an image backend saved (src/lib/comfyui.ts, openai-images.ts,
+// A picture someone uploaded (src/lib/uploads-store.ts);
 // harness/images.ts): /generated/<time>-<backend>-<slug>.<ext>, flat, one
 // dot. Its WebP copies carry a second dot, so they never match.
 const GENERATED_PATH = /^\/generated\/[A-Za-z0-9][A-Za-z0-9_-]{0,200}\.(png|jpe?g|webp)$/;

@@ -1,7 +1,6 @@
 import { purgeDueAccounts } from "@/lib/account-deletion";
 import { syncAssistantRelay } from "@/lib/agents/assistant-relay";
 import {
-  getCampaignById,
   listIdleActiveCampaigns,
   listMembers,
   markCampaignNudged,
@@ -9,13 +8,8 @@ import {
 import { notifyUsers } from "@/lib/db/notifications";
 import { retentionDue, runRetention } from "@/lib/ops/retention";
 import { pruneExpiredSessions } from "@/lib/db/users";
-import {
-  listSessionsAwaitingReminder,
-  sessionWhen,
-  setSessionReminderStage,
-} from "@/lib/db/scheduling";
 
-// Background chores: session reminders, the idle-table nudge, the daily
+// Background chores: the idle-table nudge, the daily
 // storage tidy. One interval on globalThis (login-throttle pattern),
 // started from src/instrumentation.ts, because a standalone Next server has
 // no custom entry point of its own and dev HMR would strand a module-scoped
@@ -27,35 +21,7 @@ import {
 
 export const JOB_TICK_MS = 60_000;
 
-const REMINDER_LEAD_MS = 60 * 60 * 1000;
-// A session "is starting" for this long after its start time; beyond it the
-// moment has passed and a late reminder would only be noise.
-const START_GRACE_MS = 5 * 60 * 1000;
 const IDLE_AFTER_MS = 4 * 24 * 60 * 60 * 1000;
-
-// The reminder ladder a session climbs: stage 1 is the hour-before note,
-// stage 2 the "starting now" one. Returns the stage that is due, or null.
-// A session first seen inside the start window skips straight to stage 2:
-// two notifications in the same minute would say the same thing twice.
-export function dueReminderStage(
-  session: { startsAt: string; remindedStage: number; cancelledAt: string | null },
-  now = Date.now(),
-): 1 | 2 | null {
-  if (session.cancelledAt) {
-    return null;
-  }
-  const startsAt = Date.parse(session.startsAt);
-  if (!Number.isFinite(startsAt)) {
-    return null;
-  }
-  if (session.remindedStage < 2 && startsAt <= now && now - startsAt <= START_GRACE_MS) {
-    return 2;
-  }
-  if (session.remindedStage < 1 && startsAt > now && startsAt - now <= REMINDER_LEAD_MS) {
-    return 1;
-  }
-  return null;
-}
 
 // One nudge per idle stretch: a nudge sent after the table's last activity
 // already covers this stretch, and only new activity (updated_at moving past
@@ -73,41 +39,6 @@ export function idleNudgeDue(
     return false;
   }
   return !campaign.idleNudgedAt || campaign.idleNudgedAt < campaign.updatedAt;
-}
-
-function sessionReminderJob(now: number) {
-  const candidates = listSessionsAwaitingReminder(
-    new Date(now - START_GRACE_MS).toISOString(),
-    new Date(now + REMINDER_LEAD_MS).toISOString(),
-  );
-  for (const session of candidates) {
-    const stage = dueReminderStage(session, now);
-    if (!stage) {
-      continue;
-    }
-    // Flag before sending, so a crash mid-send cannot double-remind.
-    setSessionReminderStage(session.id, stage);
-    const campaign = getCampaignById(session.campaignId);
-    if (!campaign) {
-      continue;
-    }
-    const memberIds = listMembers(session.campaignId).map((member) => member.userId);
-    const title = session.title || "your session";
-    notifyUsers(
-      memberIds,
-      stage === 1
-        ? {
-            campaignId: session.campaignId,
-            kind: "session_reminder",
-            body: `${campaign.title}: ${title} starts soon, at ${sessionWhen(session.startsAt)}. See you at the table.`,
-          }
-        : {
-            campaignId: session.campaignId,
-            kind: "session_starting",
-            body: `${campaign.title}: ${title} is starting now. To the table!`,
-          },
-    );
-  }
 }
 
 function idleCampaignJob(now: number) {
@@ -156,7 +87,6 @@ function retentionJob(now: number) {
 
 const jobs: Array<[name: string, run: (now: number) => void]> = [
   ["expired-sessions", expiredSessionsJob],
-  ["session-reminders", sessionReminderJob],
   ["idle-campaigns", idleCampaignJob],
   ["account-purge", accountPurgeJob],
   ["assistant-relay", assistantRelayJob],

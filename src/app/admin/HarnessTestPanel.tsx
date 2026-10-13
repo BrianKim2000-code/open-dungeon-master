@@ -3,7 +3,6 @@
 import { Check, Loader2, Minus, PlayCircle, X } from "lucide-react";
 import { useState } from "react";
 import { ui } from "@/lib/ui";
-import { HarnessPictureTest } from "@/app/admin/HarnessPictureTest";
 
 type Stage = { id: string; ok: boolean | null; detail?: string };
 
@@ -19,25 +18,13 @@ const STAGE_LABELS: Record<string, string> = {
 const STAGE_ORDER = ["found", "signedIn", "handshake", "toolCall", "lockdown", "streaming"];
 
 // The live check: one real, tiny turn through the path every DM turn takes,
-// with each stage ticked only when its real result comes back, and, for a
-// program with its own image tool, one real test picture.
+// with each stage ticked only when its real result comes back.
 export function HarnessTestPanel({
   saved,
-  paints,
-  picturesVerified,
-  picturesForTables = false,
-  onVerified,
-  onAdopted,
 }: {
   // The program being tested is the saved one; testing an unsaved choice
   // would test something the tables will not use.
   saved: boolean;
-  paints: boolean;
-  picturesVerified: boolean;
-  // Its pictures are already the tables' backend, switched on.
-  picturesForTables?: boolean;
-  onVerified: () => void;
-  onAdopted?: () => void;
 }) {
   const [testing, setTesting] = useState(false);
   const [stages, setStages] = useState<Stage[] | null>(null);
@@ -141,15 +128,6 @@ export function HarnessTestPanel({
         </p>
       ) : null}
 
-      {paints ? (
-        <HarnessPictureTest
-          saved={saved}
-          picturesVerified={picturesVerified}
-          picturesForTables={picturesForTables}
-          onVerified={onVerified}
-          onAdopted={onAdopted}
-        />
-      ) : null}
     </div>
   );
 }

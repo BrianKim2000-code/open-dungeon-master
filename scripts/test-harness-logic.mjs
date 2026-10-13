@@ -27,7 +27,6 @@ const { opencodeAdapter, opencodeConfig, OPENCODE_SESSION_RULES, parseOpencodeMo
   "../src/lib/harness/adapters/opencode.ts"
 );
 const { grokAdapter, grokArgs, grokAgentProfile, GROK_ENV } = await import("../src/lib/harness/adapters/grok.ts");
-const { sniffImage, imageSize, acceptImage, MAX_HARNESS_IMAGE_BYTES } = await import("../src/lib/harness/images.ts");
 const { maskAccount } = await import("../src/lib/harness/status.ts");
 const { knownInstallDirs } = await import("../src/lib/harness/discover.ts");
 const { THIS_TURN_HEADING, THIS_MOMENT_HEADING, MOMENT_INSTRUCTION } = await import("../src/lib/prompt-boundary.ts");
@@ -536,25 +535,6 @@ test("Grok Build runs in dontAsk with an agent profile naming only ODM's tools",
   assert.ok(grokAgentProfile("S", true).includes('"image_gen"'));
   assert.equal(GROK_ENV.GROK_CLAUDE_MCPS_ENABLED, "0");
   assert.equal(GROK_ENV.GROK_CURSOR_MCPS_ENABLED, "0");
-});
-
-test("pictures are checked by their bytes, not by what the program says they are", () => {
-  const png = Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]),
-    Buffer.from([0, 0, 2, 0, 0, 0, 1, 0]),
-    Buffer.alloc(64),
-  ]);
-  assert.deepEqual(sniffImage(png), { mime: "image/png", ext: "png" });
-  assert.deepEqual(imageSize(png), { width: 512, height: 256 });
-  assert.equal(sniffImage(Buffer.from("<svg onload=alert(1)>")), null);
-  assert.equal(sniffImage(Buffer.from("%PDF-1.7 ...")), null);
-  assert.equal(acceptImage(png)?.ext, "png");
-  assert.equal(acceptImage(Buffer.from([0x89, 0x50])), null, "too small to be a picture");
-  const huge = Buffer.concat([png, Buffer.alloc(MAX_HARNESS_IMAGE_BYTES)]);
-  assert.equal(acceptImage(huge), null, "over the 8 MiB cap");
-  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 17, 8, 1, 0, 2, 0]), Buffer.alloc(80)]);
-  assert.equal(sniffImage(jpeg)?.ext, "jpg");
-  assert.deepEqual(imageSize(jpeg), { width: 512, height: 256 });
 });
 
 test("accounts are masked before they reach the admin page", () => {

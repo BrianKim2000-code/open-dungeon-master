@@ -7,7 +7,6 @@ import { GoldTitle } from "@/components/ui/GoldTitle";
 import { navigateTo } from "@/lib/navigation";
 import type { MaskedConfig } from "@/app/admin/AdminSettingsFields";
 import { draftFromConfig, draftStoryIsOpenAi, draftWithScan, type Draft } from "@/app/setup/draft";
-import { PicturesStep } from "@/app/setup/MediaSteps";
 import { PlayersStep } from "@/app/setup/PlayersStep";
 import { ReadyStep } from "@/app/setup/ReadyStep";
 import type { ScanResult } from "@/app/setup/SetupParts";
@@ -16,10 +15,8 @@ import { WelcomeStep } from "@/app/setup/WelcomeStep";
 import { YourAgentStep, type MadeConnection } from "@/app/setup/YourAgentStep";
 import { storySourceForUrl } from "@/lib/setup/discovery-logic";
 import {
-  PAINTING_AGENTS,
   joiningPatch,
   namePatch,
-  picturesPatch,
   storyPatch,
   type Patch,
   type StoryChoice,
@@ -33,7 +30,7 @@ export type SetupInfo = {
   publicUrl: string;
 };
 
-const KEYS = ["welcome", "story", "pictures", "players", "agent", "ready"] as const;
+const KEYS = ["welcome", "story", "players", "agent", "ready"] as const;
 type StepKey = (typeof KEYS)[number];
 const STEP_INDEX = Object.fromEntries(KEYS.map((key, index) => [key, index])) as Record<StepKey, number>;
 
@@ -101,20 +98,11 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
     void scanNow();
   }
 
-  const storyIsOpenAi = draftStoryIsOpenAi(draft);
   const savedKeyFor = useMemo(() => {
     if (!config.text.hasCustomApiKey) return null;
     const source = storySourceForUrl(config.text.customBaseUrl);
     return source === "local" ? null : source;
   }, [config.text.hasCustomApiKey, config.text.customBaseUrl]);
-
-  // After a test picture: the verified mark lives in the saved settings.
-  async function refreshConfig() {
-    const data = await fetch("/api/admin/settings")
-      .then((response) => (response.ok ? response.json() : null))
-      .catch(() => null);
-    if (data?.config) setConfig(data.config as MaskedConfig);
-  }
 
   async function patch(body: Patch): Promise<boolean> {
     const response = await fetch("/api/admin/settings", {
@@ -141,12 +129,6 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
       if (!choice) return { error: "Choose who tells the story." };
       const built = storyPatch(choice, config.text.customBaseUrl);
       return "error" in built ? built : built.patch;
-    }
-    if (key === "pictures") {
-      if (draft.pictures === "comfyui") return picturesPatch({ kind: "comfyui", url: draft.comfy.url, checkpoint: draft.comfy.checkpoint, preset: draft.comfy.preset });
-      if (draft.pictures === "openai") return picturesPatch({ kind: "openai", apiKey: draft.picturesKey });
-      if (draft.pictures === "agent") return picturesPatch({ kind: "agent" });
-      return picturesPatch({ kind: "none" });
     }
     if (key === "players") {
       return joiningPatch({ signupMode: draft.signupMode, publicUrl: draft.publicUrl });
@@ -197,15 +179,6 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
           : draft.story === "agent" && !draft.agent.id
             ? "Choose a program."
             : null;
-  const agentPaints = draft.story === "agent" && draft.agent.id !== "" && PAINTING_AGENTS.includes(draft.agent.id);
-  const picturesBlocker =
-    draft.pictures === "agent" && !config.harness.imagesVerifiedAt
-      ? "Paint a test map first: the tables only get a painter that works."
-      : draft.pictures === "comfyui" && !draft.comfy.url.trim()
-      ? "Type where ComfyUI runs, or choose another answer."
-      : draft.pictures === "openai" && !storyIsOpenAi && !draft.picturesKey.trim() && !config.images.hasOpenaiApiKey
-        ? "Paste an OpenAI key, or choose another answer."
-        : null;
   const address = draft.publicUrl.trim() || info.lanUrls[0] || "";
   const title = (eyebrow: string, text: string, key: StepKey) => (
     <span className="block">
@@ -246,31 +219,9 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
       canContinue: !storyBlocker,
     },
     {
-      key: "pictures",
-      label: "Pictures",
-      title: title("Step 2", "Should the table have pictures?", "pictures"),
-      blurb: "Character portraits, scene art and battle maps. Every table works without them.",
-      content: (
-        <PicturesStep
-          draft={draft}
-          update={update}
-          scan={scan}
-          scanning={scanning}
-          storyIsOpenAi={storyIsOpenAi}
-          agentPaints={agentPaints}
-          agentVerified={Boolean(config.harness.imagesVerifiedAt)}
-          agentLabel={draft.agent.id === "grok" ? "Grok Build" : "Codex"}
-          onAgentVerified={() => void refreshConfig()}
-          openaiKeySaved={config.images.hasOpenaiApiKey}
-        />
-      ),
-      blocker: picturesBlocker,
-      canContinue: !picturesBlocker,
-    },
-    {
       key: "players",
       label: "Players",
-      title: title("Step 3", "How do players get in?", "players"),
+      title: title("Step 2", "How do players get in?", "players"),
       blurb: "The address to send your friends, and who may make an account.",
       content: (
         <PlayersStep draft={draft} update={update} lanUrls={info.lanUrls} />
@@ -279,7 +230,7 @@ export function SetupWizard({ config: initialConfig, info }: { config: MaskedCon
     {
       key: "agent",
       label: "Your agent",
-      title: title("Step 4", "Bring your own AI agent?", "agent"),
+      title: title("Step 3", "Bring your own AI agent?", "agent"),
       blurb: "Optional. Connect Claude Code, Codex or opencode to this server over MCP, as you.",
       content: <YourAgentStep made={made} onMade={setMade} />,
       continueLabel: made ? "Continue" : "Skip for now",

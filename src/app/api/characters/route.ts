@@ -7,7 +7,6 @@ import {
   listCharactersForUser,
   type CharacterRole,
 } from "@/lib/db/characters";
-import { portraitStatus, queueLibraryPortrait } from "@/lib/portrait";
 import { admitSheet, refusal } from "@/lib/characters/admit";
 import { createSheetSchema } from "@/lib/schemas/sheet";
 
@@ -38,7 +37,6 @@ export async function GET(request: Request) {
   return Response.json({
     characters: listCharactersForUser(user.id, role).map((character) => ({
       ...character,
-      portraitStatus: portraitStatus(character.id),
       campaigns: assignments.get(character.id) ?? [],
     })),
   });
@@ -75,9 +73,8 @@ export async function POST(request: Request) {
     parsed.data.role as CharacterRole,
   );
   admitted.settle();
-  queueLibraryPortrait(character);
   return Response.json(
-    { character: { ...character, portraitStatus: portraitStatus(character.id) } },
+    { character },
     { status: 201 },
   );
 }

@@ -4,13 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, lazy, use, useCallback, useEffect, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useState } from "react";
 import { SystemCards } from "@/app/workshop/[workshopId]/SystemCards";
 import { SystemView } from "@/app/workshop/[workshopId]/SystemView";
 import { TargetPartyBar } from "@/app/workshop/[workshopId]/TargetPartyBar";
 import { WorkshopHeader } from "@/app/workshop/[workshopId]/WorkshopHeader";
 import {
-  WORKSHOP_SYSTEMS,
   isSystemId,
   systemCount,
   type SystemId,
@@ -18,18 +17,8 @@ import {
 } from "@/app/workshop/[workshopId]/systems";
 import { workshopCommands } from "@/app/workshop/[workshopId]/palette-commands";
 import { CommandPalette } from "@/components/CommandPalette";
-import { markTourSeen, tourSeen } from "@/lib/tours/logic";
 import { draftCount, worldPackDraftSchema } from "@/lib/worlds/draft";
-import { requestTourPrepare } from "@/lib/tours/prepare";
-import { HUB_TOUR, HUB_TOUR_ID, SYSTEM_TOURS, systemTourId } from "@/lib/tours/workshop";
-import type { HelpTour } from "@/components/WorkshopHelpDialog";
 
-// The guide and the tour load the first time they are opened, and stay
-// mounted after so they animate closed.
-const GuidedTour = lazy(() => import("@/components/ui/GuidedTour").then((module) => ({ default: module.GuidedTour })));
-const WorkshopHelpDialog = lazy(() =>
-  import("@/components/WorkshopHelpDialog").then((module) => ({ default: module.WorkshopHelpDialog })),
-);
 import type { WorkshopSummary } from "@/app/workshop/types";
 
 // The workshop shell: a hub of system cards, or one system open.
@@ -56,13 +45,6 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
   const [plugin, setPlugin] = useState<number | null>(null);
   const [world, setWorld] = useState<WorldCount | null>(null);
   const [loading, setLoading] = useState(true);
-  const [helpOpen, setHelpOpen] = useState(false);
-  // The tour on screen: the hub's, or a tool's, by id.
-  const [tour, setTour] = useState<string | null>(null);
-  const [helpMounted, setHelpMounted] = useState(false);
-  const [tourMounted, setTourMounted] = useState(false);
-  if (helpOpen && !helpMounted) setHelpMounted(true);
-  if (tour !== null && !tourMounted) setTourMounted(true);
 
   const load = useCallback(
     () =>
@@ -131,24 +113,6 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
     [workshopId],
   );
 
-  // The world pack draft is one JSON value; its card counts the entries it
-  // names. The panel reports its own count while it is open, so this only
-  // runs when the view changes.
-  const loadPlugin = useCallback(
-    () =>
-      fetch(`/api/workshops/${workshopId}/plugin`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data: { draft?: unknown } | null) => {
-          const parsed = worldPackDraftSchema.safeParse(data?.draft);
-          if (parsed.success) {
-            setPlugin(draftCount(parsed.data));
-          }
-        })
-        .catch(() => {
-          // the card simply shows no figure until the next reload
-        }),
-    [workshopId],
-  );
 
   // WorldForge counts what it lays over the records: links, events,
   // secrets and maps, from its own route.
@@ -174,70 +138,25 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
     void loadBestiary();
     void loadHomebrew();
     void loadPregens();
-    void loadPlugin();
     void loadWorld();
-  }, [load, loadBestiary, loadHomebrew, loadPregens, loadPlugin, loadWorld, system]);
-
-  // The once-only tours: the hub's when the workshop first loads, a tool's
-  // the first time that tool is opened, after the panel has had a moment to
-  // draw itself. A tour already on screen is left alone.
-  // Spelled out rather than through systemTourId: a helper call at this
-  // level is opaque to the React Compiler and costs the page its memoization.
-  const tourId = system ? `workshop-${system}` : HUB_TOUR_ID;
-  useEffect(() => {
-    if (loading || !workshop || tour) return;
-    if (tourSeen(window.localStorage, tourId)) return;
-    const timer = window.setTimeout(() => setTour(tourId), 900);
-    return () => clearTimeout(timer);
-  }, [loading, workshop, tourId, tour]);
-
-  function closeTour() {
-    if (tour) markTourSeen(window.localStorage, tour);
-    setTour(null);
-  }
+    // The world pack draft is one JSON value; its card counts the entries it
+    // names.
+    fetch(`/api/workshops/${workshopId}/plugin`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { draft?: unknown } | null) => {
+        const parsed = worldPackDraftSchema.safeParse(data?.draft);
+        if (parsed.success) {
+          setPlugin(draftCount(parsed.data));
+        }
+      })
+      .catch(() => {
+        // the card simply shows no figure until the next reload
+      });
+  }, [load, loadBestiary, loadHomebrew, loadPregens, loadWorld, workshopId, system]);
 
   function openSystem(next: SystemId) {
     router.push(`${pathname}?system=${next}`);
   }
-
-  // "Create an entry" from the palette: go to the system, then ask its panel
-  // to open its editor. The panel answers only once its rows have loaded, so
-  // the request is made twice, a beat apart; the panels ignore a request for
-  // an editor that is already open.
-  const [creating, setCreating] = useState<{ prepare: string; ask: number } | null>(null);
-  useEffect(() => {
-    if (!creating) return;
-    const timers = [450, 1400].map((delay) =>
-      window.setTimeout(() => requestTourPrepare(creating.prepare), delay),
-    );
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [creating]);
-  function createIn(next: SystemId, prepare: string) {
-    if (system !== next) {
-      openSystem(next);
-    }
-    setCreating((previous) => ({ prepare, ask: (previous?.ask ?? 0) + 1 }));
-  }
-
-  // What Help can replay from here: the hub's tour and, inside a tool, that
-  // tool's own.
-  const helpTours: HelpTour[] = [
-    {
-      label: "Tour the workshop",
-      detail: "The hub: the party bar, the tool cards and the actions on the workshop.",
-      onStart: () => setTour(HUB_TOUR_ID),
-    },
-    ...(system
-      ? [
-          {
-            label: `Tour ${WORKSHOP_SYSTEMS.find((entry) => entry.id === system)?.label ?? system}`,
-            detail: "This tool's controls, one at a time.",
-            onStart: () => setTour(systemTourId(system)),
-          },
-        ]
-      : []),
-  ];
-  const tourSteps = tour === HUB_TOUR_ID ? HUB_TOUR : tour ? SYSTEM_TOURS[tour.replace(/^workshop-/, "")] ?? [] : [];
 
   if (loading) {
     return (
@@ -264,30 +183,11 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
       {system ? null : (
         <WorkshopHeader
           workshop={workshop}
-          onHelp={() => setHelpOpen(true)}
           onRenamed={(title) =>
             setWorkshop((current) => (current ? { ...current, title } : current))
           }
         />
       )}
-      <Suspense fallback={null}>
-        {helpMounted ? (
-          <WorkshopHelpDialog
-            open={helpOpen}
-            onOpenChange={setHelpOpen}
-            tours={helpTours}
-            system={system}
-          />
-        ) : null}
-        {tourMounted ? (
-          <GuidedTour
-            open={tour !== null}
-            steps={tourSteps}
-            onPrepare={requestTourPrepare}
-            onClose={closeTour}
-          />
-        ) : null}
-      </Suspense>
       {/* Pinned: the negative margins let the blur run edge to edge while the
           bar itself keeps the page's gutter. */}
       <div
@@ -312,9 +212,7 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
                 current: system,
                 phrase: (id) => systemCount(id, workshop, bestiary, homebrew, pregens, plugin, world).phrase,
                 onJump: openSystem,
-                onCreate: createIn,
                 onHub: () => router.push(pathname),
-                onHelp: () => setHelpOpen(true),
               })}
             />
           }
@@ -331,7 +229,6 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
           world={world}
           onChange={openSystem}
           onBack={() => router.push(pathname)}
-          onHelp={() => setHelpOpen(true)}
           onRulesApplied={() => void load()}
           onHomebrewChanged={() => void loadHomebrew()}
           onPregensChanged={() => void loadPregens()}

@@ -25,7 +25,6 @@ const { recordUsage, usageOverview, storageBytesFor, forgetUsageFor } = await im
 const { runInUsageScope, currentUsageScope, bindUsageScope } = await import("../src/lib/usage/scope.ts");
 const { chatUsage, responsesUsage, ollamaUsage } = await import("../src/lib/usage/parse.ts");
 const { harnessOfferFor } = await import("../src/lib/harness/policy.ts");
-const { enqueueMediaJob } = await import("../src/lib/media-queue.ts");
 
 let failed = 0;
 async function test(name, run) {
@@ -111,18 +110,18 @@ await test("the scope rides down the async chain and onto a queued job", async (
     return currentUsageScope();
   });
   assert.deepEqual(seen, { campaignId: adminTable.id, userId: admin.id });
-  // A job queued inside the scope runs later with the same scope; one queued
-  // outside runs with none.
+  // A job started inside the scope runs later with the same scope; one
+  // started outside runs with none.
   let inside = null;
   let outside = null;
-  await runInUsageScope({ campaignId: guestTable.id }, () =>
-    enqueueMediaJob("scoped", async () => {
-      inside = currentUsageScope();
-    }, "test"),
-  );
-  await enqueueMediaJob("unscoped", async () => {
+  await runInUsageScope({ campaignId: guestTable.id }, async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    inside = currentUsageScope();
+  });
+  await (async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
     outside = currentUsageScope();
-  }, "test");
+  })();
   assert.deepEqual(inside, { campaignId: guestTable.id });
   assert.deepEqual(outside, {});
   // bindUsageScope adds to what it captured.

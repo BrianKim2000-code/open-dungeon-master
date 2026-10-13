@@ -250,7 +250,7 @@ export function IdentitySection(props: SectionProps) {
         <WorldFields {...props} />
       </section>
       <section className={ui.card + " p-4"}>
-        <SectionHead title="How the narrator sounds" glyph="tab-ambience" />
+        <SectionHead title="How the narrator sounds" glyph="tab-story" />
         <VoiceFields {...props} />
       </section>
     </div>

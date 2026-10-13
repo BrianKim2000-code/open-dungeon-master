@@ -126,7 +126,7 @@ function systemText() {
     [],
   )[0].content;
 }
-const offered = (name) => dmTurnToolCatalogue(world.campaign(), true, false).find((entry) => entry.function.name === name)?.function;
+const offered = (name) => dmTurnToolCatalogue(world.campaign(), false).find((entry) => entry.function.name === name)?.function;
 
 await test("The prompt sends subclass features to use_resource by name, their choices as the variant, their reactions to use_reaction, and their bonus attack to bonusAttack \"feature\"; the rest the server applies.", () => {
   const text = systemText();

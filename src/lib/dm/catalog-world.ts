@@ -581,28 +581,6 @@ export const STORY_ADJUDICATIONS: CatalogEntry[] = [
       },
     ],
   },
-  {
-    name: "generate_image",
-    label: "Illustrate",
-    category: "story",
-    summary: "Draws the scene, and hangs it under your latest passage.",
-    fields: [
-      {
-        name: "prompt",
-        label: "What to draw",
-        kind: "longtext",
-        required: true,
-        placeholder: "a flooded stone stair descending into black water, lit by one lantern",
-      },
-      { name: "reason", label: "Why", kind: "text" },
-      {
-        name: "characterIds",
-        label: "Who is in it",
-        kind: "characters",
-        help: "Two at most: their portraits are passed as references.",
-      },
-    ],
-  },
 ];
 
 // The table itself. Not the world, because the party cannot act on it, and

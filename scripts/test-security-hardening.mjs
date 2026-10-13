@@ -281,50 +281,27 @@ await test("an invite page's cover is served by room code, to a guest with no se
   assert.equal(wrong.status, 404);
 });
 
-// ---- a picture address from an image endpoint ----
+// ---- pictures the upload path is handed ----
 
-await test("a picture address an image endpoint hands back is held to a size and to being a picture", async () => {
-  process.env.OPENAI_IMAGE_API_KEY = "sk-test";
-  process.env.OPENAI_IMAGE_BASE_URL = "http://images.test/v1";
-  process.env.OPENAI_IMAGE_MODEL = "dall-e-3";
-  const { generateOpenAiImage } = await import("../src/lib/openai-images.ts");
-  const realFetch = globalThis.fetch;
-  let download;
-  globalThis.fetch = async (url, init) => {
-    if (init?.method === "POST") {
-      return Response.json({ data: [{ url: "http://files.test/picture" }] });
-    }
-    return download();
-  };
-  const generated = path.join(process.cwd(), "public", "generated");
-  const saved = () => (fs.existsSync(generated) ? fs.readdirSync(generated).length : 0);
-  const draw = () => generateOpenAiImage({ prompt: "a quiet harbor", mode: "fast", aspect: "square" });
-  try {
-    download = () => new Response("<html>not a picture</html>", { headers: { "content-type": "text/html" } });
-    await assert.rejects(draw, /not a PNG, JPEG or WebP picture/);
-    download = () => new Response(PNG, { headers: { "content-length": String(64 * 1024 * 1024) } });
-    await assert.rejects(draw, /too large to be a picture/);
-    download = () =>
-      new Response(
-        new ReadableStream({
-          pull(controller) {
-            controller.enqueue(new Uint8Array(4 * 1024 * 1024));
-          },
-        }),
-      );
-    await assert.rejects(draw, /too large to be a picture/);
-    assert.equal(saved(), 0, "a refused download was saved");
-
-    download = () => new Response(PNG);
-    const image = await draw();
-    assert.match(image.url, /^\/generated\/.+\.png$/);
-    assert.equal(saved(), 1);
-  } finally {
-    globalThis.fetch = realFetch;
-    for (const name of ["OPENAI_IMAGE_API_KEY", "OPENAI_IMAGE_BASE_URL", "OPENAI_IMAGE_MODEL"]) {
-      delete process.env[name];
-    }
-  }
+// The OpenAI image client was removed with the rest of the generators; the
+// upload path owns picture validation now, and it is held to the same rules:
+// the bytes must be a real picture under the size cap.
+await test("uploaded bytes are held to being a picture, and to the size cap", async () => {
+  const { sniffImage, MAX_IMAGE_PIXELS, pixelBudget } = await import("../src/lib/image-format.ts");
+  const { isUploadMimeType, uploadExtension, MAX_UPLOAD_BYTES } = await import("../src/lib/uploads-store.ts");
+  assert.equal(sniffImage(PNG)?.mime, "image/png");
+  assert.equal(sniffImage(Buffer.from("<html>not a picture</html>")), null);
+  assert.equal(isUploadMimeType("text/html"), false);
+  assert.equal(isUploadMimeType("image/png"), true);
+  assert.equal(uploadExtension("image/jpeg"), "jpg");
+  assert.equal(MAX_UPLOAD_BYTES, 8 * 1024 * 1024);
+  const bomb = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]),
+    Buffer.from([0, 0, 0x6a, 0x0c, 0, 0, 0x6a, 0x0c]),
+    Buffer.alloc(64),
+  ]);
+  assert.equal(pixelBudget(bomb), "over", "a decompression bomb is refused by its declared pixels");
+  assert.equal(MAX_IMAGE_PIXELS, 64_000_000);
 });
 
 // ---- the model's actions ----

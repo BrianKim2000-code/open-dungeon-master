@@ -9,7 +9,7 @@ import {
 
 // Seeded procedural battle-map generation. Deterministic under the seed so
 // a map can always be regenerated from its encounter. The place's scene kind
-// (one of the ambience bed ids, stored on the location) picks the terrain,
+// (stored on the location) picks the terrain,
 // the default light and rough ground, in any language; a person building a
 // map can also name the theme and the light outright.
 
@@ -30,7 +30,7 @@ export type GenerateInput = {
   seed: number;
   width?: number;
   height?: number;
-  // The place's scene kind (an ambience bed id), or null for a place nobody
+  // The place's scene kind, or null for a place nobody
   // classified: an open field.
   scene?: string | null;
   pcCount: number;

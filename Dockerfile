@@ -13,16 +13,13 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-COPY scripts/copy-dice-assets.mjs ./scripts/
 RUN npm ci
 
 # --------------------------------------------------------------------- build
 FROM deps AS build
 WORKDIR /app
 
-COPY . .
-
-RUN node scripts/copy-dice-assets.mjs
+COPY . . 
 
 # Content pack for rules lookup - baked so container works offline.
 RUN node scripts/fetch-content-pack.mjs

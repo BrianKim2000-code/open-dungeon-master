@@ -194,7 +194,7 @@ export function DmConsolePanel({
     return all
       .map((group) => ({
         ...group,
-        entries: group.entries.filter((entry) => entry.name !== "generate_image"),
+        entries: group.entries,
       }))
       .filter((group) => group.entries.length > 0);
   }, [capabilities]);

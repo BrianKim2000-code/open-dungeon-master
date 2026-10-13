@@ -17,7 +17,6 @@ import { AdminNetworkSections } from "@/app/admin/AdminNetworkSections";
 import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
 import { AdminStorageSection } from "@/app/admin/AdminStorageSection";
 import { BackendProbe } from "@/app/admin/BackendProbe";
-import { AdminImagesSection } from "@/app/admin/AdminImagesSection";
 import { AdminHarnessSection } from "@/app/admin/AdminHarnessSection";
 import { mergeAdminConfigDraft } from "@/app/admin/merge-config-draft";
 import {
@@ -37,7 +36,6 @@ const STOPS: Array<{ id: string; label: string; glyph: string; server?: boolean 
   { id: "admin-text", label: "Text model", glyph: "ui-ai" },
   { id: "admin-harness", label: "Agent", glyph: "ui-agent" },
   { id: "admin-utility", label: "Utility model", glyph: "ui-utility" },
-  { id: "admin-images", label: "Images", glyph: "ui-paint" },
   { id: "admin-discord", label: "Discord", glyph: "system-share", server: true },
   { id: "admin-backup", label: "Backup", glyph: "ui-backup", server: true },
   { id: "admin-storage", label: "Storage", glyph: "ui-storage" },
@@ -55,7 +53,6 @@ export function AdminSettingsPanel() {
   const [env, setEnv] = useState<EnvDefaults | null>(null);
   const [apiKey, setApiKey] = useState(SECRET_KEPT);
   const [utilityApiKey, setUtilityApiKey] = useState(SECRET_KEPT);
-  const [openaiImageKey, setOpenaiImageKey] = useState(SECRET_KEPT);
   const [discordSecret, setDiscordSecret] = useState(SECRET_KEPT);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -131,16 +128,6 @@ export function AdminSettingsPanel() {
             speed: config.text.speed,
             utilitySpeed: config.text.utilitySpeed,
           },
-          images: {
-            defaultBackend: config.images.defaultBackend,
-            comfyUrl: config.images.comfyUrl,
-            comfyCheckpoint: config.images.comfyCheckpoint,
-            comfyWorkflowPreset: config.images.comfyWorkflowPreset,
-            fluxWorkerUrl: config.images.fluxWorkerUrl,
-            openaiBaseUrl: config.images.openaiBaseUrl,
-            openaiModel: config.images.openaiModel,
-            ...(openaiImageKey === SECRET_KEPT ? {} : { openaiApiKey: openaiImageKey }),
-          },
         }),
       });
       const data = await response.json().catch(() => null);
@@ -151,7 +138,6 @@ export function AdminSettingsPanel() {
       setConfig(data.config);
       setApiKey(SECRET_KEPT);
       setUtilityApiKey(SECRET_KEPT);
-      setOpenaiImageKey(SECRET_KEPT);
       setDiscordSecret(SECRET_KEPT);
       setRescued(Array.isArray(data.rescued) ? data.rescued : []);
       setSaved(true);
@@ -396,7 +382,6 @@ export function AdminSettingsPanel() {
       {phoneWorld ? null : (
         <AdminHarnessSection
           textProvider={config.text.provider}
-          imagesBackend={config.images.defaultBackend}
           onConfig={(patch) =>
             setConfig((current) => (current ? mergeAdminConfigDraft(current, patch) : current))
           }
@@ -480,16 +465,6 @@ export function AdminSettingsPanel() {
           apiKey={utilityApiKey === SECRET_KEPT ? "" : utilityApiKey}
         />
       </PageSection>
-
-      <AdminImagesSection
-        images={config.images}
-        env={env}
-        harness={config.harness}
-        phoneWorld={phoneWorld}
-        openaiKey={openaiImageKey}
-        onImages={(images) => setConfig({ ...config, images })}
-        onOpenaiKey={setOpenaiImageKey}
-      />
 
       {deviceWorld ? null : (
         <AdminNetworkSections
