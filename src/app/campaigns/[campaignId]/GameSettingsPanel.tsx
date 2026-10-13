@@ -338,7 +338,7 @@ export function GameSettingsPanel({
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Dice</span>
-          <Tooltip content="Real dice lets each player opt in to rolling at their table: the game parks until they type the result, read it from a paired Pixels Bluetooth die, or let the server roll per die (Dice sources, in the Party tab).">
+          <Tooltip content="Real dice lets each player opt in to rolling at their table: the game parks until they type the result or let the server roll per die (Dice sources, in the Party tab).">
             <span className="inline-flex min-w-0 max-w-full">
               <Select<DicePolicy>
                 size="sm"

@@ -81,12 +81,6 @@ export default function PrivacyPage() {
             are read on the device and never stored or sent anywhere.
           </li>
           <li>
-            <span className="text-stone-200">Bluetooth</span> to pair Pixels smart dice so
-            physical rolls reach the game. The app never reads your location; the Bluetooth
-            permission on older Android versions requires a location grant only because that is
-            how Android gates Bluetooth scanning there.
-          </li>
-          <li>
             <span className="text-stone-200">Notifications</span> for turn alerts, session
             reminders, and the persistent notice that your device is hosting a world.
           </li>

@@ -288,13 +288,10 @@ export function HelpDialog({
         </p>
         <p>
           Once you have opted in, the <span className="text-stone-300">Dice sources</span> button in
-          the Party tab lets you decide per die which happens: type the physical roll yourself, let
-          the server roll that die for you, or read it straight from a connected{" "}
-          <span className="text-stone-300">Pixels Bluetooth die</span>. Pairing a Pixel needs a
-          Chromium-based browser and a secure (https) connection, because that is what Web
-          Bluetooth requires. When every die in a request is covered by a Pixel or the server, the
-          roll submits itself the moment the last die lands. These choices are saved in the
-          browser you set them in, so set them again if you switch devices.
+          the Party tab lets you decide per die which happens: type the physical roll yourself or let
+          the server roll that die for you. When every die in a request is covered by the server, the
+          roll submits itself automatically. These choices are saved in the browser you set them in,
+          so set them again if you switch devices.
         </p>
       </Section>
 

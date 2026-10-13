@@ -104,7 +104,7 @@ the browser offers "Install app" / "Add to Home Screen" and it runs
 standalone with its own icon. Plain `http://<host>:3005` cannot install:
 browsers require a secure context for web-app installs.
 
-## Physical and Bluetooth dice
+## Physical dice
 
 Nothing to configure server-side: dice sources are a per-player, per-browser
 choice that appears once the campaign's dice policy allows real dice and the
@@ -117,20 +117,10 @@ For each die shape (d4 through d20, plus the d100) a player picks one of:
 - **Server-rolled**: the server draws that die with a cryptographic RNG when
   the roll is submitted, so a request mixing your d20 with automatic damage
   dice goes in as one submission.
-- **A Pixels die**: pair a [Pixels](https://gamewithpixels.com/) Bluetooth die
-  and its landings fill the matching faces live, with a blink-to-identify
-  button. A die that disconnects mid-session degrades to typed entry rather
-  than blocking the roll.
 
-Requirements and caveats:
-
-- Web Bluetooth needs a Chromium-based browser (Chrome, Edge, Brave; Firefox
-  and Safari do not ship it) and a secure context: HTTPS, or `localhost`.
-- Choices live in the browser's local storage, per device. Switch phones and
-  you set them again; they are not on the account.
-- The d100 pairs no single Pixels die, so it stays typed or server-rolled.
-- When every die in a request is covered by a Pixel or the server, the roll
-  submits itself as the last die settles.
+Choices live in the browser's local storage, per device. Switch phones and
+you set them again; they are not on the account. When every die in a request
+is covered by the server, the roll submits itself automatically.
 
 ## Local data
 

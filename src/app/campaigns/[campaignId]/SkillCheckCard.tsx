@@ -60,8 +60,8 @@ export type CheckDieState =
   | "waiting"
   // The whole beat: tumble, flicker, the chip flies in, the total lands.
   | "landing"
-  // A manual or Pixels roll: the number is already known, so it plays from
-  // the modifier chip onward.
+  // A manual roll: the number is already known, so it plays from the modifier
+  // chip onward.
   | "landing-short"
   // History: the total, still.
   | "settled";

@@ -74,10 +74,9 @@ export async function POST(
     return Response.json({ error: "This is not your roll." }, { status: 403 });
   }
 
-  // The faces the player typed or their Pixels dice reported. A "digital"
-  // entry stands in for a face rolled by the server: drawn crypto-random
-  // here, never fabricated in the browser where it would be predictable
-  // and forgeable.
+  // The faces the player typed. A "digital" entry stands in for a face rolled
+  // by the server: drawn crypto-random here, never fabricated in the browser
+  // where it would be predictable and forgeable.
   const submitted = isFallback
     ? []
     : (parsed.data as { dice: Array<number | "digital"> }).dice;
