@@ -4,7 +4,6 @@
 // unpinned fact of the same campaign is ever retired; an unreadable reply
 // retires nothing. The chapter-close case runs on the fake harness.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,17 +11,11 @@ import { register } from "node:module";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-fact-consolidation-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.HARNESS_FAKE = "1";
 process.env.HARNESS_FAKE_SCRIPT = path.join(dir, "script.json");
 process.env.DM_THINKING = "0";
 
 register("./lib/register-alias.mjs", import.meta.url);
-
-// One vector for every text, so no model is loaded: ranking falls to words.
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
 
 const { renderFactsOnFile, consolidationRetirements } = await import("../src/lib/dm/fact-consolidation-logic.ts");
 const { RENDER_CHAR_BUDGET } = await import("../src/lib/dm/fact-logic.ts");

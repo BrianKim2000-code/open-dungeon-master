@@ -9,7 +9,6 @@
 // that a canary file in its scratch folder was never read, that its rolls
 // were the server's, and that its narration landed as the DM's message.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -22,7 +21,6 @@ const TURNS = Number.parseInt(process.env.HARNESS_TURNS ?? "", 10) || 2;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-harness-smoke-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 delete process.env.HARNESS_FAKE;
 register("./lib/register-alias.mjs", import.meta.url);
 

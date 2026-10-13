@@ -1,6 +1,5 @@
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { forgetUsageFor } from "@/lib/usage/ledger";
-import { removeCampaignAudio } from "@/lib/campaign-deletion";
 import { deleteCampaign } from "@/lib/db/campaigns";
 import { getDatabase, parseJson } from "@/lib/db/core";
 import {
@@ -177,7 +176,4 @@ export function purgeAccount(userId: string) {
   closeStreamsForUser(userId);
 
   removeUnreferencedFiles(files);
-  for (const { id } of owned) {
-    removeCampaignAudio(id);
-  }
 }

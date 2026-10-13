@@ -1414,11 +1414,10 @@ function ensureSchema(db: SqliteDatabase) {
     ["must_change_password", `INTEGER NOT NULL DEFAULT 0`],
     // Discord account id for "Sign in with Discord"; NULL when unlinked.
     ["discord_id", `TEXT`],
-    // Per-account preferences (the chat-chime toggle, the dice look) that
-    // should follow the person between browsers. One JSON blob rather than
-    // columns because every reader wants all of it at once and absent keys
-    // mean "use the default", exactly like the client's localStorage cache
-    // of the same values (src/lib/audio-prefs.ts).
+    // Per-account preferences (the dice look) that should follow the person
+    // between browsers. One JSON blob rather than columns because every reader
+    // wants all of it at once and absent keys mean "use the default", like the
+    // client's localStorage cache (src/lib/dice/dice-look-store.ts).
     ["settings_json", `TEXT NOT NULL DEFAULT '{}'`],
   ]);
   db.exec(
@@ -2241,7 +2240,7 @@ function ensureSchema(db: SqliteDatabase) {
       at TEXT NOT NULL,
       campaign_id TEXT,
       user_id TEXT,
-      kind TEXT NOT NULL CHECK (kind IN ('text','image','tts','stt','agent')),
+      kind TEXT NOT NULL CHECK (kind IN ('text','image','agent')),
       role TEXT NOT NULL DEFAULT '',
       backend TEXT NOT NULL DEFAULT '',
       model TEXT NOT NULL DEFAULT '',
@@ -2918,8 +2917,6 @@ export function resyncLibraryTraining(db: SqliteDatabase): number {
   }
   return changed;
 }
-
-// Encryption removed: the database is stored unencrypted for simplicity.
 
 // Module-level (not on globalThis) so a dev HMR reload of this file re-runs
 // ensureSchema once on the next call, picking up schema edits; in prod it

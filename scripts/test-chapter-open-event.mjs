@@ -5,7 +5,6 @@
 // creation now publishes chapter_updated like every other chapter change;
 // the table's stream upserts it and the Story panel refetches.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -14,7 +13,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-chapter-open-event-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { getDatabase } = await import("../src/lib/db/core.ts");

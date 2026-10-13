@@ -210,7 +210,7 @@ async function retrieveArchive(campaignId: string, query: string, chapterBudget:
     );
     chapterIndexes = [...new Set(scenes.map((scene) => scene.chapterIndex))];
   } catch (error) {
-    // Embedder unavailable; the chapter summaries below still anchor it.
+    // Scene search failed; the chapter summaries below still anchor it.
     console.error("[ask] scene search failed", error);
   }
   const closed = listChapters(campaignId).filter((chapter) => chapter.status === "closed");

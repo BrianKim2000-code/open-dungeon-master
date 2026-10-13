@@ -3,7 +3,7 @@
 // of place decided, the history keeps seven, and the reveal floods outward.
 // The agreement check needs the library, and so a throwaway database.
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { register } from "node:module";
 import os from "node:os";
@@ -12,13 +12,8 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dbPath = path.join(mkdtempSync(path.join(os.tmpdir(), "odm-forge-")), "test.sqlite");
 process.env.SQLITE_DB_PATH = dbPath;
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
 register("./lib/register-alias.mjs", import.meta.url);
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
-
 const forge = await import("../src/app/workshop/maps/forge.ts");
 const { MAP_SIZE, generateBattleMap } = await import("../src/lib/battlemap/generate.ts");
 

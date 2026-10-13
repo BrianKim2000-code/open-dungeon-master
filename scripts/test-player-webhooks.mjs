@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,7 +6,6 @@ import { register } from "node:module";
 
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "odm-webhooks-"));
 process.env.SQLITE_DB_PATH = path.join(directory, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.ODM_PLAYER_WEBHOOK_ORIGINS = "https://receiver.example";
 register("./lib/register-alias.mjs", import.meta.url);
 

@@ -49,7 +49,7 @@ export async function POST(
 
   // Body parsing happens before the pending-roll lookup on purpose: with no
   // await between the status check and resolvePendingRoll below, concurrent
-  // double-submits cannot both insert a roll row (better-sqlite3 is sync).
+  // double-submits cannot both insert a roll row (node:sqlite is sync).
   const raw = await request.json().catch(() => ({}));
   const parsed = submitSchema.safeParse(raw);
   if (!parsed.success) {

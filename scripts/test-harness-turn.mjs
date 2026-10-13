@@ -13,7 +13,6 @@ import { register } from "node:module";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-harness-turn-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.OPENAI_COMPAT_API_KEY = "sk-server-secret-never-leaks-1234";
 process.env.HARNESS_FAKE = "1";
 process.env.HARNESS_FAKE_SCRIPT = path.join(dir, "script.json");
@@ -178,7 +177,6 @@ await test("the agent narrates a real turn: its roll is the server's, its prose 
   assert.ok(start.system.length > 2_000, "the DM's own rules and game state are in the system prompt");
   assert.equal(start.model, "fake-model");
   assert.ok(!JSON.stringify(start.env).includes("sk-server-secret"), "a server key reached the program's environment");
-  assert.ok(!("DB_ENCRYPTION_KEY" in start.env));
   const tools = log.find((entry) => entry.kind === "tools").detail;
   assert.ok(tools.includes("request_roll"));
   assert.ok(tools.includes("pc_attack"), "combat tools are on the list before a fight starts");

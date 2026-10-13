@@ -15,7 +15,6 @@ import { register } from "node:module";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-image-english-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.DM_THINKING = "0";
 
 register("./lib/register-alias.mjs", import.meta.url);

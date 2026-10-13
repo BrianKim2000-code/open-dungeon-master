@@ -5,7 +5,6 @@
 // drops one of them turns a locked-down storyteller into a program with a
 // shell, and must fail the build.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -14,7 +13,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-harness-logic-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { renderTurn, renderFollowUp, renderCompletion, toMcpTools, toolNames, HARNESS_PREAMBLE } = await import(
@@ -116,7 +114,6 @@ test("the child environment is an allowlist: no server secret ever reaches a pro
     HOME: "/home/dm",
     PATH: "/usr/bin",
     LANG: "en_US.UTF-8",
-    DB_ENCRYPTION_KEY: "a".repeat(64),
     OPENAI_COMPAT_API_KEY: "sk-server-key-123456",
     OPENROUTER_API_KEY: "or-key-123456",
     ODM_DEVICE_WORLD: "1",
@@ -130,7 +127,7 @@ test("the child environment is an allowlist: no server secret ever reaches a pro
   assert.equal(claude.PATH, "/opt/bin:/usr/bin");
   assert.equal(claude.ANTHROPIC_API_KEY, "sk-ant-admin", "the program's own key goes to it");
   assert.equal(claude.OPENAI_API_KEY, undefined, "another vendor's key does not");
-  for (const secret of ["DB_ENCRYPTION_KEY", "OPENAI_COMPAT_API_KEY", "OPENROUTER_API_KEY", "ODM_DEVICE_WORLD", "SQLITE_DB_PATH", "RANDOM_THING"]) {
+  for (const secret of ["OPENAI_COMPAT_API_KEY", "OPENROUTER_API_KEY", "ODM_DEVICE_WORLD", "SQLITE_DB_PATH", "RANDOM_THING"]) {
     assert.equal(claude[secret], undefined, `${secret} must not pass`);
   }
   assert.equal(leaksServerSecret(claude, parent), null);

@@ -173,7 +173,7 @@ export function getLatestDmTurnId(campaignId: string): string | null {
   return row?.id ?? null;
 }
 
-// Atomically take ownership of a failed turn for a retry. better-sqlite3 is
+// Atomically take ownership of a failed turn for a retry. node:sqlite is
 // synchronous, so the conditional UPDATE is the whole race guard: two players
 // hitting Retry at the same moment, only one gets changes > 0 and the loser
 // is told the turn is already running.

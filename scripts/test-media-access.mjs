@@ -3,7 +3,7 @@
 // account for avatars and covers, the owner for their own library, and the
 // administrator. Anyone else hears 404, as for a file that does not exist.
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,7 +12,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-media-access-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.chdir(dir);
 register("./lib/register-routes.mjs", import.meta.url);
 

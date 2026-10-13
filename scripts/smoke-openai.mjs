@@ -18,7 +18,6 @@
 //     device (admin settings). The campaign never holds a key of its own.
 //   ODM_SMOKE_TURNS=2 ...    stop after that many player turns (cheaper)
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -38,7 +37,6 @@ const MAX_TURNS = Number.parseInt(process.env.ODM_SMOKE_TURNS ?? "", 10) || 5;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-openai-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 // The image model is the only image-side setting; the key must be borrowed.
 process.env.OPENAI_IMAGE_MODEL = IMAGE_MODEL;
 delete process.env.OPENAI_IMAGE_API_KEY;

@@ -14,11 +14,9 @@ export async function GET() {
   return Response.json({ backups: listBackups(), dir: backupDir(), job: currentBackupJob() });
 }
 
-// A point-in-time snapshot of the campaign state: the encrypted database
-// (VACUUM INTO, so it is consistent even mid-game) plus uploads, generated
-// media and .env.server, and the downloaded models only when
-// { includeModels: true } asks (they are fetched again on first use). The
-// archive contains the database encryption key; treat it as a secret.
+// A point-in-time snapshot of the campaign state: the database (VACUUM INTO,
+// so it is consistent even mid-game) plus uploads, generated media and
+// .env.server, and the models folder only when { includeModels: true } asks.
 export async function POST(request: Request) {
   const admin = await requireAdmin();
   if (isErrorResponse(admin)) {

@@ -25,7 +25,6 @@ const packPath = path.join(repoRoot, "data", "content", "open5e.sqlite");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-enforce-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 // The content pack is read-only, so the real one is safe to share. CI has
 // none: suites that need a pack row ask world.hasPack first. A
 // CONTENT_DB_PATH already set wins, so pointing it at nothing runs a suite
@@ -38,11 +37,6 @@ process.chdir(dir);
 process.on("exit", () => removeTempDir(dir));
 
 register("./register-routes.mjs", import.meta.url);
-
-// House rules and lore re-embed; a fixed vector keeps the model off disk.
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
 
 // ---- dice ----
 //

@@ -10,7 +10,6 @@
 // transcript the chapter summaries and the rolling summary already cover,
 // beyond a few messages at the seam, and recall_story still finds it.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -19,19 +18,12 @@ import { register } from "node:module";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-recall-budget-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.HARNESS_FAKE = "1";
 process.env.HARNESS_FAKE_SCRIPT = path.join(dir, "script.json");
 fs.writeFileSync(process.env.HARNESS_FAKE_SCRIPT, JSON.stringify([[{ text: "{}" }]]));
 process.env.DM_THINKING = "0";
 
 register("./lib/register-alias.mjs", import.meta.url);
-
-// One vector for every text: scene recall finds every scene, with no model
-// on disk.
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
 
 const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
 const { createUser } = await import("../src/lib/db/users.ts");
@@ -125,8 +117,7 @@ const atWindow = async (tokens, fn) => {
   await fn();
   delete process.env.HARNESS_CONTEXT;
 };
-// The chapter lines sent, whichever chapter the recall matched: every scene
-// ties under the one-vector embedder, so that is not fixed.
+// The chapter lines sent, whichever chapter the recall matched.
 const chapterLines = (sent) =>
   [...sent.matchAll(/\[chapter:(\d)\] "The Lantern Mill, part \d": ([^\n]*)/g)].map((match) => ({
     index: Number(match[1]),

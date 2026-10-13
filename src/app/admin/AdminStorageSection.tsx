@@ -33,7 +33,7 @@ type Stats = {
   nextAt: string | null;
 };
 
-type Orphans = { pictures: number; audio: number; bytes: number; sample: string[] };
+type Orphans = { pictures: number; bytes: number; sample: string[] };
 
 function formatSize(bytes: number) {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
@@ -104,7 +104,7 @@ export function AdminStorageSection() {
   async function removeOrphans() {
     if (!orphans) return;
     const sure = await appConfirm(
-      `Remove ${count(orphans.pictures + orphans.audio, "file")} (${formatSize(orphans.bytes)}) that no campaign, account or setting names? A backup taken before now still holds them.`,
+      `Remove ${count(orphans.pictures, "file")} (${formatSize(orphans.bytes)}) that no campaign, account or setting names? A backup taken before now still holds them.`,
       { title: "Remove unused files?", actionLabel: "Remove", tone: "danger" },
     );
     if (sure) await act("remove-orphans");
@@ -119,7 +119,7 @@ export function AdminStorageSection() {
   }
 
   const report = stats.report;
-  const orphanCount = orphans ? orphans.pictures + orphans.audio : 0;
+  const orphanCount = orphans ? orphans.pictures : 0;
   return (
     <div className="space-y-3">
       <p className="text-xs leading-5 text-stone-500">
@@ -210,7 +210,7 @@ export function AdminStorageSection() {
             </ul>
           </div>
         ) : (
-          <p className="live-in text-xs text-stone-500">Every stored picture, document and narration clip is still in use.</p>
+          <p className="live-in text-xs text-stone-500">Every stored picture and document is still in use.</p>
         )
       ) : null}
     </div>

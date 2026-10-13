@@ -6,7 +6,6 @@
 // know only the UVTT shape and refused every One Page Dungeon as "Invalid
 // map." before its converter could run.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -19,7 +18,6 @@ const dungeonFile = JSON.parse(fs.readFileSync(path.join(here, "fixtures", "wata
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-map-import-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.chdir(dir);
 
 register("./lib/register-routes.mjs", import.meta.url);

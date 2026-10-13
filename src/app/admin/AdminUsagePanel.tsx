@@ -37,8 +37,8 @@ function when(at: string | null): string {
   return at ? new Date(at).toLocaleDateString() : "never";
 }
 
-// The five usage columns every row shares: paid tokens, local tokens,
-// pictures, speech, agent turns. "in/out" reads as tokens sent and tokens
+// The four usage columns every row shares: paid tokens, local tokens,
+// pictures, agent turns. "in/out" reads as tokens sent and tokens
 // back; a dash is a clean zero.
 function tokens(input: number, output: number): string {
   return input || output ? `${compact(input)} in / ${compact(output)} out` : "–";
@@ -49,18 +49,6 @@ function pictures(paid: number, local: number): string {
     return "–";
   }
   return [paid ? `${compact(paid)} paid` : "", local ? `${compact(local)} local` : ""].filter(Boolean).join(", ");
-}
-
-function speech(totals: UsageTotals): string {
-  const parts = [
-    totals.paidSpeechChars || totals.localSpeechChars
-      ? `${compact(totals.paidSpeechChars + totals.localSpeechChars)} chars${totals.paidSpeechChars ? ` (${compact(totals.paidSpeechChars)} paid)` : ""}`
-      : "",
-    totals.paidDictationClips || totals.localDictationClips
-      ? `${compact(totals.paidDictationClips + totals.localDictationClips)} clips${totals.paidDictationClips ? ` (${compact(totals.paidDictationClips)} paid)` : ""}`
-      : "",
-  ].filter(Boolean);
-  return parts.length ? parts.join(", ") : "–";
 }
 
 const th = "px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-stone-500";
@@ -76,7 +64,6 @@ function UsageCells({ totals }: { totals: UsageTotals }) {
         {tokens(totals.localInputTokens, totals.localOutputTokens)}
       </td>
       <td className={td}>{pictures(totals.paidImages, totals.localImages)}</td>
-      <td className={td}>{speech(totals)}</td>
       <td className={td}>{totals.agentTurns || "–"}</td>
     </>
   );
@@ -129,7 +116,7 @@ export function AdminUsagePanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-stone-400">
-        Tokens, pictures and speech are counted from what each backend reports. &ldquo;Paid&rdquo; is what ran on this
+        Tokens and pictures are counted from what each backend reports. &ldquo;Paid&rdquo; is what ran on this
         server&rsquo;s key or the agent program; &ldquo;local&rdquo; ran on a backend of your own. No prompt or
         transcript is kept for this, and no cost is estimated: apply the prices of the backend you pay for.
       </p>
@@ -160,7 +147,6 @@ export function AdminUsagePanel() {
                 <th className={th}>Paid tokens</th>
                 <th className={th}>Local tokens</th>
                 <th className={th}>Pictures</th>
-                <th className={th}>Speech</th>
                 <th className={th}>Agent turns</th>
               </tr>
             </thead>
@@ -211,7 +197,6 @@ export function AdminUsagePanel() {
                 <th className={th}>Paid tokens</th>
                 <th className={th}>Local tokens</th>
                 <th className={th}>Pictures</th>
-                <th className={th}>Speech</th>
                 <th className={th}>Agent turns</th>
               </tr>
             </thead>

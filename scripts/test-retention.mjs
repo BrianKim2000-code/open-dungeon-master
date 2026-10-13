@@ -13,7 +13,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-retention-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.chdir(dir);
 register("./lib/register-routes.mjs", import.meta.url);
 
@@ -163,7 +162,6 @@ await test("compacting an older database switches it to daily returns", async ()
 
 await test("only files no row names, past a day's grace, are offered and removed", async () => {
   const uploads = path.join(dir, "public", "uploads");
-  const audio = path.join(dir, "public", "generated-audio");
   fs.mkdirSync(uploads, { recursive: true });
   const put = (file, ageMs) => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -184,27 +182,17 @@ await test("only files no row names, past a day's grace, are offered and removed
   db.prepare(`UPDATE campaigns SET description = ? WHERE id = ?`).run(`See https://example.test/uploads/${prose}.png.`, table.id);
   recordMediaFile(`/uploads/${madeOnly}.png`, { userId: dm.id });
 
-  const message = randomUUID();
-  db.prepare(`INSERT INTO campaign_messages (id, campaign_id, seq, author_type, content, created_at) VALUES (?, ?, 99999, 'dm', 'Hello', ?)`).run(message, table.id, iso(now));
-  put(path.join(audio, table.id, `${message}.mp3`), 3 * DAY);
-  put(path.join(audio, table.id, `${randomUUID()}.mp3`), 3 * DAY);
-  put(path.join(audio, randomUUID(), `${randomUUID()}.mp3`), 3 * DAY);
-  put(path.join(audio, "previews", "voice.mp3"), 30 * DAY);
-
   const scan = await retention.scanOrphanFiles(now);
   assert.deepEqual(scan.pictures.map((file) => file.url).sort(), [`/uploads/${lost}.png`, `/uploads/${madeOnly}.png`].sort());
   assert.equal(scan.pictures.find((file) => file.url.includes(lost)).files.length, 2, "the WebP copy goes with its original");
-  assert.equal(scan.audio.length, 2, "a clip whose message is gone, and a folder whose campaign is gone");
 
   await retention.removeOrphanFiles(now);
   const exists = (stem, ext = "png") => fs.existsSync(path.join(uploads, `${stem}.${ext}`));
   assert.ok(exists(named) && exists(prose) && exists(fresh), "named, mentioned and fresh files stay");
   assert.ok(!exists(lost) && !exists(lost, "w256.webp") && !exists(madeOnly));
   assert.ok(fs.existsSync(path.join(uploads, "notes.txt")), "a name the server never writes is never touched");
-  assert.ok(fs.existsSync(path.join(audio, table.id, `${message}.mp3`)));
-  assert.ok(fs.existsSync(path.join(audio, "previews", "voice.mp3")), "the voice preview cache is left alone");
   assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM media_files WHERE path = ?`).get(`/uploads/${madeOnly}.png`).n, 0);
-  assert.equal((await retention.scanOrphanFiles(now)).pictures.length + (await retention.scanOrphanFiles(now)).audio.length, 0);
+  assert.equal((await retention.scanOrphanFiles(now)).pictures.length, 0);
 });
 
 await test("a file only its maker's record names is still removed with its campaign", () => {

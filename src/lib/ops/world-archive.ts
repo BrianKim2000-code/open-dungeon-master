@@ -39,12 +39,10 @@ import { currentBuild } from "@/lib/update-check";
 
 const FORMAT = "odm-world";
 const FORMAT_VERSION = 1;
-const MEDIA_ROOTS = ["uploads", "generated", "generated-audio"] as const;
+const MEDIA_ROOTS = ["uploads", "generated"] as const;
 const MANIFEST_MAX_BYTES = 8 * 1024 * 1024;
 const IMPORT_NAME = /^import-[A-Za-z0-9_-]{1,64}\.tar\.gz$/;
 const FLAT_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,200}$/;
-const AUDIO_FOLDER = /^[A-Za-z0-9_-]{1,80}$/;
-const AUDIO_NAME = /^[A-Za-z0-9_-]{1,80}\.mp3$/;
 // A key, secret, token or password inside the settings JSON.
 const SECRET_KEY = /(api_?key|secret|token|password|authorization)$/i;
 
@@ -224,27 +222,12 @@ async function regularFiles(dir: string, pattern: RegExp): Promise<string[]> {
   return found;
 }
 
-// The pictures, documents and narration clips; the voice previews are a
-// cache and stay behind.
+// The pictures and documents.
 async function listMedia(): Promise<Array<{ name: string; file: string }>> {
   const media: Array<{ name: string; file: string }> = [];
   for (const root of ["uploads", "generated"]) {
     for (const name of await regularFiles(publicDir(root), FLAT_NAME)) {
       media.push({ name: `media/${root}/${name}`, file: publicDir(root, name) });
-    }
-  }
-  let folders: string[] = [];
-  try {
-    folders = (await fs.promises.readdir(publicDir("generated-audio"))).sort();
-  } catch {
-    // No narration yet.
-  }
-  for (const folder of folders) {
-    if (folder === "previews" || !AUDIO_FOLDER.test(folder)) continue;
-    const info = await fs.promises.lstat(publicDir("generated-audio", folder)).catch(() => null);
-    if (!info?.isDirectory()) continue;
-    for (const name of await regularFiles(publicDir("generated-audio", folder), AUDIO_NAME)) {
-      media.push({ name: `media/generated-audio/${folder}/${name}`, file: publicDir("generated-audio", folder, name) });
     }
   }
   return media;
@@ -359,9 +342,6 @@ function stagedRelative(name: string): string | null {
   const parts = name.split("/");
   if (parts[0] !== "media") return null;
   if ((parts[1] === "uploads" || parts[1] === "generated") && parts.length === 3 && FLAT_NAME.test(parts[2])) {
-    return path.join(...parts);
-  }
-  if (parts[1] === "generated-audio" && parts.length === 4 && AUDIO_FOLDER.test(parts[2]) && AUDIO_NAME.test(parts[3])) {
     return path.join(...parts);
   }
   return null;

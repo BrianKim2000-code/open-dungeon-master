@@ -47,10 +47,10 @@ step(1, total, "Checking Node");
   note(`Node ${process.versions.node}`);
 }
 
-// 2. Database: unencrypted in this simplified build, no key needed.
+// 2. Database.
 step(2, total, "The database");
 {
-  note("Unencrypted SQLite at data/local-roleplay.sqlite (no key needed).");
+  note("SQLite at data/local-roleplay.sqlite.");
 }
 
 // 3. The content pack: every spell, feat, item, subclass and monster.

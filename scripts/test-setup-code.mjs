@@ -5,7 +5,6 @@
 // a real server, is scripts/smoke-signup.mjs.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,7 +14,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-setup-code-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 delete process.env.ODM_SETUP_CODE;
 delete process.env.ODM_DEVICE_WORLD;
 
@@ -105,7 +103,6 @@ test("ODM_SETUP_CODE is the operator's own code, and the banner does not echo it
     `;
     const output = spawnNode(script, {
       SQLITE_DB_PATH: path.join(fresh, "env.sqlite"),
-      DB_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
       ODM_SETUP_CODE: "my-own-code",
     });
     assert.deepEqual(JSON.parse(output), { code: "my-own-code", right: true, minted: false, echoed: false, admin: true });
@@ -127,7 +124,6 @@ test("a device world never asks: its app makes the host's account", () => {
     `;
     const output = spawnNode(script, {
       SQLITE_DB_PATH: path.join(fresh, "device.sqlite"),
-      DB_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
       ODM_DEVICE_WORLD: "1",
     });
     assert.deepEqual(JSON.parse(output), { needs: false, banner: 0 });
@@ -155,7 +151,6 @@ test("a device world whose app chose a code takes it for the host's account, and
     `;
     const output = spawnNode(script, {
       SQLITE_DB_PATH: path.join(fresh, "device.sqlite"),
-      DB_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
       ODM_DEVICE_WORLD: "1",
       ODM_SETUP_CODE: "shell-made-secret",
     });

@@ -13,20 +13,20 @@ import { currentUsageScope } from "@/lib/usage/scope";
 // are merged into one per month and kind of call (src/lib/ops/retention.ts);
 // the totals read here come out the same.
 
-export type UsageKind = "text" | "image" | "tts" | "stt" | "agent";
+export type UsageKind = "text" | "image" | "agent";
 
 export type UsageEvent = {
   kind: UsageKind;
-  // story, utility, portrait, cover, map, narration, preview, dictation
+  // story, utility, portrait, cover, map
   role?: string;
-  // local, custom, openai, openrouter, harness, comfyui, kokoro, whisper, builtin
+  // local, custom, openai, openrouter, harness, comfyui
   backend?: string;
   model?: string;
   // Spent on the host's key or plan, as opposed to a local server.
   paid: boolean;
   inputTokens?: number;
   outputTokens?: number;
-  // Pictures, speech characters, dictation clips.
+  // Pictures.
   units?: number;
   durationMs?: number;
   campaignId?: string;
@@ -73,10 +73,6 @@ export type UsageTotals = {
   localOutputTokens: number;
   paidImages: number;
   localImages: number;
-  paidSpeechChars: number;
-  localSpeechChars: number;
-  paidDictationClips: number;
-  localDictationClips: number;
   agentTurns: number;
   lastAt: string | null;
 };
@@ -119,10 +115,6 @@ const EMPTY: UsageTotals = {
   localOutputTokens: 0,
   paidImages: 0,
   localImages: 0,
-  paidSpeechChars: 0,
-  localSpeechChars: 0,
-  paidDictationClips: 0,
-  localDictationClips: 0,
   agentTurns: 0,
   lastAt: null,
 };
@@ -136,10 +128,6 @@ type TotalsRow = {
   local_out: number;
   paid_images: number;
   local_images: number;
-  paid_speech: number;
-  local_speech: number;
-  paid_clips: number;
-  local_clips: number;
   agent_turns: number;
   last_at: string | null;
 };
@@ -152,10 +140,6 @@ const TOTALS_SELECT = `
   SUM(CASE WHEN paid = 0 AND kind IN ('text','agent') THEN output_tokens ELSE 0 END) AS local_out,
   SUM(CASE WHEN paid = 1 AND kind = 'image' THEN units ELSE 0 END) AS paid_images,
   SUM(CASE WHEN paid = 0 AND kind = 'image' THEN units ELSE 0 END) AS local_images,
-  SUM(CASE WHEN paid = 1 AND kind = 'tts' THEN units ELSE 0 END) AS paid_speech,
-  SUM(CASE WHEN paid = 0 AND kind = 'tts' THEN units ELSE 0 END) AS local_speech,
-  SUM(CASE WHEN paid = 1 AND kind = 'stt' THEN units ELSE 0 END) AS paid_clips,
-  SUM(CASE WHEN paid = 0 AND kind = 'stt' THEN units ELSE 0 END) AS local_clips,
   SUM(CASE WHEN kind = 'agent' THEN calls ELSE 0 END) AS agent_turns,
   MAX(at) AS last_at`;
 
@@ -171,10 +155,6 @@ function totalsFrom(row: TotalsRow | undefined): UsageTotals {
     localOutputTokens: row.local_out ?? 0,
     paidImages: row.paid_images ?? 0,
     localImages: row.local_images ?? 0,
-    paidSpeechChars: row.paid_speech ?? 0,
-    localSpeechChars: row.local_speech ?? 0,
-    paidDictationClips: row.paid_clips ?? 0,
-    localDictationClips: row.local_clips ?? 0,
     agentTurns: row.agent_turns ?? 0,
     lastAt: row.last_at ?? null,
   };
@@ -189,10 +169,6 @@ function addTotals(a: UsageTotals, b: UsageTotals): UsageTotals {
     localOutputTokens: a.localOutputTokens + b.localOutputTokens,
     paidImages: a.paidImages + b.paidImages,
     localImages: a.localImages + b.localImages,
-    paidSpeechChars: a.paidSpeechChars + b.paidSpeechChars,
-    localSpeechChars: a.localSpeechChars + b.localSpeechChars,
-    paidDictationClips: a.paidDictationClips + b.paidDictationClips,
-    localDictationClips: a.localDictationClips + b.localDictationClips,
     agentTurns: a.agentTurns + b.agentTurns,
     lastAt: [a.lastAt, b.lastAt].filter((at): at is string => Boolean(at)).sort().at(-1) ?? null,
   };
@@ -255,8 +231,7 @@ export function usageOverview(): { campaigns: CampaignUsage[]; accounts: Account
     .all() as TotalsRow[]) {
     byCampaign.set(row.key!, totalsFrom(row));
   }
-  // Work done outside any campaign (library portraits, dictation on the
-  // home page) is the account's own.
+  // Work done outside any campaign (library portraits) is the account's own.
   const byUserOutsideCampaigns = new Map<string, UsageTotals>();
   for (const row of db
     .prepare(`SELECT user_id AS key, ${TOTALS_SELECT} FROM usage_events WHERE campaign_id IS NULL AND user_id IS NOT NULL GROUP BY user_id`)

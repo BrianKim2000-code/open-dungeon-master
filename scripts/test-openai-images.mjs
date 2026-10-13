@@ -9,7 +9,6 @@
 // Local image generation is not touched by any of this — ComfyUI stays ready
 // with no key at all — so that is asserted too.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -18,7 +17,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-openai-images-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 // A developer's own shell must not decide the result of these assertions.
 for (const name of [
   "OPENAI_API_KEY",

@@ -113,7 +113,6 @@ export const sceneRequestSchema = z.object({
     .string()
     .refine((value) => value === "" || isUploadedImagePath(value), "Not an uploaded file.")
     .optional(),
-  ambience: z.object({ bed: z.string().max(60).default(""), music: z.string().max(60).default("") }).optional(),
 });
 
 export function hasScene(body: z.infer<typeof sceneRequestSchema>): boolean {
@@ -122,7 +121,6 @@ export function hasScene(body: z.infer<typeof sceneRequestSchema>): boolean {
       body.labels ||
       body.props ||
       body.zones ||
-      body.overlayPath !== undefined ||
-      body.ambience,
+      body.overlayPath !== undefined,
   );
 }

@@ -252,7 +252,7 @@ export function setMessageGeneratedImage(messageId: string, image: GeneratedImag
 
 // Retry claim: drops a halted notice's link to its DM turn so the retry
 // banner stops being offered. Conditional on the turn id, so it doubles as a
-// second guard against two leads retrying the same turn (better-sqlite3 is
+// second guard against two leads retrying the same turn (node:sqlite is
 // synchronous, so only one caller can see changes > 0). The caller publishes
 // message_updated.
 export function clearMessageDmTurn(messageId: string, dmTurnId: string): CampaignMessage | null {

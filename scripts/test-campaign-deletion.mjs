@@ -4,7 +4,6 @@
 // path that is not one of ours is never followed. Real encrypted throwaway
 // database, test-account-deletion pattern.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,11 +12,10 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-campaign-deletion-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 // File cleanup looks under process.cwd()/public; point it at the temp dir
 // so the test never touches the real folders.
 const publicDir = path.join(dir, "public");
-for (const folder of ["uploads", "generated", "generated-audio"]) {
+for (const folder of ["uploads", "generated"]) {
   fs.mkdirSync(path.join(publicDir, folder), { recursive: true });
 }
 process.chdir(dir);
@@ -135,10 +133,6 @@ db.prepare(
 // Something outside the folders a crafted path would aim at.
 write("secret.png");
 
-// Narration for both tables.
-write("generated-audio", doomed.id, "m1.mp3");
-write("generated-audio", kept.id, "m9.mp3");
-
 test("only our own file shapes are picked out of stored text", () => {
   assert.deepEqual(
     filePathsIn(
@@ -171,7 +165,7 @@ test("a campaign's files are gathered from its own row and its keyed rows", () =
   );
 });
 
-test("deleting removes the rows, the art only it used and its narration", () => {
+test("deleting removes the rows and the art only it used", () => {
   deleteCampaignWithFiles(doomed.id);
   assert.equal(getCampaignById(doomed.id), null);
   assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM campaign_messages WHERE campaign_id = ?`).get(doomed.id).n, 0);
@@ -180,7 +174,6 @@ test("deleting removes the rows, the art only it used and its narration", () => 
   assert.equal(exists("uploads", "doomed-cover.w1024.webp"), false);
   assert.equal(exists("generated", "1700000000000-42-comfyui-a-cave.png"), false);
   assert.equal(exists("generated", "1700000000000-42-comfyui-a-cave.w1024.webp"), false);
-  assert.equal(exists("generated-audio", doomed.id), false);
 });
 
 test("art another row still names stays, and so does the other table", () => {
@@ -191,7 +184,6 @@ test("art another row still names stays, and so does the other table", () => {
   // Named by a full address, and at the end of a sentence: still kept.
   assert.equal(exists("uploads", "linked-by-address.png"), true);
   assert.equal(exists("generated", "1700000000002-openai-a-gate.png"), true);
-  assert.equal(exists("generated-audio", kept.id, "m9.mp3"), true);
   assert.ok(getCampaignById(kept.id));
 });
 

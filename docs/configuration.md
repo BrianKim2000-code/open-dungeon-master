@@ -68,12 +68,6 @@ to live outside the `/app/data` volume. Set anything you want to change in a
 `.env` file next to the compose file rather than in `.env.server`: the image has
 no `.env.server`, and real environment variables take precedence over it anyway.
 
-### Database encryption
-
-The game database is stored unencrypted; the earlier encryption option was
-removed. Back the file up like anything else precious. Files under
-`public/uploads` and `public/generated*` sit beside it unencrypted too.
-
 ## Sharing a server with other people
 
 A server one person runs for friends has two questions the admin panel answers under Accounts (issues #137 and #138):

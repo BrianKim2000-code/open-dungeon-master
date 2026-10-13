@@ -35,7 +35,6 @@ export function adjudicationGlyph(name: string, fallback: string): string {
   if (name.includes("loot") || name.includes("item") || name.includes("treasure")) return "tab-loot";
   if (name.includes("shop") || name.includes("merchant")) return "tab-shop";
   if (name.includes("handout") || name.includes("image")) return "tab-handout";
-  if (name.includes("ambience") || name.includes("music") || name.includes("sound")) return "tab-ambience";
   if (name.includes("npc")) return "system-cast";
   if (name.includes("faction")) return "tab-factions";
   if (name.includes("lore")) return "system-lore";

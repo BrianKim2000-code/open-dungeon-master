@@ -25,7 +25,6 @@ import { answerReader, isReaderRequest } from "./lib/claims-reader.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-bare-json-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.OPENAI_COMPAT_CONTEXT = "65536";
 
 register("./lib/register-alias.mjs", import.meta.url);

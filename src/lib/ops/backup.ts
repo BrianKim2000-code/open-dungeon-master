@@ -354,8 +354,8 @@ export function deleteBackup(name: string): boolean {
 }
 
 // The CLI restore's proof, run before any live file is touched: reject
-// traversal paths, open the encrypted database with the archived key, run
-// PRAGMA integrity_check and count the campaign tables.
+// traversal paths, open the database, run PRAGMA integrity_check and count
+// the campaign tables.
 export async function verifyBackup(name: string): Promise<{ proof: RestoreProof; sha256: string }> {
   return exclusive("verify", () => proveArchive(name));
 }
