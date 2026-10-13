@@ -338,7 +338,7 @@ export function GameSettingsPanel({
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Dice</span>
-          <Tooltip content="Real dice lets each player opt in to rolling at their table: the game parks until they type the result, read it from a paired Pixels Bluetooth die, or let the server roll per die (Dice sources, in the Party tab).">
+          <Tooltip content="Real dice lets each player opt in to rolling at their table: the game parks until they type the result or let the server roll per die (Dice sources, in the Party tab).">
             <span className="inline-flex min-w-0 max-w-full">
               <Select<DicePolicy>
                 size="sm"
@@ -352,6 +352,14 @@ export function GameSettingsPanel({
                 className={selectClass}
               />
             </span>
+          </Tooltip>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="pk-rowlabel">Faces</span>
+          <Tooltip content="Theatre inserts: when a passage has someone speaking, their portrait comes up over the scene art while their lines play.">
+            <SettingToggle on={settings.presentation === "theatre"} onToggle={() => patch({ presentation: settings.presentation === "theatre" ? "plain" : "theatre" })}>
+              {settings.presentation === "theatre" ? "Theatre inserts on" : "Theatre inserts off"}
+            </SettingToggle>
           </Tooltip>
         </div>
         <div className="flex flex-wrap items-center gap-2">

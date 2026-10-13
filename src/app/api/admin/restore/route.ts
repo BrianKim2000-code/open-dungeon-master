@@ -18,11 +18,11 @@ const bodySchema = {
 // POST { name, mode: "verify" | "live" }.
 //
 // "verify" is the safe rehearsal the CLI calls a dry run: safe-path checks,
-// extract, open the encrypted database with the archived key, integrity
-// check, and campaign/user/message counts. "live" runs the same proof first
-// and only then replaces the managed state paths. The server keeps its open
-// database handle until it restarts, so a live restore is not finished until
-// the service restarts, and anything played in between is lost.
+// extract, open the database, integrity check, and campaign/user/message
+// counts. "live" runs the same proof first and only then replaces the managed
+// state paths. The server keeps its open database handle until it restarts, so
+// a live restore is not finished until the service restarts, and anything
+// played in between is lost.
 export async function POST(request: Request) {
   const admin = await requireAdmin();
   if (isErrorResponse(admin)) {

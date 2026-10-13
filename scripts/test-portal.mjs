@@ -81,7 +81,7 @@ test("the signature is made over the normalized origin", () => {
 });
 
 test("data paths are forwarded, the UI's own are not", () => {
-  for (const path of ["/api/campaigns", "/api/auth/me", "/uploads/x.png", "/generated/a/b.png", "/generated-audio/n.mp3", "/ambience/forest.ogg"]) {
+  for (const path of ["/api/campaigns", "/api/auth/me", "/uploads/x.png", "/generated/a/b.png"]) {
     assert.ok(isPortalPath(path), path);
   }
   for (const path of ["/", "/campaigns/abc", "/_next/static/chunk.js", "/dice-box/textures/x.webp", "/sidebar-icons/story.png", "/apis", "/uploadsx"]) {

@@ -43,6 +43,8 @@ export type CampaignDraft = {
   boardDrawing: boolean;
   // The board shows what enemies look likely to do next.
   enemyIntent: boolean;
+  // Theatre inserts: the speaking NPC's face over the scene art.
+  presentation: "plain" | "theatre";
   // Several characters per player: off, one at a time, or all at once.
   multiCharacter: "off" | "one_active" | "all_active";
   multiclassingEnabled: boolean;
@@ -92,6 +94,7 @@ export const DEFAULT_DRAFT: CampaignDraft = {
   mapsEnabled: true,
   boardDrawing: true,
   enemyIntent: true,
+  presentation: "plain",
   multiCharacter: "off",
   multiclassingEnabled: true,
   worldSimulation: true,

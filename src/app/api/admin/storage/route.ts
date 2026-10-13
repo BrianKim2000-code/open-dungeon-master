@@ -25,9 +25,8 @@ export async function GET() {
 function summary(scan: Awaited<ReturnType<typeof scanOrphanFiles>>) {
   return {
     pictures: scan.pictures.length,
-    audio: scan.audio.length,
     bytes: scan.bytes,
-    sample: [...scan.pictures, ...scan.audio].slice(0, 8).map((file) => file.url),
+    sample: scan.pictures.slice(0, 8).map((file) => file.url),
     scannedAt: scan.scannedAt,
   };
 }

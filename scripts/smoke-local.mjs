@@ -94,7 +94,6 @@ const LABEL = args.label || args.model;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-smoke-local-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "smoke.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 if (args.context) process.env.OPENAI_COMPAT_CONTEXT = args.context;
 // The per-call record comes from the turn loop's own debug lines.
 process.env.DM_DEBUG = "1";

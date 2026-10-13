@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -31,7 +31,7 @@ const oldPack = path.join(scratch, "open5e.sqlite");
   const importer = fs.readFileSync(path.join(repoRoot, "scripts", "import-open5e.mjs"), "utf8");
   const schema = /db\.exec\(`(\s*CREATE TABLE spells[\s\S]*?)`\);/.exec(importer)?.[1];
   assert.ok(schema, "the importer's schema is found");
-  const db = new Database(oldPack);
+  const db = new DatabaseSync(oldPack);
   db.exec(schema);
   const insert = db.prepare(
     `INSERT INTO items (slug, name, document_slug, kind, rarity, cost, category, weight, data_json) VALUES (?, ?, ?, ?, '', '', '', ?, ?)`,
@@ -136,7 +136,7 @@ await test("a pack row is weighed from its own text, the column only when there 
 if (fs.existsSync(realPack)) {
   const { SRD_WEAPON_WEIGHT_LB } = await import("../src/lib/srd/weapons.ts");
   const { SRD_GEAR } = await import("../src/lib/srd/adventuring-gear.ts");
-  const pack = new Database(realPack, { readonly: true, fileMustExist: true });
+  const pack = new DatabaseSync(realPack, { readOnly: true });
   const rows = pack
     .prepare(`SELECT name, kind, document_slug, weight, data_json FROM items WHERE kind != 'magic_item'`)
     .all()

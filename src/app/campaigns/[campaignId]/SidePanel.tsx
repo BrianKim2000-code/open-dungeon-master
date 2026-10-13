@@ -13,8 +13,8 @@ import {
 import type { PanelTab, PanelTabDef } from "@/app/campaigns/[campaignId]/SessionTabs";
 
 // Two widths only: the default rail and a roomier one. Per-browser
-// localStorage via useSyncExternalStore, same pattern as useChatChime:
-// server render is narrow and the client snapshot takes over at hydration.
+// localStorage via useSyncExternalStore: server render is narrow and the
+// client snapshot takes over at hydration.
 const WIDE_KEY = "odm_side_panel_wide";
 const WIDE_EVENT = "odm-side-panel-width";
 

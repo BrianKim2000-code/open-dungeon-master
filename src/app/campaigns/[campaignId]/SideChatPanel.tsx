@@ -1,11 +1,10 @@
 "use client";
 
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Bell, BellOff, Loader2, Plus, Send } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { setChimeMuted, useChimeMuted } from "@/app/campaigns/[campaignId]/useChatChime";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/ui/SectionHead";
@@ -39,7 +38,6 @@ export function SideChatPanel({
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
-  const chimeMuted = useChimeMuted();
 
   const openThread = threads.find((thread) => thread.id === openThreadId) ?? null;
 
@@ -111,23 +109,9 @@ export function SideChatPanel({
         title="Private chats"
         glyph="tab-chat"
         aside={
-          <>
-            <KitButton
-              onClick={() => setChimeMuted(!chimeMuted)}
-              aria-pressed={!chimeMuted}
-              aria-label={chimeMuted ? "Chime muted" : "Chime on"}
-              title={
-                chimeMuted
-                  ? "Chime muted. Click to play a chime when a private message arrives."
-                  : "The chime plays when a private message arrives. Click to mute."
-              }
-            >
-              {chimeMuted ? <BellOff className="size-3.5" /> : <Bell className="size-3.5" />}
-            </KitButton>
-            <KitButton onClick={() => setCreating(true)}>
-              <Plus className="size-3.5" /> New
-            </KitButton>
-          </>
+          <KitButton onClick={() => setCreating(true)}>
+            <Plus className="size-3.5" /> New
+          </KitButton>
         }
       />
       <p className="text-xs leading-5 text-stone-500">

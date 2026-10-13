@@ -31,15 +31,15 @@ const buildCommit = process.env.ODM_BUILD_COMMIT?.trim() || git("rev-parse", "HE
 const buildDescribe =
   process.env.ODM_BUILD_DESCRIBE?.trim() || git("describe", "--tags", "--long", "--dirty", "--always") || buildCommit.slice(0, 7);
 
-// The folders under public/ that hold what players made: uploads, generated
-// pictures and narration audio. Next serves any file that sat under public/
+// The folders under public/ that hold what players made: uploads and generated
+// pictures. Next serves any file that sat under public/
 // when the server started straight from disk, ahead of every route, so after
 // a restart those folders were readable by anyone with the address. A
 // beforeFiles rewrite runs ahead of that and hands them to the route that
 // checks the login (src/app/api/media). It is a path, so it never leaves the
 // server whatever address or scheme the request arrived under; the query (a
 // sized variant, "?w=256") rides along.
-export const LOGIN_MEDIA_ROOTS = ["uploads", "generated", "generated-audio"];
+export const LOGIN_MEDIA_ROOTS = ["uploads", "generated"];
 
 export const loginMediaRewrites = LOGIN_MEDIA_ROOTS.map((root) => ({
   source: `/${root}/:path*`,
@@ -107,9 +107,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // better-sqlite3 shim is plain JS but kept external for compatibility;
-  // multilingual-stemmer reads its .wasm beside its own module.
-  serverExternalPackages: ["better-sqlite3", "multilingual-stemmer"] as unknown as string[],
+  // Picture codecs and the stemmer read their .wasm files beside their own
+  // modules at runtime (src/lib/image-variants.ts, src/lib/stem.ts).
+  serverExternalPackages: [
+    "multilingual-stemmer",
+    "@jsquash/jpeg",
+    "@jsquash/png",
+    "@jsquash/resize",
+    "@jsquash/webp",
+  ] as unknown as string[],
+  typescript: {
+    // Typechecking runs via tsgo (@typescript/native-preview) in npm run build
+    // for ~15x faster checks than Next's built-in tsc pass.
+    ignoreBuildErrors: true,
+  },
   turbopack: {
     root: process.cwd(),
   },
@@ -126,9 +137,12 @@ const nextConfig: NextConfig = {
   ...(dockerBuild
     ? {
         output: "standalone" as const,
-        // Simplified: only the shim and license need tracing.
         outputFileTracingIncludes: {
-          "/*": ["node_modules/better-sqlite3/**/*", "LICENSE"],
+          "/*": [
+            "node_modules/@jsquash/**/*",
+            "node_modules/wasm-feature-detect/**/*",
+            "LICENSE",
+          ],
         },
       }
     : {}),

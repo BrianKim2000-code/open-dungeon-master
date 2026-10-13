@@ -11,15 +11,13 @@ import { heroInput } from "./enforce-world.mjs";
 process.env.DEFAULT_TEXT_PROVIDER = "none";
 delete process.env.COMFYUI_URL;
 delete process.env.FLUX_WORKER_URL;
-delete process.env.KOKORO_URL;
 // The capability probe's own cache, answered in advance and dated a day
-// ahead so it never goes stale mid-suite: no painter and no voice is
-// listening, so nothing is queued on whatever this machine really runs.
+// ahead so it never goes stale mid-suite: no painter is listening, so
+// nothing is queued on whatever this machine really runs.
 globalThis.__odmCapabilityProbes = new Map(
   [
     "http://127.0.0.1:8188/system_stats",
     "http://127.0.0.1:7869/health",
-    "http://127.0.0.1:8880/health",
   ].map((url) => [url, { probedAt: Date.now() + 86_400_000, reachable: false }]),
 );
 

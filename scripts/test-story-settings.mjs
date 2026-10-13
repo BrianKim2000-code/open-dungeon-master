@@ -3,7 +3,6 @@
 // the campaign snapshot). Runs against a throwaway encrypted database with
 // the real modules (workshop-integration pattern).
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,7 +10,6 @@ import { register } from "node:module";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-story-settings-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
 register("./lib/register-alias.mjs", import.meta.url);
 

@@ -26,8 +26,8 @@ export const PORTAL_SIG_COOKIE = "odm_portal_sig";
 const MIN_SECRET_LENGTH = 32;
 
 // Everything the UI fetches as data rather than as its own code: the API,
-// player uploads, generated art and narration, and the ambience library.
-export const PORTAL_PREFIXES = ["/api/", "/uploads/", "/generated/", "/generated-audio/", "/ambience/"];
+// player uploads, and generated art.
+export const PORTAL_PREFIXES = ["/api/", "/uploads/", "/generated/"];
 
 export const PORTAL_LOGOUT_PATH = "/api/auth/logout";
 

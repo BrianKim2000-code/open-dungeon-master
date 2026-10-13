@@ -1,27 +1,35 @@
-// How a consumer asks for a smaller copy of a picture (variantUrl), how the
-// serve route reads the ask (variantWidth), how the sibling is named, and
-// that headers are read safely: sniffImage, imageSize and the pixel budget
-// that keeps a huge declared picture from ever reaching a decoder. The
-// variant writer itself is gone with the WASM codecs, so nothing writes the
-// siblings; the naming survives for the ones already on disk.
+// Smaller copies of generated and uploaded pictures: how a consumer asks
+// for one (variantUrl), how the serve route reads the ask (variantWidth),
+// how the sibling is named, how the route picks the file to stream
+// without leaving its root, and that the WASM writer really writes them
+// under plain Node, once, and never for a name it did not make.
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { register } from "node:module";
+import { createRequire, register, syncBuiltinESMExports } from "node:module";
 import zlib from "node:zlib";
+import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { imageSize, isVariantFileName, pixelBudget, sniffImage, variantFileName, variantUrl, variantWidth } = await import(
   "../src/lib/image-format.ts"
 );
+const { servedSegments, writeImageVariants } = await import("../src/lib/image-variants.ts");
+const { imageVariantsSettled, scheduleImageVariants } = await import("../src/lib/image-variants.ts");
+const workerThreads = createRequire(import.meta.url)("node:worker_threads");
+const realWorker = workerThreads.Worker;
+const fsPromises = createRequire(import.meta.url)("node:fs/promises");
+const realReadFile = fsPromises.readFile;
 
 const repo = path.resolve(import.meta.dirname, "..");
 const samplePng = path.join(repo, "public", "assets", "themes", "default", "diffuse-dark.png");
 
 // A PNG of random RGBA noise: incompressible, so it weighs what a piece of
-// scene art weighs.
+// scene art weighs and every WebP copy comes out smaller.
 function noisePng(width, height) {
   const crc = (bytes) => {
     let value = ~0;
@@ -81,7 +89,7 @@ await test("variantUrl adds ?w= only to the server's own pictures", () => {
   }
 });
 
-await test("variantWidth accepts the two sizes the server names and nothing else", () => {
+await test("variantWidth accepts the two sizes the server writes and nothing else", () => {
   assert.equal(variantWidth("256"), 256);
   assert.equal(variantWidth("1024"), 1024);
   for (const value of ["512", "0", "-256", "abc", "", null, undefined, "256px", "1e3"]) {
@@ -133,5 +141,226 @@ await test("a picture's pixel count is read from its header, before anything dec
   assert.equal(pixelBudget(declaredPng(30000, 30000)), "over");
   assert.equal(pixelBudget(Buffer.from("not a picture at all")), "unknown");
 });
+
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-image-variants-"));
+try {
+  const generated = path.join(dir, "public", "generated");
+  fs.mkdirSync(generated, { recursive: true });
+  const original = path.join(generated, "sample.png");
+  const noise = noisePng(1024, 768);
+  fs.writeFileSync(original, noise);
+  assert.deepEqual(imageSize(noise), { width: 1024, height: 768 });
+
+  await test("a picture that declares too many pixels is never handed to the decoder", async () => {
+    const bomb = path.join(generated, "bomb.png");
+    fs.writeFileSync(bomb, declaredPng(30000, 30000));
+    const result = await writeImageVariants(bomb);
+    assert.match(result.error ?? "", /too many pixels/);
+    assert.deepEqual(result.written, []);
+    assert.deepEqual(fs.readdirSync(generated).filter((name) => name.startsWith("bomb.")), ["bomb.png"]);
+  });
+
+  await test("the worker writes both WebP copies of a PNG, sized to the long edge", async () => {
+    const first = await writeImageVariants(original);
+    assert.equal(first.error, undefined);
+    assert.deepEqual(first.written.map((file) => path.basename(file)).sort(), ["sample.w1024.webp", "sample.w256.webp"]);
+    const small = fs.readFileSync(path.join(generated, "sample.w256.webp"));
+    const large = fs.readFileSync(path.join(generated, "sample.w1024.webp"));
+    assert.equal(sniffImage(small)?.format, "webp");
+    assert.equal(sniffImage(large)?.format, "webp");
+    assert.deepEqual(imageSize(small), { width: 256, height: 192 });
+    // The sample is exactly 1024 wide, so the 1024 copy is a re-encode, not a resize.
+    assert.deepEqual(imageSize(large), { width: 1024, height: 768 });
+    assert.ok(small.length < large.length);
+    assert.ok(large.length < noise.length);
+    assert.ok(!fs.existsSync(path.join(generated, "sample.w256.webp.tmp-" + process.pid)));
+  });
+
+  await test("a same-size copy that would weigh more than the original is not written", async () => {
+    // A flat 1024 px PNG (19 KB) encodes to a larger WebP: only the 256 copy is worth having.
+    const flat = path.join(generated, "flat.png");
+    fs.copyFileSync(samplePng, flat);
+    const result = await writeImageVariants(flat);
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.written.map((file) => path.basename(file)), ["flat.w256.webp"]);
+    assert.ok(!fs.existsSync(path.join(generated, "flat.w1024.webp")));
+  });
+
+  await test("a second pass writes nothing: the backfill can run any number of times", async () => {
+    const before = fs.statSync(path.join(generated, "sample.w256.webp")).mtimeMs;
+    const again = await writeImageVariants(original);
+    assert.deepEqual(again.written, []);
+    assert.equal(again.skipped.length, 2);
+    assert.equal(fs.statSync(path.join(generated, "sample.w256.webp")).mtimeMs, before);
+  });
+
+  await test("a WebP original only gets the copies that are smaller than it", async () => {
+    // 1024 px WebP (what a harness picture may be): a 256 copy, no 1024 one.
+    const big = path.join(generated, "big.webp");
+    fs.copyFileSync(path.join(generated, "sample.w1024.webp"), big);
+    const result = await writeImageVariants(big);
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.written.map((file) => path.basename(file)), ["big.w256.webp"]);
+    assert.deepEqual(imageSize(fs.readFileSync(path.join(generated, "big.w256.webp"))), { width: 256, height: 192 });
+    assert.ok(!fs.existsSync(path.join(generated, "big.w1024.webp")));
+    // 256 px WebP: nothing to write at all, and no worker is needed to know.
+    const tiny = path.join(generated, "tiny.webp");
+    fs.copyFileSync(path.join(generated, "sample.w256.webp"), tiny);
+    const none = await writeImageVariants(tiny);
+    assert.deepEqual(none, { written: [], skipped: [path.join(generated, "tiny.w256.webp"), path.join(generated, "tiny.w1024.webp")] });
+  });
+
+  await test("something that is not a picture is refused without a worker", async () => {
+    const junk = path.join(generated, "junk.png");
+    fs.writeFileSync(junk, "<svg onload=alert(1)>");
+    const result = await writeImageVariants(junk);
+    assert.match(result.error, /not a PNG/);
+    assert.deepEqual(result.written, []);
+    const missing = await writeImageVariants(path.join(generated, "nope.png"));
+    assert.ok(missing.error);
+  });
+
+  await test("worker startup failure is nonfatal and the next image still gets its copies", async () => {
+    const startupOriginal = path.join(generated, "startup.png");
+    fs.copyFileSync(samplePng, startupOriginal);
+    workerThreads.Worker = class Worker {
+      constructor() { throw new Error("injected worker startup failure"); }
+    };
+    syncBuiltinESMExports();
+    const unhandled = [];
+    const onUnhandled = (error) => unhandled.push(error);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const result = await writeImageVariants(startupOriginal);
+      assert.deepEqual(result, { written: [], skipped: [], error: "injected worker startup failure" });
+      assert.ok(fs.existsSync(startupOriginal));
+      assert.ok(!fs.existsSync(path.join(generated, "startup.w256.webp")));
+      scheduleImageVariants(startupOriginal);
+      await imageVariantsSettled();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.deepEqual(unhandled, []);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+      workerThreads.Worker = realWorker;
+      syncBuiltinESMExports();
+    }
+    const next = await writeImageVariants(startupOriginal);
+    assert.equal(next.error, undefined);
+    assert.ok(fs.existsSync(path.join(generated, "startup.w256.webp")));
+    assert.ok(fs.existsSync(startupOriginal));
+  });
+
+  await test("worker error, exit and timeout return errors without removing originals", async () => {
+    const runInjected = async (name, WorkerClass) => {
+      const source = path.join(generated, `${name}.png`);
+      fs.copyFileSync(samplePng, source);
+      workerThreads.Worker = WorkerClass;
+      syncBuiltinESMExports();
+      try {
+        const result = await writeImageVariants(source);
+        assert.deepEqual(result.written, []);
+        assert.ok(fs.existsSync(source));
+        return result.error;
+      } finally {
+        workerThreads.Worker = realWorker;
+        syncBuiltinESMExports();
+      }
+    };
+    class ErrorWorker extends EventEmitter {
+      constructor() {
+        super();
+        setImmediate(() => this.emit("error", new Error("injected worker error")));
+      }
+    }
+    class ExitWorker extends EventEmitter {
+      constructor() {
+        super();
+        setImmediate(() => this.emit("exit", 17));
+      }
+    }
+    class TimeoutWorker extends EventEmitter {
+      terminate() { return Promise.resolve(0); }
+    }
+    assert.equal(await runInjected("worker-error", ErrorWorker), "injected worker error");
+    assert.equal(await runInjected("worker-exit", ExitWorker), "worker exited with 17");
+    const realSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = (callback, delay, ...args) =>
+      realSetTimeout(callback, delay === 90_000 ? 0 : delay, ...args);
+    try {
+      assert.equal(await runInjected("worker-timeout", TimeoutWorker), "timed out");
+    } finally {
+      globalThis.setTimeout = realSetTimeout;
+    }
+  });
+
+  await test("an unexpected queued rejection is logged and does not become unhandled", async () => {
+    const source = path.join(generated, "queued-rejection.png");
+    fs.copyFileSync(samplePng, source);
+    fsPromises.readFile = async (file, ...args) =>
+      file === source ? undefined : realReadFile(file, ...args);
+    syncBuiltinESMExports();
+    const unhandled = [];
+    const warnings = [];
+    const onUnhandled = (error) => unhandled.push(error);
+    const realWarn = console.warn;
+    process.on("unhandledRejection", onUnhandled);
+    console.warn = (message) => warnings.push(message);
+    try {
+      scheduleImageVariants(source);
+      await imageVariantsSettled();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.deepEqual(unhandled, []);
+      assert.ok(warnings.some((message) => message.includes("queued-rejection.png")));
+      assert.ok(fs.existsSync(source));
+    } finally {
+      console.warn = realWarn;
+      process.off("unhandledRejection", onUnhandled);
+      fsPromises.readFile = realReadFile;
+      syncBuiltinESMExports();
+    }
+    const next = await writeImageVariants(source);
+    assert.equal(next.error, undefined);
+  });
+
+  // servedSegments reads under process.cwd()/public like the routes do.
+  const cwd = process.cwd();
+  process.chdir(dir);
+  try {
+    await test("the route serves the variant when it exists and the original when not", async () => {
+      assert.deepEqual(await servedSegments("generated", ["sample.png"], 256), ["sample.w256.webp"]);
+      assert.deepEqual(await servedSegments("generated", ["sample.png"], 1024), ["sample.w1024.webp"]);
+      assert.deepEqual(await servedSegments("generated", ["big.webp"], 256), ["big.w256.webp"]);
+      assert.deepEqual(await servedSegments("generated", ["big.webp"], 1024), ["big.webp"]);
+      assert.deepEqual(await servedSegments("generated", ["tiny.webp"], 256), ["tiny.webp"]);
+      assert.deepEqual(await servedSegments("generated", ["tiny.webp"], 1024), ["tiny.webp"]);
+      assert.deepEqual(await servedSegments("generated", ["junk.png"], 256), ["junk.png"]);
+      assert.deepEqual(await servedSegments("uploads", ["sample.png"], 256), ["sample.png"]);
+    });
+
+    await test("segments that would leave the root come back untouched for serve-file to refuse", async () => {
+      fs.mkdirSync(path.join(dir, "public", "secret"));
+      fs.writeFileSync(path.join(dir, "public", "secret", "key.w256.webp"), "x");
+      for (const segments of [
+        ["..", "secret", "key.png"],
+        ["generated", "..", "..", "secret", "key.png"],
+        [".", "sample.png"],
+        [""],
+        [],
+      ]) {
+        assert.deepEqual(await servedSegments("generated", segments, 256), segments);
+      }
+      // A nested name resolves to a sibling in the same folder, never elsewhere.
+      fs.mkdirSync(path.join(generated, "deep"));
+      fs.copyFileSync(original, path.join(generated, "deep", "x.png"));
+      assert.deepEqual(await servedSegments("generated", ["deep", "x.png"], 256), ["deep", "x.png"]);
+      fs.copyFileSync(path.join(generated, "sample.w256.webp"), path.join(generated, "deep", "x.w256.webp"));
+      assert.deepEqual(await servedSegments("generated", ["deep", "x.png"], 256), ["deep", "x.w256.webp"]);
+    });
+  } finally {
+    process.chdir(cwd);
+  }
+} finally {
+  removeTempDir(dir);
+}
 
 console.log(`image variants: ${passed} tests passed`);

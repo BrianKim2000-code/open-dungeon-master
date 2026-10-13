@@ -1,8 +1,7 @@
 "use client";
 
-// The account's dice look, cached on this device. Same shape as the audio
-// preferences (src/lib/audio-prefs.ts): localStorage is what the tray
-// reads, synchronously and offline; the account copy exists so a second
+// The account's dice look, cached on this device: localStorage is what the
+// tray reads, synchronously and offline; the account copy exists so a second
 // device shows the same dice. Hydrate once per page load, write every
 // change through on a short debounce (colour pickers fire continuously),
 // and let a failed fetch in either direction change nothing visible.

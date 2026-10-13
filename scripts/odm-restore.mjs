@@ -68,13 +68,14 @@ try {
   if (relative.startsWith("..") || path.isAbsolute(relative)) fail("backup manifest points outside the restored tree");
   if (!fs.existsSync(dbPath)) fail(`restored database is missing: ${manifest.database}`);
 
-  const Database = (await import("better-sqlite3")).default;
-  const db = new Database(dbPath, { readonly: true });
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(dbPath, { readOnly: true });
   let proof;
   try {
-    const integrity = db.pragma("integrity_check", { simple: true });
+    const rows = db.prepare("PRAGMA integrity_check").all();
+    const integrity = String(rows[0] ? Object.values(rows[0])[0] : "");
     if (integrity !== "ok") fail(`restored database integrity check failed: ${integrity}`);
-    const count = (table) => db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
+    const count = (table) => Number(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n);
     proof = { campaigns: count("campaigns"), users: count("users"), messages: count("campaign_messages") };
   } finally {
     db.close();
@@ -86,7 +87,7 @@ try {
   }
   fs.mkdirSync(target, { recursive: true });
 
-  const known = ["data", "public/uploads", "public/generated", "public/generated-audio", "models", ".env.server"];
+  const known = ["data", "public/uploads", "public/generated", "models", ".env.server"];
   const named = Array.isArray(manifest.includes) ? manifest.includes : [];
   for (const rel of named) {
     if (!known.includes(rel)) fail(`backup manifest names a path this app does not manage: ${rel}`);

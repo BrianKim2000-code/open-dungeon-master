@@ -297,16 +297,12 @@ export async function compactDatabase(): Promise<{ before: number; after: number
 // A picture's name is matched on its stem, so the WebP copies beside it
 // (name.w256.webp) live and die with it, and a path inside a full address
 // or a sentence still counts as a use: keeping is the side to err on. Only
-// names in the shapes the server writes are ever candidates. Narration audio
-// is per campaign and per message, so a folder whose campaign is gone, or a
-// clip whose message is gone, is an orphan; the voice previews are a cache
-// and are left alone.
+// names in the shapes the server writes are ever candidates.
 const STORED_NAME = /^([A-Za-z0-9][A-Za-z0-9_-]{0,200})(?:\.w(?:256|1024))?\.(?:png|jpe?g|webp|pdf)$/i;
 const NAMED = /\/(uploads|generated)\/([A-Za-z0-9][A-Za-z0-9_-]*)/g;
-const AUDIO_NAME = /^([A-Za-z0-9_-]+)\.mp3$/;
 
 export type OrphanFile = { url: string; files: string[]; bytes: number };
-export type OrphanScan = { pictures: OrphanFile[]; audio: OrphanFile[]; bytes: number; scannedAt: string };
+export type OrphanScan = { pictures: OrphanFile[]; bytes: number; scannedAt: string };
 
 function publicDir(...parts: string[]): string {
   return path.join(/*turbopackIgnore: true*/ process.cwd(), "public", ...parts);
@@ -395,40 +391,8 @@ export async function scanOrphanFiles(now = Date.now()): Promise<OrphanScan> {
     }
   }
 
-  const db = getDatabase();
-  const campaigns = new Set((db.prepare(`SELECT id FROM campaigns`).all() as Array<{ id: string }>).map((row) => row.id));
-  const audio: OrphanFile[] = [];
-  for (const folder of await listFiles(publicDir("generated-audio"))) {
-    if (!folder.isDir || folder.name === "previews" || !/^[A-Za-z0-9_-]+$/.test(folder.name)) {
-      continue;
-    }
-    const clips = await listFiles(publicDir("generated-audio", folder.name));
-    if (!campaigns.has(folder.name)) {
-      const old = clips.every((clip) => clip.mtimeMs <= graceEnds);
-      if (old) {
-        audio.push({
-          url: `/generated-audio/${folder.name}/`,
-          files: clips.map((clip) => `/generated-audio/${folder.name}/${clip.name}`),
-          bytes: clips.reduce((sum, clip) => sum + clip.bytes, 0),
-        });
-      }
-      continue;
-    }
-    const messages = new Set(
-      (db.prepare(`SELECT id FROM campaign_messages WHERE campaign_id = ?`).all(folder.name) as Array<{ id: string }>).map(
-        (row) => row.id,
-      ),
-    );
-    for (const clip of clips) {
-      const match = clip.isDir ? null : AUDIO_NAME.exec(clip.name);
-      if (match && !messages.has(match[1]) && clip.mtimeMs <= graceEnds) {
-        const url = `/generated-audio/${folder.name}/${clip.name}`;
-        audio.push({ url, files: [url], bytes: clip.bytes });
-      }
-    }
-  }
-  const bytes = [...pictures, ...audio].reduce((sum, file) => sum + file.bytes, 0);
-  return { pictures, audio, bytes, scannedAt: nowIso() };
+  const bytes = pictures.reduce((sum, file) => sum + file.bytes, 0);
+  return { pictures, bytes, scannedAt: nowIso() };
 }
 
 // Scans again rather than trusting a list the page held, then removes.
@@ -441,11 +405,7 @@ export async function removeOrphanFiles(now = Date.now()): Promise<{ removed: nu
       fs.rmSync(publicDir(...file.split("/").filter(Boolean)), { force: true });
     }
   }
-  for (const clip of scan.audio) {
-    const target = publicDir(...clip.url.split("/").filter(Boolean));
-    fs.rmSync(target, { force: true, recursive: clip.url.endsWith("/") });
-  }
-  return { removed: scan.pictures.length + scan.audio.length, bytes: scan.bytes };
+  return { removed: scan.pictures.length, bytes: scan.bytes };
 }
 
 export type StorageStats = {

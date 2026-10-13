@@ -16,7 +16,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-rulebook-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 register("./lib/register-routes.mjs", import.meta.url);
 
 const { rulebookContents, rulebookPage, rulebookPages, rulebookSearch, QUICK_LINKS } = await import(

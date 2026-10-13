@@ -334,9 +334,9 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const contentDbPath = path.resolve(scriptsDir, "../data/content/open5e.sqlite");
 
 if (fs.existsSync(contentDbPath)) {
-  const { default: Database } = await import("better-sqlite3");
+  const { DatabaseSync } = await import("node:sqlite");
   const { parseMonster } = await import("../src/lib/bestiary/statblock.ts");
-  const db = new Database(contentDbPath, { readonly: true });
+  const db = new DatabaseSync(contentDbPath, { readOnly: true });
   const rows = db
     .prepare(`SELECT name, cr, data_json FROM monsters WHERE document_slug LIKE '%srd%'`)
     .all();

@@ -10,7 +10,6 @@
 // still replace whole. And one bad stored field now falls back alone
 // rather than taking every stored setting with it.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -19,15 +18,9 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-partial-updates-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.chdir(dir);
 
 register("./lib/register-routes.mjs", import.meta.url);
-
-// Rulesets re-embed house rules; a fixed vector keeps the model off disk.
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
 
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { createUser } = await import("../src/lib/db/users.ts");

@@ -170,8 +170,7 @@ export type CampaignState = {
   chapters: Chapter[];
   notes: Note[];
   sideThreads: SideThread[];
-  // True once the first side-chat fetch landed; the chime baseline waits
-  // for it so a page load with backlog stays silent.
+  // True once the first side-chat fetch landed.
   sideChatLoaded: boolean;
   whispers: DmWhisper[];
   whisperUnread: number;

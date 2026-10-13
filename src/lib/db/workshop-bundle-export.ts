@@ -412,7 +412,6 @@ export function exportWorkshopBundle(
         doors: parseJson<Record<string, unknown>>(str(row.doors_json, "{}"), {}),
         zones: parseJson<unknown[]>(str(row.zones_json, "[]"), []),
         drawings: parseJson<unknown[]>(str(row.drawings_json, "[]"), []),
-        ambience: parseJson<Record<string, unknown>>(str(row.ambience_json, "{}"), {}),
         overlay: loadImage(row.overlay_path, budget),
         ref: refFor(row.home, "maps", str(row.id)),
         shared: row.home !== workshopId,

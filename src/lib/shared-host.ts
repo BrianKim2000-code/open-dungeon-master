@@ -15,8 +15,8 @@ export { isPrivateBackendHost } from "@/lib/backend-host";
 //   others still join by room code.
 // - whether the paid backends are for every campaign or only for those an
 //   administrator leads. "Paid" means a backend on a public host that takes
-//   the host's key (OpenAI, OpenRouter, a hosted vLLM: text, pictures or
-//   speech) and the agent program, which runs on the admin's plan. A
+//   the host's key (OpenAI, OpenRouter, a hosted vLLM: text or pictures)
+//   and the agent program, which runs on the admin's plan. A
 //   backend on this machine or the local network is the host's own, keyed
 //   or not (a llama-server behind a key, Ollama, ComfyUI),
 //   and stays open to every table. A player who wants a paid model at their
@@ -72,9 +72,8 @@ export function paidAiAllowedForCampaign(campaignId: string): boolean {
 }
 
 // The answer for the work in flight: the campaign in scope decides; work
-// outside any campaign (a library portrait, dictation on the home page)
-// answers to the account itself; work the server does for itself with
-// neither in scope is the admin's own.
+// outside any campaign (a library portrait) answers to the account itself;
+// work the server does for itself with neither in scope is the admin's own.
 export function paidAiAllowedNow(): boolean {
   if (sharedHostPolicy().paidAi === "everyone") {
     return true;
@@ -89,13 +88,12 @@ export function paidAiAllowedNow(): boolean {
   return true;
 }
 
-export type PaidAiKind = "story" | "utility" | "images" | "speech" | "agent";
+export type PaidAiKind = "story" | "utility" | "images" | "agent";
 
 const PAID_AI_LABEL: Record<PaidAiKind, string> = {
   story: "paid storyteller",
   utility: "paid utility model",
   images: "paid picture backend",
-  speech: "paid speech backend",
   agent: "agent program",
 };
 
@@ -109,7 +107,7 @@ export function paidAiRefusalResponse(kind: PaidAiKind): Response {
 }
 
 // Thrown where the work runs on a queue and only an Error can carry the
-// answer back (pictures, narration). The message is the refusal itself.
+// answer back (pictures). The message is the refusal itself.
 export class PaidAiRefusedError extends Error {
   kind: PaidAiKind;
   constructor(kind: PaidAiKind) {

@@ -5,7 +5,6 @@
 // after maxConcurrent such calls every later summary waited out the whole
 // timeout (issue 16). The fake program stands in; rmSync is made to throw.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,7 +12,6 @@ import { register, syncBuiltinESMExports } from "node:module";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-harness-slots-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.HARNESS_FAKE = "1";
 register("./lib/register-alias.mjs", import.meta.url);
 

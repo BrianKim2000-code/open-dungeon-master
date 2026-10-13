@@ -11,9 +11,8 @@ import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { Switch } from "@/components/ui/Switch";
 
 // Verified backups of the campaign state, mirroring scripts/odm-backup.mjs
-// and scripts/odm-restore.mjs. An archive holds the encrypted database plus
-// uploads, generated media, .env.server and, when asked, the downloaded
-// models, so it carries the encryption key: treat it like a password.
+// and scripts/odm-restore.mjs. An archive holds the database plus uploads,
+// generated media, .env.server and, when asked, the models folder.
 type BackupEntry = {
   name: string;
   sizeBytes: number;
@@ -167,10 +166,9 @@ export function AdminBackupSection() {
   return (
     <div className="space-y-3">
       <p className="text-xs leading-5 text-stone-500">
-        A backup snapshots the encrypted campaign database, uploads, generated media and server
-        settings into one archive. Downloaded models are left out unless you include them; they
-        download again on first use. The archive carries the database encryption key, so keep it
-        like a password: whoever holds it can read every campaign.{" "}
+        A backup snapshots the campaign database, uploads, generated media and server settings into
+        one archive. Keep the archive somewhere safe: whoever holds it can read every campaign and
+        the server settings in <span className="font-mono">.env.server</span>.{" "}
         {dir ? <span className="font-mono text-stone-600">{dir}</span> : null}
       </p>
       <div className="flex flex-wrap items-center gap-3">
@@ -238,7 +236,7 @@ export function AdminBackupSection() {
                   onClick={() => verify(backup.name)}
                   disabled={busyName === backup.name}
                   aria-busy={busyName === backup.name}
-                  title="Verify integrity and open the encrypted database without touching anything"
+                  title="Verify integrity and open the database without touching anything"
                   className={ui.btnSmall}
                 >
                   {busyName === backup.name ? <Loader2 className="size-3.5 animate-spin" /> : <ShieldCheck className="size-3.5" />}

@@ -3,7 +3,6 @@
 // the usage ledger that counts what each backend reported, and the parsers
 // that read those reports. Real throwaway database, test-jobs pattern.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,7 +11,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-shared-host-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 fs.mkdirSync(path.join(dir, "public", "uploads"), { recursive: true });
 fs.mkdirSync(path.join(dir, "public", "generated"), { recursive: true });
 process.chdir(dir);
@@ -96,7 +94,7 @@ await test("paid AI answers to the campaign's lead, not its owner, and to the ac
   assert.equal(runInUsageScope({ userId: admin.id }, () => shared.paidAiAllowedNow()), true);
   assert.equal(shared.paidAiAllowedNow(), true);
   assert.match(shared.paidAiRefusal("images"), /keeps its paid picture backend for campaigns an administrator leads/);
-  assert.equal(new shared.PaidAiRefusedError("speech").message, shared.paidAiRefusal("speech"));
+  assert.equal(new shared.PaidAiRefusedError("images").message, shared.paidAiRefusal("images"));
   // The agent program follows the same rule even with its own setting on "all".
   saveGlobalConfig({ harness: { id: "claude", campaigns: "all" } });
   assert.equal(harnessOfferFor({ leadUserId: player.id }).offered, false);
@@ -137,17 +135,16 @@ await test("the ledger sums by campaign and by lead, with paid and local kept ap
     recordUsage({ kind: "text", role: "story", backend: "custom", model: "gpt", paid: true, inputTokens: 1000, outputTokens: 100 });
     recordUsage({ kind: "text", role: "utility", backend: "local", model: "qwen", paid: false, inputTokens: 300, outputTokens: 30 });
     recordUsage({ kind: "image", role: "fast", backend: "openai", paid: true, units: 1 });
-    recordUsage({ kind: "tts", role: "narration", backend: "kokoro", paid: false, units: 420 });
     recordUsage({ kind: "agent", role: "story", backend: "harness", model: "claude", paid: true, inputTokens: 5000, outputTokens: 400 });
   });
   runInUsageScope({ campaignId: guestTable.id, userId: player.id }, () => {
     recordUsage({ kind: "text", role: "story", backend: "custom", model: "llama", paid: false, inputTokens: 2000, outputTokens: 150 });
     recordUsage({ kind: "image", role: "slow", backend: "comfyui", paid: false, units: 2 });
   });
-  // Outside any campaign: a library portrait and a dictation clip, the account's own.
+  // Outside any campaign: a library portrait, the account's own.
   runInUsageScope({ userId: player.id }, () => {
     recordUsage({ kind: "image", role: "portrait", backend: "comfyui", paid: false, units: 1 });
-    recordUsage({ kind: "stt", role: "dictation", backend: "openai", paid: true, units: 1 });
+    recordUsage({ kind: "image", role: "portrait", backend: "openai", paid: true, units: 1 });
   });
   // Explicit ids win over the scope.
   recordUsage({ kind: "text", role: "story", backend: "custom", paid: true, inputTokens: 10, outputTokens: 1, campaignId: adminTable.id, userId: admin.id });
@@ -155,12 +152,11 @@ await test("the ledger sums by campaign and by lead, with paid and local kept ap
   const overview = usageOverview();
   const host = overview.campaigns.find((row) => row.campaignId === adminTable.id);
   const guest = overview.campaigns.find((row) => row.campaignId === guestTable.id);
-  assert.equal(host.calls, 6);
+  assert.equal(host.calls, 5);
   assert.equal(host.paidInputTokens, 6010);
   assert.equal(host.paidOutputTokens, 501);
   assert.equal(host.localInputTokens, 300);
   assert.equal(host.paidImages, 1);
-  assert.equal(host.localSpeechChars, 420);
   assert.equal(host.agentTurns, 1);
   assert.equal(host.leadUsername, "Host");
   assert.equal(host.members, 1);
@@ -179,7 +175,7 @@ await test("the ledger sums by campaign and by lead, with paid and local kept ap
   assert.equal(hostAccount.campaignsJoined, 2);
   assert.equal(guestAccount.localInputTokens, 2000);
   assert.equal(guestAccount.localImages, 3);
-  assert.equal(guestAccount.paidDictationClips, 1);
+  assert.equal(guestAccount.paidImages, 1);
   assert.equal(guestAccount.campaignsLed, 1);
   assert.equal(guestAccount.isAdmin, false);
   assert.equal(hostAccount.isAdmin, true);
@@ -187,7 +183,7 @@ await test("the ledger sums by campaign and by lead, with paid and local kept ap
   // An erased account's rows lose their name; the campaign's history stays.
   forgetUsageFor(player.id);
   const after = usageOverview();
-  assert.equal(after.accounts.find((row) => row.userId === player.id).paidDictationClips, 0);
+  assert.equal(after.accounts.find((row) => row.userId === player.id).paidImages, 0);
   assert.equal(after.campaigns.find((row) => row.campaignId === guestTable.id).localInputTokens, 2000);
 });
 

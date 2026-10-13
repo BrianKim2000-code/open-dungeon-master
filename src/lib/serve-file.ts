@@ -4,13 +4,6 @@ import path from "node:path";
 import { Readable } from "node:stream";
 
 const CONTENT_TYPES: Record<string, string> = {
-  ".mp3": "audio/mpeg",
-  // The sound library takes whatever the archives hand it rather than
-  // re-encoding: every browser this app targets plays all four.
-  ".ogg": "audio/ogg",
-  ".opus": "audio/ogg",
-  ".m4a": "audio/mp4",
-  ".wav": "audio/wav",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -91,8 +84,8 @@ export function parseRangeHeader(
 
 // Streams a runtime-generated file from under public/. Needed because this
 // Next.js build only statically serves public/ files that existed at build
-// time; images and narration audio are written while the server runs.
-// Traversal-safe: the resolved path must stay inside the allowed root.
+// time; images are written while the server runs. Traversal-safe: the
+// resolved path must stay inside the allowed root.
 //
 // Pass the request so a `Range` header is answered with a 206 of just those
 // bytes; without one the whole file goes out as before. The CORS headers the

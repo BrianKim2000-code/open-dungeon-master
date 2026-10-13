@@ -23,8 +23,8 @@
 // cannot settle is corrected by hand in scripts/lib/magic-item-corrections.mjs.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
 import { ADDED, DROPPED, REPLACED } from "./lib/magic-item-corrections.mjs";
 import { categoryBase, DAILY_POWERS, GEAR_RIDERS } from "./lib/magic-item-riders.mjs";
 
@@ -315,7 +315,7 @@ function gearOf(row, desc, match) {
 }
 
 function collect() {
-  const db = new Database(contentDb, { readonly: true });
+  const db = new DatabaseSync(contentDb, { readOnly: true });
   // The SRD's own wording first, so an item two documents describe is read
   // from the SRD.
   const rows = db

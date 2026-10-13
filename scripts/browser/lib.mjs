@@ -41,15 +41,14 @@ async function waitFor(url, { timeoutMs, label }) {
 
 // The production server (`next start`) on the built tree, against the seeded
 // database. The build must exist already: CI builds before it runs this.
-export async function startServer({ tree, dbPath, key, port, log }) {
+export async function startServer({ tree, dbPath, port, log }) {
   const nextBin = path.join(tree, "node_modules", "next", "dist", "bin", "next");
   const env = {
     ...process.env,
     NODE_ENV: "production",
     SQLITE_DB_PATH: dbPath,
-    DB_ENCRYPTION_KEY: key,
     APP_PUBLIC_URL: `http://127.0.0.1:${port}`,
-    // No model, no pictures, no speech: the scenarios look at the pages, not
+    // No model, no pictures: the scenarios look at the pages, not
     // at a storyteller. A table whose action would call one gets the same
     // "not configured" the UI already handles.
     DEFAULT_TEXT_PROVIDER: "",
@@ -82,7 +81,7 @@ export async function startServer({ tree, dbPath, key, port, log }) {
 // The app's shell as plain web files (client mobile/www), served the way
 // the rigs in look-at-the-client-apps serve it. A path outside the folder
 // is refused; everything is served as-is with a guessed content type.
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf", ".wasm": "application/wasm", ".ogg": "audio/ogg", ".mp3": "audio/mpeg" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf", ".wasm": "application/wasm" };
 export async function serveFolder(folder, port) {
   const root = path.resolve(folder);
   const server = http.createServer((request, response) => {

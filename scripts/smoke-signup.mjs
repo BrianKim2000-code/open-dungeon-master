@@ -12,7 +12,6 @@
 // Usage: node scripts/smoke-signup.mjs [built checkout dir]
 // The directory must hold a completed `next build` (defaults to this repo).
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
@@ -66,7 +65,6 @@ async function boot(extraEnv) {
         ...process.env,
         NODE_ENV: "production",
         SQLITE_DB_PATH: path.join(dataDir, "smoke.sqlite"),
-        DB_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
         ODM_DEVICE_WORLD: "",
         ...extraEnv,
       },

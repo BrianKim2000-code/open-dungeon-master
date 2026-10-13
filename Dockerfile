@@ -67,9 +67,9 @@ COPY --from=build --chown=node:node /app/src ./src
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/tsconfig.json ./tsconfig.json
 
-RUN mkdir -p data public/uploads public/generated public/generated-audio logs models/speech \
+RUN mkdir -p data public/uploads public/generated logs \
   && chmod +x scripts/docker-entrypoint.sh \
-  && chown node:node data public/uploads public/generated public/generated-audio logs
+  && chown node:node data public/uploads public/generated logs
 
 USER node
 

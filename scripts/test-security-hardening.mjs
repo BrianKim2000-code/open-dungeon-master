@@ -229,12 +229,11 @@ await test("a file under public/ is answered only to the table it belongs to, an
   }
 });
 
-await test("the three login folders are sent to that route by path, never by an absolute address", async () => {
+await test("the two login folders are sent to that route by path, never by an absolute address", async () => {
   const { loginMediaRewrites } = await import("../next.config.ts");
   assert.deepEqual(loginMediaRewrites, [
     { source: "/uploads/:path*", destination: "/api/media/uploads/:path*" },
     { source: "/generated/:path*", destination: "/api/media/generated/:path*" },
-    { source: "/generated-audio/:path*", destination: "/api/media/generated-audio/:path*" },
   ]);
   const config = (await import("../next.config.ts")).default;
   assert.deepEqual((await config.rewrites()).beforeFiles, loginMediaRewrites);
@@ -246,7 +245,7 @@ await test("the three login folders are sent to that route by path, never by an 
   const { NextRequest } = await import("next/server");
   const rewriteOf = (pathname, headers = {}) =>
     proxy(new NextRequest(`http://test${pathname}`, { headers })).headers.get("x-middleware-rewrite");
-  for (const pathname of ["/uploads/a.png?w=256", "/generated/b.webp", "/generated-audio/c.mp3", "/assets/d.png", "/api/campaigns"]) {
+  for (const pathname of ["/uploads/a.png?w=256", "/generated/b.webp", "/assets/d.png", "/api/campaigns"]) {
     assert.equal(rewriteOf(pathname), null, pathname);
     assert.equal(rewriteOf(pathname, { "x-forwarded-proto": "https" }), null, pathname);
   }

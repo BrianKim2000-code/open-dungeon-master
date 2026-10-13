@@ -11,7 +11,6 @@
 // and "save to library" and a campaign's end wrote a lower table's level
 // over the library character's own (issue #36).
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -20,15 +19,9 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-edit-keeps-play-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.chdir(dir);
 
 register("./lib/register-routes.mjs", import.meta.url);
-
-// House rules and rulesets re-embed; a fixed vector keeps the model off disk.
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
 
 const { z } = await import("zod");
 const { getDatabase } = await import("../src/lib/db/core.ts");

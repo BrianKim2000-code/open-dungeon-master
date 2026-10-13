@@ -256,9 +256,9 @@ and clamped by code.
 - **Content import** - a transactional planner/executor pair copies lore, locations, maps, NPCs, encounters, tables, storyboards and house rules from a workshop or campaign into a new campaign, renumbering collisions.
 - **Cloning** - whole workshops and campaigns clone (prep travels, transcript does not), library characters duplicate, and individual assets copy in place.
 
-### Live table audio and dice
+### Live table dice
 
-- **Dice sources** - per die shape, each player picks typed physical entry, a server roll, or a paired Pixels Bluetooth die; rolls auto-submit when no die needs typing.
+- **Dice sources** - per die shape, each player picks typed physical entry or a server roll; rolls auto-submit when no die needs typing.
 
 ### Platform and multiplayer
 

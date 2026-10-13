@@ -13,7 +13,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-world-archive-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "data", "odm.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.ODM_DEVICE_WORLD = "1";
 fs.mkdirSync(path.join(dir, "data"), { recursive: true });
 process.chdir(dir);
@@ -60,12 +59,9 @@ const put = (file, body) => {
   fs.writeFileSync(file, body);
 };
 const portrait = `${randomUUID()}.png`;
-const message = randomUUID();
 put(media("uploads", portrait), randomBytes(3000));
 put(media("uploads", portrait.replace(".png", ".w256.webp")), randomBytes(500));
 put(media("generated", "1700000000000-scene.png"), randomBytes(4000));
-put(media("generated-audio", table.id, `${message}.mp3`), randomBytes(2000));
-put(media("generated-audio", "previews", "voice.mp3"), randomBytes(100));
 
 const asAdmin = () => (globalThis.__odmTestToken = mintSession(owner.id).token);
 const post = async (body) => {
@@ -114,7 +110,7 @@ await test("an export holds the story and the media, and leaves every secret out
   assert.equal(job.error, "");
   exported = path.join(world.worldTransferDir(), job.export.name);
   assert.ok(fs.existsSync(exported));
-  assert.deepEqual(job.export.counts, { campaigns: 1, users: 2, messages: 1, files: 4 });
+  assert.deepEqual(job.export.counts, { campaigns: 1, users: 2, messages: 1, files: 3 });
 
   const found = await entries(exported);
   assert.equal(found[0].name, "manifest.json", "the manifest comes first");
@@ -123,13 +119,11 @@ await test("an export holds the story and the media, and leaves every secret out
   assert.deepEqual(
     found.slice(1).map((entry) => entry.name).sort(),
     [
-      "media/generated-audio/" + table.id + "/" + message + ".mp3",
       "media/generated/1700000000000-scene.png",
       `media/uploads/${portrait}`,
       `media/uploads/${portrait.replace(".png", ".w256.webp")}`,
       "world.sqlite",
     ].sort(),
-    "the voice preview cache stays behind",
   );
   const sqlite = found.find((entry) => entry.name === "world.sqlite").bytes;
   assert.equal(sqlite.subarray(0, 15).toString("latin1"), "SQLite format 3", "readable on any device");
@@ -198,7 +192,7 @@ await test("an import checks first, then swaps the world in and signs its owner 
   const job = await settled();
   assert.equal(job.error, "");
   assert.equal(job.preview.owner, "owner");
-  assert.deepEqual(job.preview.counts, { campaigns: 1, users: 2, messages: 1, files: 4 });
+  assert.deepEqual(job.preview.counts, { campaigns: 1, users: 2, messages: 1, files: 3 });
   assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM campaigns`).get().n, 2, "a check replaces nothing");
 
   assert.equal((await post({ action: "commit", name: "import-back.tar.gz", ownerPassword: "short" })).status, 400);
@@ -211,8 +205,6 @@ await test("an import checks first, then swaps the world in and signs its owner 
   // What the restarted server opens.
   leaveMaintenance();
   const fresh = getDatabase();
-  const live = fs.readFileSync(process.env.SQLITE_DB_PATH).subarray(0, 15).toString("latin1");
-  if (fresh.encrypted) assert.notEqual(live, "SQLite format 3", "re-keyed for this device");
   assert.deepEqual(
     fresh.prepare(`SELECT title FROM campaigns`).all().map((row) => row.title),
     ["The Hollow Crown"],

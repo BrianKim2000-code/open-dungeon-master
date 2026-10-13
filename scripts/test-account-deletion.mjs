@@ -3,7 +3,6 @@
 // minute before), keeping the account clears the stamps, and a zero grace
 // period erases at once. Real encrypted throwaway database, test-jobs pattern.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,7 +11,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-account-deletion-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 // Upload cleanup looks under process.cwd()/public/uploads; point it at the
 // temp dir so the test never touches the real folder.
 const uploadsDir = path.join(dir, "public", "uploads");

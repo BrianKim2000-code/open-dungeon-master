@@ -2,8 +2,7 @@
 // player here, and both produce the same pending-roll card:
 //
 // - real dice: the player opted in and the campaign's dice policy allows it
-//   (the numbers are typed or reported by a Pixels die, so trust is the
-//   campaign's call);
+//   (the numbers are typed by the player, so trust is the campaign's call);
 // - hold my rolls: the player asked for every roll to wait for them, then
 //   rolls it digitally themselves (a shake of the phone, or a tap). The
 //   server still draws every number, so no policy gates it.

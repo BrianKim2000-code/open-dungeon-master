@@ -49,7 +49,7 @@ export async function POST(
 
   // Body parsing happens before the pending-roll lookup on purpose: with no
   // await between the status check and resolvePendingRoll below, concurrent
-  // double-submits cannot both insert a roll row (better-sqlite3 is sync).
+  // double-submits cannot both insert a roll row (node:sqlite is sync).
   const raw = await request.json().catch(() => ({}));
   const parsed = submitSchema.safeParse(raw);
   if (!parsed.success) {
@@ -74,10 +74,9 @@ export async function POST(
     return Response.json({ error: "This is not your roll." }, { status: 403 });
   }
 
-  // The faces the player typed or their Pixels dice reported. A "digital"
-  // entry stands in for a face rolled by the server: drawn crypto-random
-  // here, never fabricated in the browser where it would be predictable
-  // and forgeable.
+  // The faces the player typed. A "digital" entry stands in for a face rolled
+  // by the server: drawn crypto-random here, never fabricated in the browser
+  // where it would be predictable and forgeable.
   const submitted = isFallback
     ? []
     : (parsed.data as { dice: Array<number | "digital"> }).dice;

@@ -3,7 +3,7 @@
 import { initiativeCharacter, selectedCharacter } from "@/lib/player-characters";
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
-import { haptic, useEffectsRoot, useTurnChime } from "@/lib/effects-mode";
+import { haptic, useEffectsRoot } from "@/lib/effects-mode";
 import { levelForXp } from "@/lib/srd";
 import { SceneTitle } from "@/components/SceneTitle";
 import { askConcentrationSwap, isConcentrationQuestion } from "@/components/concentration-prompt";
@@ -60,7 +60,6 @@ import {
 import { SessionChatColumn } from "@/app/campaigns/[campaignId]/SessionChatColumn";
 import { SessionHeader } from "@/app/campaigns/[campaignId]/SessionHeader";
 import { SidePanel } from "@/app/campaigns/[campaignId]/SidePanel";
-import { useChatChime } from "@/app/campaigns/[campaignId]/useChatChime";
 import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { InitiativeRibbon, PartyRail, QuestGlance, RollToast, SceneBackdrop, TabletopChronicle } from "@/app/campaigns/[campaignId]/CinematicParts";
 import { turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
@@ -204,7 +203,6 @@ export function SessionView({
 }) {
   // The effects mode rides on <html data-effects> for CSS-only consumers.
   useEffectsRoot();
-  const turnChime = useTurnChime();
   const { campaign, me, sheets, messages, pendingRolls, auditLog, levelUps, locations, dmStatus, caps } =
     state;
   const [input, setInput] = useState("");
@@ -302,14 +300,11 @@ export function SessionView({
     }).catch(() => undefined);
   }, [canShake, shakeOn, campaignIdForShake]);
 
-  // Chime on new private messages (side chats + DM whispers). The loaded
-  // flags keep the page-load backlog silent.
   const chatUnreadTotal =
     state.sideThreads.reduce((sum, thread) => sum + thread.unread, 0) +
     state.whisperUnread +
     // A person in the DM seat: players' private messages still unanswered.
     state.dmInbox.filter((whisper) => !whisper.answered).length;
-  useChatChime(chatUnreadTotal, state.sideChatLoaded && state.whispersLoaded);
   const pendingNoteCount = state.notes.filter((note) => note.status === "pending").length;
   // Two different authorities, deliberately separate. `isLead` owns the
   // table (campaign info, invites, who holds which seat). `caps` says who
@@ -534,24 +529,21 @@ export function SessionView({
     },
     [setMobileView],
   );
-  // Your turn: one chime, one haptic, one gold pulse on the composer, when
-  // the initiative lands on this player's figure. Opt-out in device settings.
+  // Your turn: one haptic and one gold pulse on the composer when the
+  // initiative lands on this player's figure.
   const turnTokenId = state.battleMap?.turn?.tokenId ?? null;
   const myTokenId = state.battleMap?.myTokenId ?? null;
   const turnRound = state.battleMap?.turn?.round ?? 0;
-  const lastChimeRef = useRef("");
+  const lastTurnAlertRef = useRef("");
   useEffect(() => {
     if (!turnTokenId || !myTokenId || turnTokenId !== myTokenId) {
       return;
     }
     const key = `${turnTokenId}:${turnRound}`;
-    if (lastChimeRef.current === key) {
+    if (lastTurnAlertRef.current === key) {
       return;
     }
-    lastChimeRef.current = key;
-    if (!turnChime) {
-      return;
-    }
+    lastTurnAlertRef.current = key;
     haptic("turn");
     // The pulse is a moment: on after this tick, off when the animation
     // has run (--dur-linger).
@@ -561,7 +553,7 @@ export function SessionView({
       window.clearTimeout(on);
       window.clearTimeout(off);
     };
-  }, [turnTokenId, myTokenId, turnRound, turnChime]);
+  }, [turnTokenId, myTokenId, turnRound]);
   // A pinned label on the board opens what it points at in a sheet.
   const [openedLabel, setOpenedLabel] = useState<MapLabel | null>(null);
   const labelMounted = useOpenedOnce(openedLabel !== null);
@@ -926,6 +918,7 @@ export function SessionView({
           coins={state.coins}
           activeSheetId={state.activeSheetId}
           questsVersion={state.questsVersion}
+          cast={state.cast}
           relationshipsEnabled={relationshipsEnabled}
           beats={state.beats}
           storyDue={storyDue}

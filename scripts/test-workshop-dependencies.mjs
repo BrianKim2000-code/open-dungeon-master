@@ -14,7 +14,6 @@
 // either travels or is named in COPY_OVERRIDES with a reason.
 
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { register } from "node:module";
 import os from "node:os";
@@ -23,12 +22,7 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = mkdtempSync(path.join(os.tmpdir(), "odm-deps-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 register("./lib/register-alias.mjs", import.meta.url);
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
-
 const { getDatabase, nowIso } = await import("../src/lib/db/core.ts");
 const { createCampaign, getCampaignById, setStoryArc } = await import("../src/lib/db/campaigns.ts");
 const { createWorkshop } = await import("../src/lib/db/workshops.ts");

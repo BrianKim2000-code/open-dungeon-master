@@ -106,46 +106,6 @@ export function useEffectsRoot() {
   }, [mode]);
 }
 
-// The your-turn chime: a short sting and a gold pulse on the composer when
-// the initiative lands on you (docs/vtt-parity-implementation-plan.md
-// section 4.3). On by default; a per-device preference like the rest.
-const CHIME_KEY = "odm:turnChime";
-const CHIME_EVENT = "odm-turn-chime-pref";
-let chimeCache: boolean | null = null;
-
-export function readTurnChime(): boolean {
-  if (typeof window === "undefined") {
-    return true;
-  }
-  if (chimeCache === null) {
-    chimeCache = window.localStorage.getItem(CHIME_KEY) !== "off";
-  }
-  return chimeCache;
-}
-
-export function writeTurnChime(on: boolean) {
-  window.localStorage.setItem(CHIME_KEY, on ? "on" : "off");
-  chimeCache = null;
-  window.dispatchEvent(new Event(CHIME_EVENT));
-}
-
-function subscribeTurnChime(listener: () => void) {
-  const changed = () => {
-    chimeCache = null;
-    listener();
-  };
-  window.addEventListener(CHIME_EVENT, changed);
-  window.addEventListener("storage", changed);
-  return () => {
-    window.removeEventListener(CHIME_EVENT, changed);
-    window.removeEventListener("storage", changed);
-  };
-}
-
-export function useTurnChime(): boolean {
-  return useSyncExternalStore(subscribeTurnChime, readTurnChime, () => true);
-}
-
 // Reduced motion is the master switch: when the OS asks for it, the board
 // plays captions and ring changes only, whatever the effects mode says.
 export function prefersReducedMotion(): boolean {

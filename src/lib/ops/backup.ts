@@ -1,12 +1,11 @@
 import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { closeDatabaseForRestore } from "@/lib/db/core";
+import { openDatabase } from "@/lib/db/driver";
 import { closeAllStreams } from "@/lib/live-streams";
 import { enterMaintenance } from "@/lib/maintenance";
 import { serverEnv } from "@/lib/server-env";
@@ -56,7 +55,6 @@ const INCLUDES = [
   "data",
   "public/uploads",
   "public/generated",
-  "public/generated-audio",
   "models",
   ".env.server",
 ];
@@ -138,19 +136,19 @@ async function requireRoom(needed: number, ...dirs: string[]) {
 }
 
 // The database work (the consistent snapshot, and a restore's integrity
-// proof) runs in a separate Node process with the same SQLite module, so a
-// large world's VACUUM INTO or integrity_check does not hold the server's
-// event loop.
+// proof) runs in a separate Node process with node:sqlite, so a large world's
+// VACUUM INTO or integrity_check does not hold the server's event loop.
 const DATABASE_SCRIPT = `
-const [mode, modulePath, source, target] = process.argv.slice(1);
-const Database = require(modulePath);
-const db = new Database(source, { readonly: true });
+const [mode, source, target] = process.argv.slice(1);
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync(source, { readOnly: true });
 try {
   if (mode === "vacuum") {
     db.exec("VACUUM INTO '" + target.replaceAll("'", "''") + "'");
   } else {
-    const integrity = db.pragma("integrity_check", { simple: true });
-    const count = (table) => db.prepare("SELECT COUNT(*) AS n FROM " + table).get().n;
+    const rows = db.prepare("PRAGMA integrity_check").all();
+    const integrity = String(rows[0] ? Object.values(rows[0])[0] : "");
+    const count = (table) => Number(db.prepare("SELECT COUNT(*) AS n FROM " + table).get().n);
     process.stdout.write(JSON.stringify(integrity === "ok"
       ? { integrity, campaigns: count("campaigns"), users: count("users"), messages: count("campaign_messages") }
       : { integrity }));
@@ -160,36 +158,12 @@ try {
 }
 `;
 
-// Where the server's own copy of the module lives: looked up from the app
-// root (a standalone build and the Docker image keep node_modules there)
-// and then from this file (a checkout run from anywhere, and the tests).
-function sqliteModulePath(): string {
-  const bases = [path.join(/*turbopackIgnore: true*/ root(), "package.json")];
-  try {
-    bases.push(fileURLToPath(import.meta.url));
-  } catch {
-    // No file address for this module in this build; the root is enough.
-  }
-  for (const base of bases) {
-    try {
-      return createRequire(base).resolve("better-sqlite3");
-    } catch {
-      // Try the next place.
-    }
-  }
-  return "";
-}
-
 // Runs one database job in the child process; null when the child could not
-// be used (the module did not resolve, or the process failed to start), so
-// the caller does the work in this process as before rather than failing.
+// be used, so the caller does the work in this process instead rather than
+// failing.
 async function inChild(mode: "vacuum" | "prove", source: string, target: string): Promise<string | null> {
-  const modulePath = sqliteModulePath();
-  if (!modulePath) {
-    return null;
-  }
   try {
-    const { stdout } = await run(process.execPath, ["-e", DATABASE_SCRIPT, mode, modulePath, source, target], {
+    const { stdout } = await run(process.execPath, ["-e", DATABASE_SCRIPT, mode, source, target], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
       encoding: "utf8",
       maxBuffer: 1024 * 1024,
@@ -206,8 +180,7 @@ async function snapshotDatabase(db: string, snapshot: string) {
     return;
   }
   await fs.promises.rm(snapshot, { force: true });
-  const Database = (await import("better-sqlite3")).default;
-  const handle = new Database(db, { readonly: true });
+  const handle = openDatabase(db, { readonly: true });
   try {
     handle.exec(`VACUUM INTO '${snapshot.replaceAll("'", "''")}'`);
   } finally {
@@ -381,8 +354,8 @@ export function deleteBackup(name: string): boolean {
 }
 
 // The CLI restore's proof, run before any live file is touched: reject
-// traversal paths, open the encrypted database with the archived key, run
-// PRAGMA integrity_check and count the campaign tables.
+// traversal paths, open the database, run PRAGMA integrity_check and count
+// the campaign tables.
 export async function verifyBackup(name: string): Promise<{ proof: RestoreProof; sha256: string }> {
   return exclusive("verify", () => proveArchive(name));
 }
@@ -440,14 +413,14 @@ async function proveArchive(name: string): Promise<{ proof: RestoreProof; sha256
       }
       proof = { campaigns: Number(result.campaigns), users: Number(result.users), messages: Number(result.messages) };
     } else {
-      const Database = (await import("better-sqlite3")).default;
-      const db = new Database(dbInStage, { readonly: true });
+      const db = openDatabase(dbInStage, { readonly: true });
       try {
-        const integrity = db.pragma("integrity_check", { simple: true });
+        const rows = db.prepare("PRAGMA integrity_check").all() as Array<Record<string, unknown>>;
+        const integrity = String(rows[0] ? Object.values(rows[0])[0] : "");
         if (integrity !== "ok") {
           throw new Error(`restored database integrity check failed: ${integrity}`);
         }
-        const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
+        const count = (table: string) => Number((db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n);
         proof = { campaigns: count("campaigns"), users: count("users"), messages: count("campaign_messages") };
       } finally {
         db.close();

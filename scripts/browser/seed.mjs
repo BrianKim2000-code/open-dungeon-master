@@ -297,7 +297,6 @@ const ids = {
 };
 getDatabase().pragma("wal_checkpoint(TRUNCATE)");
 fs.copyFileSync(process.env.SQLITE_DB_PATH, path.join(out, "world.sqlite"));
-fs.writeFileSync(path.join(out, "key"), process.env.DB_ENCRYPTION_KEY);
 fs.writeFileSync(path.join(out, "ids.json"), JSON.stringify(ids, null, 2));
 getDatabase().close();
 console.log(`seeded ${TITLE} (${world.campaignId}), ${QUIET_TITLE}, ${LOBBY_TITLE} and ${PREP_TITLE} into ${out}`);

@@ -65,23 +65,23 @@ await test("unsatisfiable ranges are reported as such", () => {
 // ---- responses ----
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-serve-file-"));
-const audioDir = path.join(dir, "public", "generated-audio", "camp");
-fs.mkdirSync(audioDir, { recursive: true });
+const genDir = path.join(dir, "public", "generated", "camp");
+fs.mkdirSync(genDir, { recursive: true });
 const bytes = Buffer.alloc(1000);
 for (let i = 0; i < bytes.length; i += 1) {
   bytes[i] = i % 251;
 }
-fs.writeFileSync(path.join(audioDir, "take.mp3"), bytes);
-fs.writeFileSync(path.join(audioDir, "notes.txt"), "not media");
+fs.writeFileSync(path.join(genDir, "scene.png"), bytes);
+fs.writeFileSync(path.join(genDir, "notes.txt"), "not media");
 const previousCwd = process.cwd();
 process.chdir(dir);
 
 const withRange = (range) => (range ? new Request("http://x/", { headers: { range } }) : undefined);
 
 await test("without a Range the whole file goes out as a 200, now advertising ranges", async () => {
-  const response = await serveGeneratedFile("generated-audio", ["camp", "take.mp3"], withRange());
+  const response = await serveGeneratedFile("generated", ["camp", "scene.png"], withRange());
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get("content-type"), "audio/mpeg");
+  assert.equal(response.headers.get("content-type"), "image/png");
   assert.equal(response.headers.get("content-length"), "1000");
   assert.equal(response.headers.get("accept-ranges"), "bytes");
   assert.equal(response.headers.get("cache-control"), "private, max-age=31536000, immutable");
@@ -91,19 +91,19 @@ await test("without a Range the whole file goes out as a 200, now advertising ra
 });
 
 await test("the request argument is optional", async () => {
-  const response = await serveGeneratedFile("generated-audio", ["camp", "take.mp3"]);
+  const response = await serveGeneratedFile("generated", ["camp", "scene.png"]);
   assert.equal(response.status, 200);
   assert.equal((await response.arrayBuffer()).byteLength, 1000);
 });
 
 await test("a Range gets a 206 with exactly those bytes", async () => {
   const response = await serveGeneratedFile(
-    "generated-audio",
-    ["camp", "take.mp3"],
+    "generated",
+    ["camp", "scene.png"],
     withRange("bytes=100-199"),
   );
   assert.equal(response.status, 206);
-  assert.equal(response.headers.get("content-type"), "audio/mpeg");
+  assert.equal(response.headers.get("content-type"), "image/png");
   assert.equal(response.headers.get("content-length"), "100");
   assert.equal(response.headers.get("content-range"), "bytes 100-199/1000");
   assert.equal(response.headers.get("accept-ranges"), "bytes");
@@ -114,8 +114,8 @@ await test("a Range gets a 206 with exactly those bytes", async () => {
 
 await test("an open-ended Range streams to the last byte", async () => {
   const response = await serveGeneratedFile(
-    "generated-audio",
-    ["camp", "take.mp3"],
+    "generated",
+    ["camp", "scene.png"],
     withRange("bytes=990-"),
   );
   assert.equal(response.status, 206);
@@ -127,8 +127,8 @@ await test("an open-ended Range streams to the last byte", async () => {
 
 await test("a Range past the end is a 416 naming the size", async () => {
   const response = await serveGeneratedFile(
-    "generated-audio",
-    ["camp", "take.mp3"],
+    "generated",
+    ["camp", "scene.png"],
     withRange("bytes=5000-"),
   );
   assert.equal(response.status, 416);
@@ -138,12 +138,12 @@ await test("a Range past the end is a 416 naming the size", async () => {
 
 await test("a missing file, a non-media extension and a traversal are all 404", async () => {
   for (const segments of [
-    ["camp", "gone.mp3"],
+    ["camp", "gone.png"],
     ["camp", "notes.txt"],
     ["..", "..", "package.json"],
     ["camp"],
   ]) {
-    const response = await serveGeneratedFile("generated-audio", segments, withRange("bytes=0-9"));
+    const response = await serveGeneratedFile("generated", segments, withRange("bytes=0-9"));
     assert.equal(response.status, 404, segments.join("/"));
   }
 });
@@ -165,7 +165,7 @@ await test("an uploaded PDF is served (it was saved and then answered 404)", asy
 });
 
 await test("every served file says nosniff", async () => {
-  const response = await serveGeneratedFile("generated-audio", ["camp", "take.mp3"], withRange(null));
+  const response = await serveGeneratedFile("generated", ["camp", "scene.png"], withRange(null));
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   await response.arrayBuffer();
 });

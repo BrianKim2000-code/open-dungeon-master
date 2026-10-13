@@ -33,6 +33,7 @@ export type SheetRowKey =
   | "narrationGuard"
   | "worldSimulation"
   | "mapsEnabled"
+  | "presentation"
   | "relationships"
   | "romance"
   | "multiCharacter"
@@ -81,6 +82,7 @@ const ROWS: RowSpec[] = [
   { key: "narrationGuard", group: "narration", counted: true, aiOnly: true, info: "narrationGuard" },
   { key: "worldSimulation", group: "narration", counted: true, aiOnly: true, info: "livingWorld" },
   { key: "mapsEnabled", group: "senses", counted: true },
+  { key: "presentation", group: "senses", counted: false },
   { key: "relationships", group: "people", counted: true, info: "bonds" },
   { key: "romance", group: "people", counted: true, needs: "relationships", info: "romance" },
   { key: "multiCharacter", group: "people", counted: false },
@@ -122,6 +124,11 @@ function copy(spec: RowSpec, draft: CampaignDraft, gates: WizardGates): { label:
         label: "Maps",
         hint: gates.mapsAvailable ? "AI-drawn area maps" : "Drawn once this server can paint pictures",
       };
+    case "presentation":
+      return {
+        label: "Theatre inserts",
+        hint: "A speaking NPC's face over the scene art while their lines play",
+      };
     case "relationships":
       return { label: "Bonds", hint: "NPCs remember how each character treated them" };
     case "romance":
@@ -158,6 +165,8 @@ function copy(spec: RowSpec, draft: CampaignDraft, gates: WizardGates): { label:
 
 function knobOf(key: SheetRowKey, draft: CampaignDraft): 0 | 0.5 | 1 {
   switch (key) {
+    case "presentation":
+      return draft.presentation === "theatre" ? 1 : 0;
     case "relationships":
       return draft.relationships !== "off" ? 1 : 0;
     case "romance":
@@ -204,6 +213,8 @@ export function countableRows(gates: WizardGates): number {
 // everything else flips.
 export function flipRow(draft: CampaignDraft, key: SheetRowKey): Partial<CampaignDraft> {
   switch (key) {
+    case "presentation":
+      return { presentation: draft.presentation === "theatre" ? "plain" : "theatre" };
     case "relationships":
       return { relationships: draft.relationships !== "off" ? "off" : "on" };
     case "romance":

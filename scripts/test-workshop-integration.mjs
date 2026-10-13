@@ -1,4 +1,4 @@
-// The workshop end to end, against a real encrypted SQLite file.
+// The workshop end to end, against a real SQLite file.
 //
 // Every other suite here drives a pure module. This one is deliberately
 // different, because the load-bearing claim of docs/workshop-plan.md is a
@@ -6,13 +6,13 @@
 // behaving like a table that plays, and that importing prep is a row copy
 // between two campaign ids. Neither is provable without a database.
 //
-// Self-contained: it makes its own throwaway key and its own temp file
-// before importing anything, so it needs no environment and touches no real
-// data. The temp file is removed on the way out.
+// Self-contained: it makes its own temp file before importing anything, so it
+// needs no environment and touches no real data. The temp file is removed on
+// the way out.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { register } from "node:module";
 import os from "node:os";
@@ -23,12 +23,10 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 const selfPath = fileURLToPath(import.meta.url);
 
 // A child run reopens the same file to prove the schema migration, so both
-// modes need the same key and path. The parent hands them down through the
-// environment it already set for itself.
+// modes need the same path. The parent hands it down through the environment
+// it already set for itself.
 const dbPath = process.env.ODM_TEST_DB || path.join(mkdtempSync(path.join(os.tmpdir(), "odm-workshop-")), "test.sqlite");
-const dbKey = process.env.ODM_TEST_KEY || randomBytes(32).toString("hex");
 process.env.SQLITE_DB_PATH = dbPath;
-process.env.DB_ENCRYPTION_KEY = dbKey;
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -1602,7 +1600,7 @@ db.exec(`ALTER TABLE campaigns DROP COLUMN kind`);
 // file, which SQLite allows.
 
 const child = spawnSync(process.execPath, [selfPath, "--reopen"], {
-  env: { ...process.env, ODM_TEST_DB: dbPath, ODM_TEST_KEY: dbKey },
+  env: { ...process.env, ODM_TEST_DB: dbPath },
   encoding: "utf8",
 });
 if (child.status !== 0) {

@@ -1,8 +1,7 @@
-// The prepared-statement cache behind both SQLite engine wrappers: the LRU
-// itself, and the wrapper on whichever engine this run selects (native by
-// default, node:sqlite under ODM_SQLITE_DRIVER=node). Statements must be
-// reused per connection, never across connections, and must keep working
-// through the schema changes ensureSchema makes at boot.
+// The prepared-statement cache behind the SQLite engine wrapper: the LRU
+// itself, and the wrapper on node:sqlite. Statements must be reused per
+// connection, never across connections, and must keep working through the
+// schema changes ensureSchema makes at boot.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -15,7 +14,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { StatementCache, DEFAULT_STATEMENT_CACHE_SIZE } = await import(
   "../src/lib/db/statement-cache.ts"
 );
-const { openDatabase, sqliteEngine } = await import("../src/lib/db/driver.ts");
+const { openDatabase } = await import("../src/lib/db/driver.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -75,7 +74,6 @@ test("a capacity below one is refused", () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-stmt-cache-"));
 const file = path.join(dir, "cache.sqlite");
 const db = openDatabase(file);
-console.log(`engine under test: ${sqliteEngine()}`);
 
 test("the wrapper reuses a statement for the same SQL", () => {
   db.exec("CREATE TABLE things (id INTEGER PRIMARY KEY, name TEXT NOT NULL)");
@@ -160,4 +158,4 @@ test("closing a connection drops its cache; reopening prepares afresh", () => {
 });
 
 removeTempDir(dir);
-console.log(`\n${passed} statement cache tests passed (${sqliteEngine()}).`);
+console.log(`\n${passed} statement cache tests passed.`);

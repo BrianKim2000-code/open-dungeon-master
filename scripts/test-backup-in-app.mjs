@@ -5,7 +5,6 @@
 // restarts.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -14,7 +13,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "odm-backup-in-app-"));
 process.env.SQLITE_DB_PATH = path.join(root, "data", "local-roleplay.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.ODM_BACKUP_DIR = path.join(root, "backups");
 process.chdir(root);
 register("./lib/register-alias.mjs", import.meta.url);
@@ -34,8 +32,8 @@ async function test(name, fn) {
 createUser("keeper", "x");
 fs.mkdirSync(path.join(root, "public", "uploads"), { recursive: true });
 fs.writeFileSync(path.join(root, "public", "uploads", "face.png"), "png bytes");
-fs.mkdirSync(path.join(root, "models", "embeddings"), { recursive: true });
-fs.writeFileSync(path.join(root, "models", "embeddings", "weights.onnx"), Buffer.alloc(4096));
+fs.mkdirSync(path.join(root, "models"), { recursive: true });
+fs.writeFileSync(path.join(root, "models", "keep.Modelfile"), Buffer.alloc(4096));
 
 const warnings = [];
 const warn = console.warn;
@@ -70,7 +68,7 @@ await test("models go in when asked", async () => {
   // Archive names are stamped to the second.
   await new Promise((resolve) => setTimeout(resolve, 1100));
   const withModels = await createBackup({ includeModels: true });
-  assert.ok(listing(withModels.name).includes("models/embeddings/weights.onnx"));
+  assert.ok(listing(withModels.name).includes("models/keep.Modelfile"));
 });
 
 await test("a second job is refused while one runs", async () => {

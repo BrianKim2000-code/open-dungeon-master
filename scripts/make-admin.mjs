@@ -1,8 +1,8 @@
 // Promote an existing account to global admin (or demote with --revoke).
 // Usage: node scripts/make-admin.mjs <username> [--revoke]
-import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(process.cwd(), "data", "local-roleplay.sqlite");
@@ -23,7 +23,7 @@ if (!existsSync(dbPath)) {
   fail(`No database at ${dbPath}. Start the app once (or register) first.`);
 }
 
-const db = new Database(dbPath);
+const db = new DatabaseSync(dbPath);
 try {
   db.prepare("SELECT count(*) FROM sqlite_master").get();
 } catch (error) {

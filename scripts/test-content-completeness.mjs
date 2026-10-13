@@ -217,8 +217,8 @@ const packPath = process.env.CONTENT_DB_PATH || join(process.cwd(), "data", "con
 if (!existsSync(packPath)) {
   console.log(`\ntest-content-completeness: ${passed} passed (pack absent, content checks skipped)`);
 } else {
-  const { default: Database } = await import("better-sqlite3");
-  const db = new Database(packPath, { readonly: true, fileMustExist: true });
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(packPath, { readOnly: true });
   const has = (table, name) =>
     db.prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE name = ? COLLATE NOCASE`).get(name)
       .count > 0;

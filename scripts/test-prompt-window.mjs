@@ -23,7 +23,6 @@ import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-prompt-window-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
-process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 const WINDOW = 48_000;
 process.env.OPENAI_COMPAT_CONTEXT = String(WINDOW);
 

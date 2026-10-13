@@ -68,7 +68,6 @@ if (base) {
   server = await startServer({
     tree,
     dbPath: path.join(outDir, "world.sqlite"),
-    key: fs.readFileSync(path.join(outDir, "key"), "utf8").trim(),
     port,
     log: logFile,
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { Dices, Loader2, Smartphone, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CampaignMember } from "@/lib/campaign-types";
 import { cn } from "@/lib/cn";
 import { OptionalStepper } from "@/app/workshop/kit";
@@ -12,12 +12,6 @@ import {
   useDiceSources,
   type FaceSource,
 } from "@/lib/dice/dice-sources";
-import {
-  getConnectedPixels,
-  getConnectedPixelsServer,
-  onPixelRoll,
-  onPixelsChanged,
-} from "@/lib/dice/pixels-dice";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckDie, CheckFrame, ModifierBreakdown } from "@/app/campaigns/[campaignId]/SkillCheckCard";
@@ -95,52 +89,24 @@ export function PendingRollCard({
   const shakeActive = mine && shakeOn && canShake;
 
   const [diceSources] = useDiceSources();
-  const pixels = useSyncExternalStore(
-    onPixelsChanged,
-    getConnectedPixels,
-    getConnectedPixelsServer,
-  );
 
-  // Resolve every face to its source: the chosen preference, degraded to
-  // typing when the assigned Pixels die isn't currently connected.
+  // Resolve every face to its source: manual typing or digital roll.
   const faceSources = useMemo<FaceSource[]>(
-    () => faces.map((sides) => resolveFaceSource(diceSources[sides], sides, pixels)),
-    [faces, diceSources, pixels],
+    () => faces.map((sides) => resolveFaceSource(diceSources[sides])),
+    [faces, diceSources],
   );
 
-  // What a face has so far: the typed or Pixels-landed entry, else empty. A
-  // digital face never has a client value; the server rolls it on submit, so
-  // the browser has nothing a player could read ahead of time.
+  // What a face has so far: the typed entry, else empty. A digital face never
+  // has a client value; the server rolls it on submit, so the browser has
+  // nothing a player could read ahead of time.
   const faceValue = (index: number): string => values[index]?.trim() ?? "";
 
-  // The wire payload: numbers for typed and Pixels faces, the literal
-  // "digital" for server-rolled ones.
+  // The wire payload: numbers for typed faces, the literal "digital" for
+  // server-rolled ones.
   const submissionDice = (): Array<number | "digital"> =>
     faces.map((_, index) =>
       faceSources[index]?.kind === "digital" ? "digital" : Number(faceValue(index)),
     );
-
-  // A physical Pixels die landing fills the next empty face assigned to it.
-  useEffect(() => {
-    if (!mine) {
-      return;
-    }
-    return onPixelRoll(({ systemId, faceCount, value }) => {
-      setValues((current) => {
-        const index = faceSources.findIndex(
-          (source, position) =>
-            source.kind === "pixel" &&
-            source.systemId === systemId &&
-            faces[position] === faceCount &&
-            !current[position]?.trim(),
-        );
-        if (index < 0) {
-          return current;
-        }
-        return { ...current, [index]: String(value) };
-      });
-    });
-  }, [mine, faceSources, faces]);
 
   const character = sheets.find((sheet) => sheet.id === pending.characterId);
   const detailText = pending.detail.replaceAll("_", " ");
@@ -182,8 +148,8 @@ export function PendingRollCard({
     faces.every(
       (_, index) => faceSources[index]?.kind === "digital" || faceValue(index),
     );
-  // Every face comes from a die that fills itself (digital or a Pixels die):
-  // no typing is needed, so the card submits on its own once all have landed.
+  // Every face comes from a digital die: no typing is needed, so the card
+  // submits on its own once all have landed.
   const fullyAutomatic =
     faceSources.length > 0 && faceSources.every((source) => source.kind !== "manual");
 
@@ -224,8 +190,8 @@ export function PendingRollCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mine, heldOnly, fullyAutomatic, busy, complete, faces, values]);
 
-  // A shake releases the roll: the typed and Pixels faces when they are all
-  // in, otherwise a fully digital roll. One shake per card.
+  // A shake releases the roll: the typed faces when they are all in,
+  // otherwise a fully digital roll. One shake per card.
   const shakenRef = useRef(false);
   useEffect(() => {
     if (!shakeActive || busy) {
@@ -418,19 +384,10 @@ export function PendingRollCard({
               </div>
             );
           }
-          // Pixels faces auto-fill when the die lands, but stay editable so a
-          // stubborn die never blocks the roll.
-          const isPixel = source.kind === "pixel";
           return (
             <div key={index} className="block">
-              <span
-                title={isPixel ? source.name : undefined}
-                className={cn(
-                  "mb-0.5 block max-w-24 truncate text-center text-[10px]",
-                  isPixel ? "text-sky-300/90" : "check-dim",
-                )}
-              >
-                {isPixel ? source.name : `d${sides}`}
+              <span className="check-dim mb-0.5 block max-w-24 truncate text-center text-[10px]">
+                d{sides}
               </span>
               <div className="relative">
                 {/* Blank means "not rolled yet", so the stepper is the optional
@@ -441,12 +398,9 @@ export function PendingRollCard({
                   fallback={1}
                   value={filled === "" || !Number.isFinite(Number(filled)) ? undefined : Number(filled)}
                   onChange={(next) => setValues((current) => ({ ...current, [index]: next === "" ? "" : String(next) }))}
-                  label={isPixel ? `${source.name}, d${sides}` : `d${sides}`}
+                  label={`d${sides}`}
                   size="sm"
                 />
-                {isPixel && !filled ? (
-                  <Dices className="pointer-events-none absolute -right-1 -top-1 size-3 animate-pulse text-sky-400/70" />
-                ) : null}
               </div>
             </div>
           );

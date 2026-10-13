@@ -18,9 +18,10 @@
 // rebuilds every WebP from the kept PNGs without touching the GPU.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire, register } from "node:module";
+import { register } from "node:module";
 import {
   DEFAULT_CHECKPOINT,
   DEFAULT_COMFY_URL,
@@ -32,7 +33,6 @@ import {
 import { worldArtJobs } from "./world-art-set.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
-const require = createRequire(import.meta.url);
 const { worldPackSchema } = await import("../src/lib/worlds/types.ts");
 const { packArtKey, packArtSlots, PACK_ART_KINDS } = await import("../src/lib/worlds/art.ts");
 const { findRace, findClass } = await import("../src/lib/srd/index.ts");
@@ -112,8 +112,7 @@ function canonicalLookups() {
   let monsterNames = new Map();
   if (existsSync(CONTENT_DB)) {
     try {
-      const { default: Database } = require("better-sqlite3");
-      const db = new Database(CONTENT_DB, { readonly: true });
+      const db = new DatabaseSync(CONTENT_DB, { readOnly: true });
       monsterNames = new Map(db.prepare("SELECT slug, name FROM monsters").all().map((row) => [row.slug, row.name]));
       db.close();
     } catch {

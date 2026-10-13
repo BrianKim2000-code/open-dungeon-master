@@ -1,8 +1,8 @@
 // The environment an agent program is started with. Built from an allowlist,
-// never by copying process.env: the server's own environment holds
-// DB_ENCRYPTION_KEY and every provider key, and a program that reads player
-// text must never be one prompt away from printing them. Pure, no `@/`
-// imports, so scripts/test-harness-env.mjs can load it directly.
+// never by copying process.env: the server's own environment holds every
+// provider key, and a program that reads player text must never be one prompt
+// away from printing them. Pure, no `@/` imports, so scripts/test-harness-env.mjs
+// can load it directly.
 
 // What a program needs to find its own sign-in, config and temp space.
 const PASSED_THROUGH = [

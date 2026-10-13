@@ -18,10 +18,10 @@ import type { AspectPreset, GeneratedImage, ImageRequest, StorySettings } from "
 // generatedImage IS pending), so reloads never lose the placeholder.
 export function publishMediaStatus(
   campaignId: string,
-  kind: "image" | "map" | "tts",
+  kind: "image" | "map",
   targetId: string,
   state: "queued" | "generating" | "failed",
-  // Why it failed, in words the table can read (narration, issue 88).
+  // Why it failed, in words the table can read (issue 88).
   reason?: string,
 ) {
   publishEphemeral(campaignId, "media_status", {
@@ -34,7 +34,7 @@ export function publishMediaStatus(
 }
 
 // Why a picture or a map could not be made, in the words the table reads
-// under its placeholder (as narration does, issue 88). The backends' errors
+// under its placeholder (issue 88). The backends' errors
 // are already sentences meant for people; this only bounds them.
 export function pictureFailureReason(error: unknown): string {
   const text = error instanceof Error ? error.message : typeof error === "string" ? error : "";
