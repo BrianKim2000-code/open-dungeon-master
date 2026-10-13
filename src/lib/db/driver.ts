@@ -1,27 +1,12 @@
-// The one place SQLite is opened. Two engines sit behind the same small
-// interface:
-//
-//  - better-sqlite3, the native module every desktop and
-//    server install ships, which stores the game database unencrypted.
-//  - Node's built-in node:sqlite, for hosts where no native module can be
-//    loaded: the Android app runs the server on a Node built for the phone,
-//    where the addon does not exist.
-//
+// The one place SQLite is opened, backed by Node's built-in node:sqlite.
 // The app only ever uses prepare/run/get/all, exec, pragma, transaction and
-// close, so that is the whole contract. ODM_SQLITE_DRIVER=node|native forces
-// an engine; otherwise native is tried first and node:sqlite is the fallback.
+// close, so that is the whole contract.
 
 import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
 import { StatementCache } from "@/lib/db/statement-cache";
 
-// Both engines load lazily and synchronously (the database opens inside
-// synchronous accessors), and the native one must be allowed to fail, so a
-// real require does the work in both the ESM test runner and Next's bundle.
-// The built-in engine goes through process.getBuiltinModule instead: the
-// bundler rewrites createRequire and its rewrite cannot resolve node: ids.
-const localRequire = createRequire(import.meta.url);
-
+// The built-in engine goes through process.getBuiltinModule so bundlers do
+// not try to rewrite a node:sqlite import.
 type NodeSqlite = typeof import("node:sqlite");
 
 function loadNodeSqlite(): NodeSqlite | null {
@@ -53,43 +38,11 @@ export interface SqliteDatabase {
   pragma(source: string): unknown;
   transaction<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R;
   close(): void;
-  readonly engine: "native" | "node";
-  readonly encrypted: boolean;
 }
 
 export interface OpenOptions {
   readonly?: boolean;
   fileMustExist?: boolean;
-}
-
-type Engine = "native" | "node";
-
-// Resolved once per process; the choice never changes at runtime.
-let resolvedEngine: Engine | null = null;
-
-function chooseEngine(): Engine {
-  if (resolvedEngine) return resolvedEngine;
-  const forced = process.env.ODM_SQLITE_DRIVER;
-  if (forced === "node" || forced === "native") {
-    resolvedEngine = forced;
-    return forced;
-  }
-  resolvedEngine = loadNative() ? "native" : "node";
-  return resolvedEngine;
-}
-
-type NativeModule = { new (file: string, options?: unknown): { prepare(sql: string): unknown; exec(sql: string): void; pragma(source: string): unknown; transaction(fn: unknown): unknown; close(): void } };
-
-let nativeModule: NativeModule | null | undefined;
-
-function loadNative(): NativeModule | null {
-  if (nativeModule !== undefined) return nativeModule;
-  try {
-    nativeModule = localRequire("better-sqlite3") as unknown as NativeModule;
-  } catch {
-    nativeModule = null;
-  }
-  return nativeModule;
 }
 
 // How many writes so far could have given a picture or a document a new
@@ -143,48 +96,13 @@ function watchWrites(sql: string, statement: SqliteStatement): SqliteStatement {
   };
 }
 
-export function sqliteEngine(): Engine {
-  return chooseEngine();
-}
-
 export function openDatabase(file: string, options: OpenOptions = {}): SqliteDatabase {
   opens += 1;
   mediaWrites += 1;
-  const engine = chooseEngine();
-  if (engine === "native") {
-    const Native = loadNative();
-    if (!Native) {
-      throw new Error("ODM_SQLITE_DRIVER=native but better-sqlite3 cannot be loaded.");
-    }
-    return wrapNative(new Native(file, options));
-  }
-  return openNode(file, options);
-}
-
-function wrapNative(db: any): SqliteDatabase {
-  const statements = new StatementCache<SqliteStatement>();
-  return {
-    engine: "native",
-    encrypted: false,
-    prepare: (sql) => statements.take(sql, (text) => watchWrites(text, db.prepare(text) as SqliteStatement)),
-    exec: (sql) => {
-      statements.clear();
-      db.exec(sql);
-    },
-    pragma: (source) => db.pragma(source),
-    transaction: (fn) => db.transaction(fn),
-    close: () => {
-      statements.clear();
-      db.close();
-    },
-  };
-}
-
-function openNode(file: string, options: OpenOptions): SqliteDatabase {
   const sqlite = loadNodeSqlite();
   if (!sqlite) {
     throw new Error(
-      "No SQLite engine: the native module did not load and this Node has no built-in node:sqlite (needs Node 22.13 or newer).",
+      "No SQLite engine: this Node has no built-in node:sqlite (needs Node 22.13 or newer).",
     );
   }
   const { DatabaseSync } = sqlite;
@@ -232,8 +150,6 @@ function openNode(file: string, options: OpenOptions): SqliteDatabase {
     };
   };
   return {
-    engine: "node",
-    encrypted: false,
     prepare: (sql) => statements.take(sql, (text) => watchWrites(text, prepare(text))),
     exec: (sql) => {
       statements.clear();

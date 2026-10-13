@@ -46,11 +46,13 @@ if (!fs.existsSync(dbPath)) {
   fail(`database not found: ${dbPath}`);
 }
 
-const Database = (await import("better-sqlite3")).default;
-const db = new Database(dbPath);
+import { DatabaseSync } from "node:sqlite";
+
+const db = new DatabaseSync(dbPath);
 try {
-  db.pragma("wal_checkpoint(TRUNCATE)");
-  const integrity = db.pragma("integrity_check", { simple: true });
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  const rows = db.prepare("PRAGMA integrity_check").all();
+  const integrity = String(rows[0] ? Object.values(rows[0])[0] : "");
   if (integrity !== "ok") fail(`database integrity check failed: ${integrity}`);
 } finally {
   db.close();
@@ -64,7 +66,7 @@ try {
 }
 
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "odm-backup-"));
-const includes = ["data", "public/uploads", "public/generated", "public/generated-audio", "models", ".env.server"];
+const includes = ["data", "public/uploads", "public/generated", "models", ".env.server"];
 try {
   for (const rel of includes) {
     const src = path.join(root, rel);

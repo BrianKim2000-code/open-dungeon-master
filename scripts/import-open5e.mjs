@@ -4,7 +4,7 @@
 //
 // Usage: node scripts/import-open5e.mjs [--refresh]
 
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -158,12 +158,17 @@ function insertRows(db, table, columns, rows) {
   const statement = db.prepare(
     `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}, data_json) VALUES (${placeholders}, ?)`,
   );
-  const insertMany = db.transaction((batch) => {
+  const batch = rows.filter((row) => row && row.slug && row.name);
+  db.exec("BEGIN");
+  try {
     for (const row of batch) {
       statement.run(...columns.map((column) => row[column]), JSON.stringify(row.data));
     }
-  });
-  insertMany(rows.filter((row) => row && row.slug && row.name));
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 // A backfill: it adds only content the table does not already have, and never
@@ -393,8 +398,8 @@ function insertAuthoredContent(db) {
 async function main() {
   const tmpPath = `${dbPath}.tmp`;
   rmSync(tmpPath, { force: true });
-  const db = new Database(tmpPath);
-  db.pragma("journal_mode = OFF");
+  const db = new DatabaseSync(tmpPath);
+  db.exec("PRAGMA journal_mode = OFF");
   createSchema(db);
 
   console.log("spells...");
@@ -589,7 +594,7 @@ async function main() {
 
   db.close();
   rmSync(dbPath, { force: true });
-  const finished = new Database(tmpPath);
+  const finished = new DatabaseSync(tmpPath);
   finished.close();
   // Atomic-ish swap: build in a temp file, then move into place.
   const { renameSync } = await import("node:fs");

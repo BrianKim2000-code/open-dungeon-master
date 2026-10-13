@@ -3,8 +3,8 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3";
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "odm-backup-test-"));
@@ -19,7 +19,7 @@ try {
   fs.writeFileSync(path.join(root, "models", "keep.Modelfile"), "FROM test\n");
 
   const dbPath = path.join(root, "data", "local-roleplay.sqlite");
-  const db = new Database(dbPath);
+  const db = new DatabaseSync(dbPath);
   db.exec(`
     CREATE TABLE campaigns (id TEXT PRIMARY KEY);
     CREATE TABLE users (id TEXT PRIMARY KEY);
@@ -49,7 +49,7 @@ try {
   assert.equal(fs.readFileSync(path.join(restoreDir, "public", "uploads", "keep.txt"), "utf8"), "asset survives\n");
   assert.equal(fs.readFileSync(path.join(restoreDir, "models", "keep.Modelfile"), "utf8"), "FROM test\n");
 
-  const restoredDb = new Database(path.join(restoreDir, "data", "local-roleplay.sqlite"), { readonly: true });
+  const restoredDb = new DatabaseSync(path.join(restoreDir, "data", "local-roleplay.sqlite"), { readOnly: true });
   assert.equal(restoredDb.prepare("SELECT COUNT(*) AS n FROM campaigns").get().n, 1);
   restoredDb.close();
 
