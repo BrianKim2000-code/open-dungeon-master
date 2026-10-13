@@ -78,6 +78,9 @@ export const gameSettingsSchema = z.object({
   aiStorySetup: z.boolean().default(true),
   campaignLength: z.enum(CAMPAIGN_LENGTHS).default("standard"),
   dicePolicy: z.enum(DICE_POLICIES).default("digital_only"),
+  // Theatre inserts (docs/vtt-parity-implementation-plan.md 8.3): the
+  // speaking NPC's portrait over the scene art while their lines play.
+  presentation: z.enum(["plain", "theatre"]).default("plain"),
   // Several characters per player (docs/vtt-parity-implementation-plan.md
   // 11.3): off, one in play at a time (the others wait out fights), or
   // all of them fielded at once for a solo table running a whole party.

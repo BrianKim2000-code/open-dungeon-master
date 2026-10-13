@@ -355,6 +355,14 @@ export function GameSettingsPanel({
           </Tooltip>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <span className="pk-rowlabel">Faces</span>
+          <Tooltip content="Theatre inserts: when a passage has someone speaking, their portrait comes up over the scene art while their lines play.">
+            <SettingToggle on={settings.presentation === "theatre"} onToggle={() => patch({ presentation: settings.presentation === "theatre" ? "plain" : "theatre" })}>
+              {settings.presentation === "theatre" ? "Theatre inserts on" : "Theatre inserts off"}
+            </SettingToggle>
+          </Tooltip>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Board</span>
           <Tooltip content="Players may draw on the live board: a plan of attack, a circle round a door. The DM always may.">
             <SettingToggle on={settings.boardDrawing} onToggle={() => patch({ boardDrawing: !settings.boardDrawing })}>

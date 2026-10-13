@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:lan": "next dev -H 0.0.0.0 -p 3005",
-    "build": "next build",
+    "build": "next typegen && tsgo --noEmit && next build",
+    "typecheck": "next typegen && tsgo --noEmit",
     "start": "next start",
     "start:lan": "next start -H 0.0.0.0 -p 3005",
     "lint": "eslint",
@@ -21,10 +22,14 @@
     "resources:generate": "node scripts/generate-class-resources.mjs",
     "test:dice": "node scripts/test-dice.mjs",
     "setup": "node scripts/setup.mjs",
-    "postinstall": "node scripts/copy-dice-assets.mjs && node scripts/ensure-better-sqlite3-shim.mjs"
+    "postinstall": "node scripts/copy-dice-assets.mjs"
   },
   "dependencies": {
     "@3d-dice/dice-box-threejs": "^0.0.12",
+    "@jsquash/jpeg": "^1.6.0",
+    "@jsquash/png": "^3.1.1",
+    "@jsquash/resize": "^2.1.1",
+    "@jsquash/webp": "^1.5.0",
     "@modelcontextprotocol/server": "2.3.1",
     "@radix-ui/react-alert-dialog": "^1.1.24",
     "@radix-ui/react-dialog": "^1.2.0",
@@ -50,6 +55,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "@vitest/coverage-v8": "^5.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",

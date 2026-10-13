@@ -47,6 +47,7 @@ const DRAFT = {
   mapsEnabled: true,
   boardDrawing: true,
   enemyIntent: true,
+  presentation: "plain",
   multiCharacter: "off",
   multiclassingEnabled: true,
   worldSimulation: true,
@@ -169,7 +170,7 @@ test("featuresOn still counts eleven", () => {
   assert.equal(rowsOf(ALL_ON, TABLE).filter((row) => row.counted).length, 11);
   // The four that are shown but uncounted stay uncounted.
   const uncounted = rowsOf(ALL_ON, TABLE).filter((row) => !row.counted).map((row) => row.key);
-  assert.deepEqual(uncounted.sort(), ["boardDrawing", "enemyIntent", "multiCharacter"]);
+  assert.deepEqual(uncounted.sort(), ["boardDrawing", "enemyIntent", "multiCharacter", "presentation"]);
 });
 
 test("the dots on the sheet always add up to featuresOn", () => {
@@ -199,7 +200,7 @@ test("the dots on the sheet always add up to featuresOn", () => {
 
 test("gating is the old gating", () => {
   const keys = (draft, gates) => rowsOf(draft, gates).map((row) => row.key);
-  assert.equal(keys(ALL_ON, TABLE).length, 14);
+  assert.equal(keys(ALL_ON, TABLE).length, 15);
   const human = keys(ALL_ON, { ...TABLE, aiNarrates: false });
   for (const key of ["aiStorySetup", "narrationGuard", "worldSimulation"]) {
     assert.ok(!human.includes(key), `${key} shows with a human narrator`);
@@ -226,6 +227,7 @@ test("a press flips, and the tri-state walks its three stops", () => {
   assert.deepEqual(flipRow(DRAFT, "relationships"), { relationships: "off" });
   assert.deepEqual(flipRow({ ...DRAFT, relationships: "off" }, "relationships"), { relationships: "on" });
   assert.deepEqual(flipRow(DRAFT, "romance"), { romance: "off" });
+  assert.deepEqual(flipRow(DRAFT, "presentation"), { presentation: "theatre" });
   assert.deepEqual(flipRow(DRAFT, "enemyIntent"), { enemyIntent: false });
   let draft = DRAFT;
   const stops = [];
