@@ -135,7 +135,7 @@ export function ReadyStep({
       ) : draft.story === "agent" && draft.agent.id ? (
         <div className="su-row flex-col items-stretch">
           <span className="text-sm text-stone-200">Try the agent with one tiny real turn</span>
-          <HarnessTestPanel saved onVerified={check} />
+          <HarnessTestPanel saved />
         </div>
       ) : null}
     </div>
