@@ -7,11 +7,11 @@ import { computeBudgets } from "@/lib/dm/context-budget";
 import { storyContextTokens } from "@/lib/model-client";
 
 // recall_story: the DM's long-term memory tool. A chapter number returns
-// that chapter's full summary. A query runs two-phase semantic recall
-// (memory-index.ts): matching chapters by summary embedding, then the most
+// that chapter's full summary. A query runs two-phase recall
+// (memory-index.ts): matching chapters by title and summary, then the most
 // relevant VERBATIM transcript scenes from inside them, so a detail from
 // fifty chapters ago comes back in the original words. Keyword scoring
-// remains the fallback for unindexed campaigns or an unavailable embedder.
+// remains the fallback for unindexed campaigns.
 //
 // A query answers with the scenes and points at their chapters without
 // their summaries: the prompt's story-so-far block already carries those
@@ -67,12 +67,12 @@ export async function handleRecallStory(
     };
   }
 
-  // Phase 1+2: semantic scenes; never let an embedder failure break recall.
+  // Phase 1+2: scene index hits; never let a failure here break recall.
   let scenes: Awaited<ReturnType<typeof searchScenes>> = [];
   try {
     scenes = await searchScenes(campaign.id, query);
   } catch (error) {
-    console.error("[recall] semantic search failed", error);
+    console.error("[recall] scene search failed", error);
   }
   if (scenes.length) {
     const chapterIndexes = [...new Set(scenes.map((scene) => scene.chapterIndex))];

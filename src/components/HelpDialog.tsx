@@ -11,14 +11,11 @@ import {
   DoorOpen,
   Gavel,
   MessageSquareText,
-  Mic,
-  Music,
-  PanelRight,
+      PanelRight,
   Puzzle,
   RefreshCw,
   Swords,
-  Volume2,
-} from "lucide-react";
+  } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { HelpContents, ModeRow, Section } from "@/components/HelpParts";
@@ -28,8 +25,8 @@ import { ui } from "@/lib/ui";
 export { ModeRow, Section };
 
 // One walkthrough of the whole app: menus, side-panel tabs, composer modes,
-// asking the DM, fixing a bad narration, what the DM remembers, dice, voice,
-// lead powers and world packs. Opened from the home account menu and the
+// asking the DM, fixing a bad narration, what the DM remembers, dice, lead
+// powers and world packs. Opened from the home account menu and the
 // in-session header.
 export function HelpDialog({
   open,
@@ -93,7 +90,7 @@ export function HelpDialog({
         <p>
           Before the game begins, each player readies up and whoever steers the story (the party
           lead, or the DM when a person runs the table) can adjust the game settings: genre, an
-          optional secret story setup for the DM, dice policy, narration voice, and maps. Share the
+          optional secret story setup for the DM, dice policy, and maps. Share the
           room code or copy the invite link to bring in more players; the owner or the DM opens the
           table once everyone is ready.
         </p>
@@ -159,8 +156,7 @@ export function HelpDialog({
           or press it to see why. Rider cards such as Divine Smite attach to your next attack.
         </p>
         <p>
-          The hand never replaces typing. The message box, Do, Say and OOC, the microphone and
-          Enter to send all work exactly as before, and the arrow on the hand&apos;s bar puts it
+          The hand never replaces typing. The message box, Do, Say and OOC, and Enter to send all work exactly as before, and the arrow on the hand&apos;s bar puts it
           away. The question mark beside it replays the two-line introduction.
         </p>
       </Section>
@@ -302,63 +298,12 @@ export function HelpDialog({
         </p>
       </Section>
 
-      <Section icon={Volume2} title="Voice and narration">
-        <p>
-          When narration is enabled, the DM reads its replies aloud. Use the speaker button in the
-          header to unmute (browsers require one click before audio can play) and the slider to set
-          the volume. Hover a DM message to replay its narration. Push-to-talk, when configured,
-          lets you hold the microphone button to dictate your message.
-        </p>
-      </Section>
-
-      <Section icon={Mic} title="Live voice chat">
-        <p>
-          When the server and the campaign both have voice chat switched on, a{" "}
-          <span className="text-stone-300">Voice</span> card appears in the lobby, and during play a{" "}
-          <span className="text-stone-300">headphones button</span> sits in the top bar with the
-          full voice menu under it. Join and you are talking to the table; no other app needed, and
-          the call stays up whatever panel you switch to. The microphone needs a secure (https)
-          connection, and your browser will ask permission the first time.
-        </p>
-        <p>
-          Whoever runs the story can open <span className="text-stone-300">side rooms</span> for a
-          split party or a private word, and can hold the floor: soft enforcement marks who should
-          be talking, strict actually mutes everyone else, and a raised-hand queue keeps it civil.
-          A table can also opt into rules that make the call behave like the world: proximity
-          hearing (you only hear players whose characters are near yours on the map, while the DM
-          hears everyone), whisper and shout ranges, walls muffling speech, and downed characters
-          going deaf. All of that lives under voice settings in Setup, and all of it is off by
-          default, so a plain group call is what you get until the table asks for more.
-        </p>
-      </Section>
-
-      <Section icon={Music} title="Ambience and music">
-        <p>
-          With ambience enabled in the game settings, the table shares a soundtrack: a room for
-          where the party is (a tavern, a forest, a crypt), music for what the scene is doing, and
-          one-shot sounds for dramatic moments. The DM changes it as the story moves, and combat
-          brings its own music. A cue may have several takes; the player moves between them so a
-          long fight is not one loop forever, and Next skips ahead.
-        </p>
-        <p>
-          The speaker in the table header opens the sound panel: what is playing, a level for the
-          room and one for the music (for you alone), and, if you steer the story, the pickers for
-          the room, the music and the sounds, with a hold that keeps the scene from changing a
-          layer you chose. Sound ducks automatically while narration speaks.
-        </p>
-        <p>
-          The library itself ships with the game: public-domain and Creative Commons recordings,
-          and the licenses page says who made what. If ambience is on but silent, the panel says
-          why.
-        </p>
-      </Section>
-
       <Section icon={Gavel} title="Playing with a human DM">
         <p>
           A campaign does not have to be run by the AI. Created with{" "}
           <span className="text-stone-300">a person in the DM seat</span>, the table works the way
-          a kitchen-table game does: the DM narrates in their own words (most tables do it over
-          voice chat), and the app keeps the sheets, the dice, the maps and the record straight
+          a kitchen-table game does: the DM narrates in their own words (most tables do it out
+          loud), and the app keeps the sheets, the dice, the maps and the record straight
           underneath them. Your Do and Say messages still land in the transcript, but instead of
           waking the AI they queue as intents for the DM to answer. The DM holds no party slot
           (though they can build a companion to play from the console), holds the story secrets

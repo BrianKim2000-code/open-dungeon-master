@@ -71,7 +71,7 @@ const probe = createCampaign(lead.id, {
   maxPlayers: 2,
   startingLevel: 1,
   difficulty: "normal",
-  gameSettings: { ttsEnabled: false },
+  gameSettings: {},
 });
 const catalogue = dmTurnToolCatalogue(getCampaignById(probe.id), false, false);
 {
@@ -169,7 +169,7 @@ function table(title) {
     maxPlayers: 2,
     startingLevel: 1,
     difficulty: "normal",
-    gameSettings: { ttsEnabled: false },
+    gameSettings: {},
   });
   updateStorySettings(campaign.id, {
     textProvider: "custom",

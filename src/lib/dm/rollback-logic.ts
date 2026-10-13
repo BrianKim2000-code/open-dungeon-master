@@ -38,8 +38,8 @@ export type SnapshotTable = (typeof SNAPSHOT_TABLES)[number];
 // through its battle_maps parent.
 export const MAP_SCOPED_TABLES: ReadonlySet<string> = new Set(["battle_explored"]);
 
-// Embedding BLOBs are dropped from snapshots: they are bulky and the
-// semantic index refills missing vectors lazily.
+// Legacy embedding BLOBs are dropped from snapshots: they are bulky and
+// nothing reads them.
 export const STRIPPED_COLUMNS: ReadonlySet<string> = new Set(["embedding"]);
 
 // campaigns columns that hold in-place world state; restored on rewind.

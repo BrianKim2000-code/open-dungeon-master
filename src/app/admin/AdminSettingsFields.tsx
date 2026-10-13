@@ -37,22 +37,6 @@ export type MaskedConfig = {
     openaiModel: string;
     hasOpenaiApiKey: boolean;
   };
-  speech: {
-    ttsProvider: "" | "kokoro" | "openai" | "off";
-    kokoroUrl: string;
-    ttsBaseUrl: string;
-    ttsModel: string;
-    hasTtsApiKey: boolean;
-    ttsVoice: string;
-    sttUrl: string;
-  };
-  voiceChat: {
-    enabled: "" | "on" | "off";
-    mode: "" | "sfu" | "mesh";
-    announcedIp: string;
-    domain: string;
-    rtcPort: string;
-  };
   discord: { clientId: string; hasClientSecret: boolean };
   harness: HarnessConfig;
   sharedHost: { campaignCreation: "" | "everyone" | "admins"; paidAi: "" | "everyone" | "admins" };
@@ -66,19 +50,9 @@ export type EnvDefaults = {
   fluxWorkerUrl: string;
   imageBackend: string;
   hasOpenaiImageApiKey: boolean;
-  kokoroUrl: string;
-  ttsProvider: string;
-  ttsBaseUrl: string;
-  ttsModel: string;
-  hasTtsApiKey: boolean;
-  sttUrl: string;
   discordClientId: string;
   hasDiscordClientSecret: boolean;
   publicUrl: string;
-  voiceEnabled: boolean;
-  voiceAnnouncedIp: string;
-  voiceDomain: string;
-  voiceRtcPort: string;
 };
 
 // A secret field never receives its stored value; SECRET_KEPT means "leave it

@@ -15,9 +15,10 @@ export type CampaignLocation = {
   isCurrent: boolean;
   mapImage: GeneratedImage | null;
   // The prepared map this place stands on, when the DM linked one, and the
-  // sound it makes (docs/vtt-parity-implementation-plan.md section 3.5).
+  // kind of place it is (src/lib/scenes.ts), which the battle map drawn
+  // here takes its terrain and light from.
   preparedMapId: string | null;
-  ambience: { bed: string; music: string } | null;
+  scene: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -32,7 +33,7 @@ type LocationRow = {
   is_current: number;
   map_image_json: string | null;
   prepared_map_id: string | null;
-  ambience_json: string | null;
+  scene: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,7 +49,7 @@ function mapLocation(row: LocationRow): CampaignLocation {
     isCurrent: Boolean(row.is_current),
     mapImage: parseJson<GeneratedImage | null>(row.map_image_json, null),
     preparedMapId: row.prepared_map_id ?? null,
-    ambience: parseJson<{ bed: string; music: string } | null>(row.ambience_json ?? "", null),
+    scene: row.scene ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -258,10 +259,10 @@ export function setLocationMap(locationId: string, image: GeneratedImage | null)
   return result.changes > 0;
 }
 
-// Link a place to a prepared map and a sound, or clear either with null.
+// Link a place to a prepared map and a kind of place, or clear either with null.
 export function setLocationLinks(
   locationId: string,
-  links: { preparedMapId?: string | null; ambience?: { bed: string; music: string } | null },
+  links: { preparedMapId?: string | null; scene?: string | null },
 ) {
   const db = getDatabase();
   if (links.preparedMapId !== undefined) {
@@ -271,9 +272,9 @@ export function setLocationLinks(
       locationId,
     );
   }
-  if (links.ambience !== undefined) {
-    db.prepare(`UPDATE locations SET ambience_json = ?, updated_at = ? WHERE id = ?`).run(
-      links.ambience ? JSON.stringify(links.ambience) : null,
+  if (links.scene !== undefined) {
+    db.prepare(`UPDATE locations SET scene = ?, updated_at = ? WHERE id = ?`).run(
+      links.scene,
       nowIso(),
       locationId,
     );

@@ -10,7 +10,6 @@ import { closeDatabaseForRestore, databaseFilePath, getDatabase, nowIso } from "
 import { openDatabase, type SqliteDatabase } from "@/lib/db/driver";
 import { enterMaintenance } from "@/lib/maintenance";
 import { fileSha256, readTarGz, writeTarGz, type TarEntry } from "@/lib/ops/tar";
-import { serverEnv } from "@/lib/server-env";
 import { currentBuild } from "@/lib/update-check";
 
 // A whole device world in one file, and back (audit C7). The apps' own
@@ -104,23 +103,13 @@ function beginJob(kind: WorldJob["kind"]): WorldJob {
   return job;
 }
 
-function databaseKey(): string {
-  return serverEnv("DB_ENCRYPTION_KEY");
-}
-
 function quoted(value: string): string {
   return value.replaceAll("'", "''");
 }
 
-// Opens a staged copy the way the live database is opened: an engine with a
-// cipher reads it with the live key, any other reads it plain.
-function openStaged(file: string, encrypted: boolean): SqliteDatabase {
-  const db = openDatabase(file);
-  if (db.encrypted && encrypted) {
-    db.pragma("cipher='chacha20'");
-    db.pragma(`key='${quoted(databaseKey())}'`);
-  }
-  return db;
+// Opens a staged copy.
+function openStaged(file: string): SqliteDatabase {
+  return openDatabase(file);
 }
 
 function scalar(db: SqliteDatabase, sql: string, ...params: unknown[]): number {
@@ -193,9 +182,9 @@ function scrubJsonColumn(db: SqliteDatabase, table: string, key: string, column:
   }
 }
 
-// Leaves every secret out of the copy, then decrypts it.
-function scrubCopy(file: string, encrypted: boolean): WorldCounts {
-  const db = openStaged(file, encrypted);
+// Leaves every secret out of the copy.
+function scrubCopy(file: string): WorldCounts {
+  const db = openStaged(file);
   try {
     db.pragma("journal_mode = DELETE");
     db.pragma("foreign_keys = ON");
@@ -208,7 +197,6 @@ function scrubCopy(file: string, encrypted: boolean): WorldCounts {
       scrubJsonColumn(db, "campaigns", "id", "settings_json");
       scrubJsonColumn(db, "campaigns", "id", "game_settings_json");
     })();
-    if (db.encrypted && encrypted) db.pragma("rekey=''");
     if (!integrityOk(db)) throw new WorldArchiveError("The database copy failed its integrity check.", 500);
     return countsOf(db, 0);
   } finally {
@@ -274,12 +262,11 @@ async function runExport(job: WorldJob): Promise<WorldExport> {
   await clearStaged(dir, /^(odm-world-.*\.tar\.gz|export-.*\.sqlite)$/);
   const copy = path.join(dir, `export-${randomBytes(6).toString("hex")}.sqlite`);
   const live = getDatabase();
-  const encrypted = live.encrypted;
   try {
     job.phase = "Copying the database";
     live.exec(`VACUUM INTO '${quoted(copy)}'`);
     job.phase = "Leaving out passwords and keys";
-    const counts = scrubCopy(copy, encrypted);
+    const counts = scrubCopy(copy);
     job.phase = "Finding pictures and narration";
     const media = await listMedia();
     const all = [{ name: "world.sqlite", file: copy }, ...media];
@@ -533,7 +520,6 @@ export async function commitWorldImport(name: string, ownerPassword: string): Pr
   const stage = stagingDir();
   const staged = path.join(stage, "world.sqlite");
   if (!fs.existsSync(staged)) throw new WorldArchiveError("The checked archive is gone. Pick it again.", 409);
-  const encrypted = getDatabase().encrypted;
   const hash = await hashPassword(ownerPassword);
 
   const db = openDatabase(staged);
@@ -542,14 +528,10 @@ export async function commitWorldImport(name: string, ownerPassword: string): Pr
     owner = ownerOf(db);
     if (!owner) throw new WorldArchiveError("The archive's world has no owner account.");
     db.prepare(`UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?`).run(hash, owner.id);
-    if (db.encrypted && encrypted) {
-      db.pragma("cipher='chacha20'");
-      db.pragma(`rekey='${quoted(databaseKey())}'`);
-    }
   } finally {
     db.close();
   }
-  const reopened = openStaged(staged, encrypted);
+  const reopened = openStaged(staged);
   try {
     if (!integrityOk(reopened)) throw new WorldArchiveError("The re-keyed database failed its integrity check.", 500);
   } finally {

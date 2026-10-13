@@ -12,7 +12,7 @@ import { fakeModel } from "./lib/enforce-narrator.mjs";
 import { READER_PROMPT_START } from "./lib/claims-reader.mjs";
 
 const { test, finish } = suite("test-claims");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: {} });
 
 const { checkClaims, claimKindsFor, namedSpeakers, parseReaderReply, readerSystem, renderReaderInput } = await import(
   "../src/lib/dm/claims-logic.ts"

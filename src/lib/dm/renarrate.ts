@@ -1,4 +1,4 @@
-import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
+import { getCampaignById } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import {
   getCampaignMessage,
@@ -9,7 +9,6 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { requestDmMessage } from "@/lib/dm/model";
 import { setDmStatus } from "@/lib/dm/status";
 import { stripToolText } from "@/lib/dm/tool-text";
-import { enqueueNarrationAudio } from "@/lib/tts";
 import { mergeLines } from "@/lib/dm/speech";
 import { modelLines } from "@/lib/dm/speech-lines";
 import { extractStoryText } from "@/lib/story-prompt";
@@ -36,23 +35,6 @@ import {
 // byte-identically in every variant.
 
 export type RenarrateResult = { message: CampaignMessage } | { error: string; status: number };
-
-// The narration mp3 is keyed by message id, so a stale take would keep
-// playing under new prose. Regenerating overwrites the same file and
-// publishes tts_ready, which is all the client needs to swap.
-function refreshNarrationAudio(campaign: Campaign, message: CampaignMessage) {
-  if (!campaign.gameSettings.ttsEnabled) {
-    return;
-  }
-  void enqueueNarrationAudio(
-    campaign.id,
-    message.id,
-    message.content,
-    message.speech,
-    campaign.gameSettings,
-    message.speaker ?? null,
-  );
-}
 
 export async function runRenarrate(input: {
   campaignId: string;
@@ -150,12 +132,11 @@ export async function runRenarrate(input: {
   if (!updated) {
     return { error: "Could not store the new take.", status: 500 };
   }
-  refreshNarrationAudio(campaign, updated);
   return { message: updated };
 }
 
 // Browsing the takes: pure bookkeeping, no model call. Kept here rather than
-// in the route so a selection refreshes the narration audio too.
+// in the route so a selection can be stored the same way as a reroll.
 export function selectRenarrateVariant(input: {
   campaignId: string;
   messageId: string;
@@ -178,6 +159,5 @@ export function selectRenarrateVariant(input: {
   if (!updated) {
     return { error: "Could not select that take.", status: 500 };
   }
-  refreshNarrationAudio(campaign, updated);
   return { message: updated };
 }

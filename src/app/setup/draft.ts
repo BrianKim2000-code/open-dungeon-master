@@ -36,9 +36,6 @@ export type Draft = {
   pictures: "comfyui" | "openai" | "agent" | "none" | "";
   comfy: { url: string; checkpoint: string; preset: "checkpoint" | "z_turbo" };
   picturesKey: string;
-  narration: "kokoro" | "openai" | "off" | "";
-  kokoro: { url: string; voice: string };
-  narrationKey: string;
   signupMode: "open" | "invite" | "closed";
   publicUrl: string;
 };
@@ -104,16 +101,6 @@ export function draftFromConfig(config: MaskedConfig, firstRun: boolean): Draft 
               : "none",
     comfy: { url: images.comfyUrl, checkpoint: images.comfyCheckpoint, preset: images.comfyWorkflowPreset },
     picturesKey: "",
-    narration:
-      config.speech.ttsProvider === "kokoro" && config.speech.kokoroUrl
-        ? "kokoro"
-        : config.speech.ttsProvider === "openai"
-          ? "openai"
-          : config.speech.ttsProvider === "off"
-            ? "off"
-            : "",
-    kokoro: { url: config.speech.kokoroUrl, voice: config.speech.ttsVoice },
-    narrationKey: "",
     signupMode: config.signupMode,
     publicUrl: config.publicUrl,
   };
@@ -163,14 +150,6 @@ export function draftWithScan(draft: Draft, scan: ScanResult, storyIsOpenAi: boo
   if (next.pictures === "comfyui" && !next.comfy.url && scan.comfyui) {
     next.comfy = comfyFromScan(next.comfy, scan.comfyui);
   }
-  if (!next.narration) {
-    // Narration reads every passage, so a paid voice is never switched on
-    // by a guess; a Kokoro on this machine is free.
-    next.narration = scan.kokoro ? "kokoro" : "off";
-  }
-  if (next.narration === "kokoro" && !next.kokoro.url && scan.kokoro) {
-    next.kokoro = { url: scan.kokoro.url, voice: next.kokoro.voice || (scan.kokoro.voices.includes("af_heart") ? "af_heart" : scan.kokoro.voices[0] ?? "") };
-  }
   return next;
 }
 
@@ -179,7 +158,7 @@ export function keyProviderLabel(id: KeyProviderId): string {
 }
 
 // The storyteller in this draft is OpenAI on a key: its one key can then
-// also paint, narrate and take dictation.
+// also paint.
 export function draftStoryIsOpenAi(draft: Draft): boolean {
   return draft.story === "key" && draft.key.provider === "openai";
 }

@@ -104,7 +104,7 @@ export function createBattleMapForEncounter(
   const location = getCurrentLocation(campaign.id);
   const generated = generateBattleMap({
     seed: fnv1a(encounter.id),
-    scene: scene ?? location?.ambience?.bed ?? null,
+    scene: scene ?? location?.scene ?? null,
     pcCount: sheets.length,
     enemyCount: enemies.length,
     enemyDistanceTiles: distanceFeet ? Math.max(1, Math.round(distanceFeet / 5)) : undefined,

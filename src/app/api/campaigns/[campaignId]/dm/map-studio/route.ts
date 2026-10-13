@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import { MAP_SIZE, MAP_THEMES } from "@/lib/battlemap/generate";
 import { BACKDROP_LIMITS, isBackdropPath } from "@/lib/battlemap/backdrop";
 import {

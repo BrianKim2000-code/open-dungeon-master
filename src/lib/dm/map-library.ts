@@ -31,8 +31,7 @@ import {
 import { nearestOpenTile, paintTerrain } from "@/lib/battlemap/paint";
 import { compilePaint, emptyPaintIsFine, type PaintRequest } from "@/lib/battlemap/tools";
 import { normalizeLights, toggleLight, type LightToggle } from "@/lib/battlemap/lights";
-import { toggleDoor, type SceneAmbience } from "@/lib/battlemap/scene";
-import { handleSetAmbience } from "@/lib/dm/ambience-tools";
+import { toggleDoor } from "@/lib/battlemap/scene";
 import { parseUvtt } from "@/lib/battlemap/uvtt";
 import { normalizeBackdropTransform, type BackdropTransform } from "@/lib/battlemap/backdrop";
 import { TERRAIN, tileIndex, type AmbientLight, type XY } from "@/lib/battlemap/types";
@@ -87,7 +86,7 @@ export function createLibraryMap(
     height?: number;
     theme?: MapTheme;
     ambient?: AmbientLight;
-    // The kind of place (an ambience bed id) the generator rolls.
+    // The kind of place (src/lib/scenes.ts) the generator rolls.
     scene?: string;
     seed?: number;
     // Absent means roll one with the generator.
@@ -232,7 +231,6 @@ export function setLibraryScene(
     props?: unknown;
     zones?: unknown;
     overlayPath?: string;
-    ambience?: unknown;
     door?: XY;
   },
 ): LibraryOutcome<PreparedMap> & { door?: string | null } {
@@ -257,26 +255,9 @@ export function setLibraryScene(
       ...(input.props !== undefined ? { props: input.props as PreparedMap["props"] } : {}),
       ...(input.zones !== undefined ? { zones: input.zones as PreparedMap["zones"] } : {}),
       ...(input.overlayPath !== undefined ? { overlayPath: input.overlayPath } : {}),
-      ...(input.ambience !== undefined ? { ambience: input.ambience as SceneAmbience } : {}),
     },
   });
   return updated ? { ok: true, map: updated, door } : { error: "That map is not in this library." };
-}
-
-// The sound a prepared map makes, played when it goes on the table. Runs
-// through the same tool the model uses, so the cue ids are checked and the
-// change is announced the same way.
-function playPreparedAmbience(campaign: Campaign, ambience: SceneAmbience) {
-  if (!ambience.bed && !ambience.music) {
-    return;
-  }
-  handleSetAmbience(
-    campaign,
-    JSON.stringify({
-      ...(ambience.bed ? { bed: ambience.bed } : {}),
-      ...(ambience.music ? { music: ambience.music } : {}),
-    }),
-  );
 }
 
 // What the map is painted with. Cosmetic, so there is nothing to refuse: the
@@ -453,7 +434,6 @@ export function deployPreparedMap(campaign: Campaign, mapId: string): LibraryOut
   // Fog memory is a memory of a map that no longer exists.
   clearExplored(live.id);
   publishBattleMapUpdate(campaign.id);
-  playPreparedAmbience(campaign, prepared.ambience);
   return { ok: true, map: prepared };
 }
 
@@ -544,7 +524,6 @@ export function openSceneOnPreparedMap(
   );
   placeProps(map.id, campaign.id, prepared);
   publishBattleMapUpdate(campaign.id);
-  playPreparedAmbience(campaign, prepared.ambience);
   return { ok: true, map: prepared };
 }
 

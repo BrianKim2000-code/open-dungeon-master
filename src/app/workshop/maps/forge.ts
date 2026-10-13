@@ -25,7 +25,7 @@ export type ForgeSettings = {
   // "" leaves it to the kind of place.
   theme: MapTheme | "";
   ambient: AmbientLight | "";
-  // The kind of place (an ambience bed id, the same list a place in play
+  // The kind of place (a scene id from src/lib/scenes.ts, the same list a place in play
   // takes), or "" for none: open ground.
   scene: string;
 };

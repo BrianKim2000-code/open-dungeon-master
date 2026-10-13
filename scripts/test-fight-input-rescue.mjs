@@ -110,7 +110,7 @@ function table(title, { fight }) {
     startingLevel: 1,
     difficulty: "normal",
     // No narration audio: there is no TTS server in a test run.
-    gameSettings: { ttsEnabled: false },
+    gameSettings: {},
   });
   updateStorySettings(campaign.id, {
     textProvider: "custom",

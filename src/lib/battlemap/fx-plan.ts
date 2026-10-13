@@ -57,8 +57,6 @@ export type FxEvent = {
   label?: string;
   // Door effects: what the door became.
   state?: "open" | "closed" | "locked" | "secret" | "found";
-  // A sting cue id from src/lib/ambience/catalog.ts, played once.
-  sting?: string;
   // Who may see the numbers on this effect. "all" for a public roll,
   // "dm" when the roll was hidden from the table. Redacted by the
   // projection before it reaches a player (src/lib/dm/fx.ts).
@@ -79,37 +77,6 @@ let counter = 0;
 function fxId(prefix: string): string {
   counter = (counter + 1) % 1_000_000;
   return `${prefix}-${Date.now().toString(36)}-${counter.toString(36)}`;
-}
-
-// Attack stings by outcome and reach. All are cue ids the catalog defines.
-function attackSting(outcome: FxOutcome, ranged: boolean): string {
-  if (outcome === "crit") {
-    return "hit_crit";
-  }
-  if (outcome === "miss" || outcome === "fumble") {
-    return "swing_miss";
-  }
-  return ranged ? "hit_ranged" : "hit_melee";
-}
-
-function spellSting(damageType: string | undefined): string {
-  switch (damageType) {
-    case "fire":
-      return "spell_fire";
-    case "cold":
-      return "spell_cold";
-    case "lightning":
-    case "thunder":
-      return "spell_thunder";
-    case "radiant":
-      return "spell_radiant";
-    case "necrotic":
-    case "poison":
-    case "acid":
-      return "spell_dark";
-    default:
-      return "magic_cast";
-  }
 }
 
 export type AttackPlan = {
@@ -154,7 +121,6 @@ export function planAttackFx(input: AttackPlan): FxEvent | null {
     ranged,
     ...(input.hit && input.damage ? { amount: input.damage } : {}),
     ...(input.damageType ? { damageType: input.damageType } : {}),
-    sting: attackSting(outcome, ranged),
     numbers: input.secretNumbers ? "dm" : "all",
     at: Date.now(),
   };
@@ -202,7 +168,6 @@ export function planSpellFx(input: SpellPlan): FxEvent | null {
     ranged: true,
     ...(landed && input.damage ? { amount: input.damage } : {}),
     ...(input.damageType ? { damageType: input.damageType } : {}),
-    sting: spellSting(input.damageType),
     numbers: input.secretNumbers ? "dm" : "all",
     at: Date.now(),
   };
@@ -244,7 +209,6 @@ export function planAreaFx(input: AreaPlan): FxEvent | null {
     outcomes,
     shape: input.shape,
     ...(input.damageType ? { damageType: input.damageType } : {}),
-    sting: spellSting(input.damageType),
     numbers: input.secretNumbers ? "dm" : "all",
     at: Date.now(),
   };
@@ -258,7 +222,6 @@ export function planHealFx(input: { to: XY; toTokenId?: string; amount: number }
     ...(input.toTokenId ? { toTokenId: input.toTokenId } : {}),
     outcome: "hit",
     amount: input.amount,
-    sting: "heal",
     numbers: "all",
     at: Date.now(),
   };
@@ -289,7 +252,6 @@ export function planDeathFx(input: { to: XY; toTokenId?: string; name: string })
     to: input.to,
     ...(input.toTokenId ? { toTokenId: input.toTokenId } : {}),
     label: input.name,
-    sting: "death",
     numbers: "all",
     at: Date.now(),
   };
@@ -299,20 +261,11 @@ export function planDoorFx(input: {
   at: XY;
   state: "open" | "closed" | "locked" | "secret" | "found";
 }): FxEvent {
-  const sting =
-    input.state === "open"
-      ? "door_creak"
-      : input.state === "closed"
-        ? "door_slam"
-        : input.state === "locked"
-          ? "door_locked"
-          : "door_secret";
   return {
     id: fxId("door"),
     kind: "door",
     to: input.at,
     state: input.state,
-    sting,
     numbers: "all",
     at: Date.now(),
   };
@@ -335,7 +288,6 @@ export function planHazardFx(input: {
     label: input.hazard,
     ...(input.damageType ? { damageType: input.damageType } : {}),
     ...(input.amount ? { amount: input.amount } : {}),
-    sting: input.hazard === "falling" ? "thud" : spellSting(input.damageType),
     numbers: "all",
     at: Date.now(),
   };
@@ -349,7 +301,6 @@ export function planTeleportFx(input: { from: XY; to: XY; tokenId?: string }): F
     to: input.to,
     ...(input.tokenId ? { fromTokenId: input.tokenId, toTokenId: input.tokenId } : {}),
     outcome: "hit",
-    sting: "magic_cast",
     numbers: "all",
     at: Date.now(),
   };

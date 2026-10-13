@@ -32,15 +32,6 @@ process.env.DB_ENCRYPTION_KEY = dbKey;
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-// Stub the local embedder before anything can trigger it. src/lib/
-// embeddings.ts caches the pipeline on this global (for dev HMR), which
-// makes it the natural seam: without it this suite would either download a
-// model or spend its run logging caught failures, and neither says anything
-// about a workshop. With it, "did the copy get indexed" becomes assertable.
-globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
-  Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
-);
-
 const reopening = process.argv[2] === "--reopen";
 
 const { getDatabase, nowIso, repairWorkshopDmSeats } = await import("../src/lib/db/core.ts");
@@ -145,13 +136,6 @@ function test(name, fn) {
     passed += 1;
   }
 }
-
-// Lets the fire-and-forget embedding work settle. Two turns of the macrotask
-// queue is enough with a stubbed embedder; the real one is never used here.
-const flushEmbeddings = () =>
-  new Promise((resolve) => setTimeout(resolve, 0)).then(
-    () => new Promise((resolve) => setTimeout(resolve, 0)),
-  );
 
 const userId = randomUUID();
 db.prepare(
@@ -308,15 +292,11 @@ test("imported house rules are chunked for retrieval, not just stored", () => {
   assert.ok(chunks.count > 0, "house rules landed without chunks, so retrieval cannot see them");
 });
 
-test("imported lore is queued for retrieval indexing", async () => {
-  // The copy skips the per-insert embed to keep the import one transaction,
-  // so the catch-up pass is the only thing that indexes it. If that pass is
-  // ever dropped, imported lore silently becomes keyword-only.
-  await flushEmbeddings();
-  const unindexed = db
-    .prepare(`SELECT COUNT(*) AS count FROM lore_entries WHERE campaign_id = ? AND embedding IS NULL`)
+test("imported lore lands with its text, so retrieval can see it", () => {
+  const rows = db
+    .prepare(`SELECT COUNT(*) AS count FROM lore_entries WHERE campaign_id = ? AND LENGTH(body) > 0`)
     .get(campaign.id);
-  assert.equal(unindexed.count, 0, "imported lore never got embedded");
+  assert.ok(rows.count > 0, "imported lore never landed with its text");
 });
 
 test("the import copies rather than moves", () => {
@@ -1610,8 +1590,6 @@ test("ground drawn elsewhere replaces the terrain and its lines, and keeps the w
   assert.ok(view.locations.every((location) => location.anchor !== null));
 });
 
-// Any check that awaited the indexing pass has to finish before the schema
-// is disturbed below.
 await Promise.all(pending);
 
 // ---- the upgrade path, in a second process ----
@@ -1619,11 +1597,9 @@ await Promise.all(pending);
 // ensureSchema runs once per process, so proving that an older database
 // acquires the column on boot needs a fresh one. Drop the column here and
 // let the child open the same file.
-await flushEmbeddings();
 db.exec(`ALTER TABLE campaigns DROP COLUMN kind`);
-// Deliberately NOT closed: any embedding job still in flight would find a
-// dead handle and log a caught failure, which reads like a broken test. The
-// child opens its own connection to the same file, which SQLite allows.
+// Deliberately NOT closed: the child opens its own connection to the same
+// file, which SQLite allows.
 
 const child = spawnSync(process.execPath, [selfPath, "--reopen"], {
   env: { ...process.env, ODM_TEST_DB: dbPath, ODM_TEST_KEY: dbKey },

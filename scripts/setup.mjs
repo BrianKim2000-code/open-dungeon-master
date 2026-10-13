@@ -1,6 +1,6 @@
 // npm run setup: everything a fresh clone needs before its first start, in
-// one command, safe to run again. It replaces the README's old list (make a
-// key, build the content pack, fetch the embedding model, build) and ends by
+// one command, safe to run again. It replaces the README's old list (build
+// the content pack, build) and ends by
 // saying how to start the server; the browser takes over from there with
 // the one-time setup link the server prints and the guided setup
 // (src/app/setup).
@@ -8,7 +8,6 @@
 //   npm run setup               all of it
 //   npm run setup -- --no-build  skip the production build (for npm run dev)
 import { spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -22,7 +21,7 @@ const dim = (text) => (process.stdout.isTTY ? `\x1b[2m${text}\x1b[0m` : text);
 const step = (n, total, text) => console.log(`\n${gold(`[${n}/${total}]`)} ${bold(text)}`);
 const note = (text) => console.log(`      ${text}`);
 
-const total = build ? 5 : 4;
+const total = build ? 4 : 3;
 const warnings = [];
 
 function run(script, extra = []) {
@@ -48,28 +47,10 @@ step(1, total, "Checking Node");
   note(`Node ${process.versions.node}`);
 }
 
-// 2. The database key. Never replaced: a database made under one key cannot
-// be read with another, so an existing database with no key is a stop.
-step(2, total, "The database key");
+// 2. Database: unencrypted in this simplified build, no key needed.
+step(2, total, "The database");
 {
-  const envPath = path.join(root, ".env.server");
-  const env = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
-  const hasKey = /^\s*DB_ENCRYPTION_KEY\s*=\s*\S+/m.test(env) || Boolean(process.env.DB_ENCRYPTION_KEY);
-  const dbPath = process.env.SQLITE_DB_PATH || path.join(root, "data", "local-roleplay.sqlite");
-  if (hasKey) {
-    note("Already set in .env.server. Kept as it is.");
-  } else if (fs.existsSync(dbPath) && fs.statSync(dbPath).size > 0) {
-    console.error(
-      `      A database already exists at ${path.relative(root, dbPath)} but .env.server has no DB_ENCRYPTION_KEY.\n` +
-        "      A new key cannot open it. Put the key it was made with back in .env.server, then run this again.",
-    );
-    process.exit(1);
-  } else {
-    const line = `DB_ENCRYPTION_KEY=${randomBytes(32).toString("hex")}\n`;
-    fs.writeFileSync(envPath, env && !env.endsWith("\n") ? `${env}\n${line}` : `${env}${line}`, { mode: 0o600 });
-    note("Made one and saved it in .env.server.");
-    note(gold("Back that file up. The database is encrypted with the key and cannot be read without it."));
-  }
+  note("Unencrypted SQLite at data/local-roleplay.sqlite (no key needed).");
 }
 
 // 3. The content pack: every spell, feat, item, subclass and monster.
@@ -83,17 +64,9 @@ step(3, total, "The content pack (spells, feats, items, monsters)");
   }
 }
 
-// 4. The embedding model behind story recall and lore search. The app
-// fetches it on first use anyway; fetching it now means an offline table
-// never waits on it.
-step(4, total, "The memory model (story recall and lore search)");
-if (!run("fetch-embedding-model.mjs")) {
-  warnings.push("The memory model did not download. The app fetches it the first time it needs it, or run: npm run fetch-model");
-}
-
-// 5. The production build.
+// 4. The production build.
 if (build) {
-  step(5, total, "Building the app (a few minutes, once)");
+  step(4, total, "Building the app (a few minutes, once)");
   const result = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], {
     cwd: root,
     stdio: "inherit",

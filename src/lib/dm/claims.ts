@@ -37,7 +37,7 @@ import {
 //
 // A reader that fails or answers something unreadable fails open: the
 // passage counts as claiming nothing, so the turn is persisted as it would
-// have been, the way a retrieval with no embedder never breaks a turn. It is
+// have been, the way a retrieval that finds nothing never breaks a turn. It is
 // never silent: the failure is logged, naming the turn and never the text
 // (PRIVACY: narration is story text; only DM_DEBUG logs it).
 

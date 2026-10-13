@@ -34,12 +34,6 @@ async function portInUse(port) {
   });
 }
 
-function envValue(file, key) {
-  if (!fs.existsSync(file)) return "";
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return fs.readFileSync(file, "utf8").match(new RegExp(`^${escaped}=(.*)$`, "m"))?.[1]?.trim() || "";
-}
-
 function assertSafeArchive(archive) {
   const listing = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" });
   for (const raw of listing.split(/\r?\n/)) {
@@ -49,13 +43,6 @@ function assertSafeArchive(archive) {
       fail(`archive contains an unsafe path: ${raw}`);
     }
   }
-}
-
-function keyForStage(stage) {
-  const fromEnv = envValue(path.join(stage, ".env.server"), "DB_ENCRYPTION_KEY");
-  if (fromEnv) return fromEnv;
-  const dockerKey = path.join(stage, "data", ".db-key");
-  return fs.existsSync(dockerKey) ? fs.readFileSync(dockerKey, "utf8").trim() : "";
 }
 
 if (!archiveArg) {
@@ -81,14 +68,10 @@ try {
   if (relative.startsWith("..") || path.isAbsolute(relative)) fail("backup manifest points outside the restored tree");
   if (!fs.existsSync(dbPath)) fail(`restored database is missing: ${manifest.database}`);
 
-  const key = keyForStage(stage);
-  if (!key) fail("backup does not contain a database encryption key");
-  const Database = (await import("better-sqlite3-multiple-ciphers")).default;
+  const Database = (await import("better-sqlite3")).default;
   const db = new Database(dbPath, { readonly: true });
   let proof;
   try {
-    db.pragma("cipher='chacha20'");
-    db.pragma(`key='${key.replaceAll("'", "''")}'`);
     const integrity = db.pragma("integrity_check", { simple: true });
     if (integrity !== "ok") fail(`restored database integrity check failed: ${integrity}`);
     const count = (table) => db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
@@ -103,9 +86,6 @@ try {
   }
   fs.mkdirSync(target, { recursive: true });
 
-  // Only the paths this app manages (the list odm-backup.mjs writes): a live
-  // restore deletes each one first, so a manifest must not get to name
-  // anything else.
   const known = ["data", "public/uploads", "public/generated", "public/generated-audio", "models", ".env.server"];
   const named = Array.isArray(manifest.includes) ? manifest.includes : [];
   for (const rel of named) {

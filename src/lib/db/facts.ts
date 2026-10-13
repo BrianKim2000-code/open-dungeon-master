@@ -101,13 +101,6 @@ export function listActiveFacts(campaignId: string, limit = 200): WorldFact[] {
   return rows.map(mapFact);
 }
 
-// NULL until embedded (src/lib/dm/memory-index.ts embedPendingFacts).
-export function listActiveFactVectors(campaignId: string): Array<{ id: string; embedding: Buffer | null }> {
-  return getDatabase()
-    .prepare(`SELECT id, embedding FROM world_facts WHERE campaign_id = ? AND status = 'active'`)
-    .all(campaignId) as Array<{ id: string; embedding: Buffer | null }>;
-}
-
 // Retires the facts an extraction call said to retire
 // (src/lib/dm/fact-consolidation-logic.ts). Keyed by campaign, so an id from
 // another campaign retires nothing; a pin is a human statement that the fact

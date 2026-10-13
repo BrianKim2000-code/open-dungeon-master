@@ -6,9 +6,7 @@
 import { hostAvailability } from "@/lib/harness/discover";
 import {
   COMFYUI_PORT,
-  KOKORO_PORT,
   TEXT_SERVER_LABEL,
-  WHISPER_PORT,
   identifyTextServer,
   modelsUrl,
   normalizeBaseUrl,
@@ -16,7 +14,6 @@ import {
   pickZImageFiles,
   readComfyCheckpoints,
   readComfyFiles,
-  readKokoroVoices,
   readModelList,
   readModelsAnswer,
   recommendedModel,
@@ -50,8 +47,6 @@ export type ScanResult = {
   text: FoundTextServer[];
   // zImage: all three Z-Image Turbo files are there to pick it.
   comfyui: { url: string; checkpoints: string[]; zImage: boolean } | null;
-  kokoro: { url: string; voices: string[] } | null;
-  whisper: { url: string } | null;
 };
 
 async function getJson(url: string, timeoutMs: number, headers: Record<string, string> = {}) {
@@ -105,22 +100,6 @@ async function findComfy(host: string) {
   return { url, checkpoints: readComfyCheckpoints(info.body), zImage: zImageMissing(zImage).length === 0 };
 }
 
-async function findKokoro(host: string) {
-  const url = originOf(host, KOKORO_PORT);
-  const health = await getJson(`${url}/health`, SCAN_TIMEOUT_MS);
-  if (health.status !== 200) {
-    return null;
-  }
-  const voices = await getJson(`${url}/v1/audio/voices`, SCAN_TIMEOUT_MS);
-  return { url, voices: readKokoroVoices(voices.body) };
-}
-
-async function findWhisper(host: string) {
-  const url = originOf(host, WHISPER_PORT);
-  const models = await getJson(`${url}/v1/models`, SCAN_TIMEOUT_MS);
-  return models.status === 200 ? { url } : null;
-}
-
 // The first host that answers wins for each single service.
 async function firstOf<T>(hosts: string[], find: (host: string) => Promise<T | null>): Promise<T | null> {
   const results = await Promise.all(hosts.map(find));
@@ -131,11 +110,9 @@ export async function scanLocalServices(ownPort = process.env.PORT): Promise<Sca
   const inContainer = hostAvailability() === "container";
   const hosts = scanHosts(inContainer);
   const ports = textPorts(ownPort);
-  const [textResults, comfyui, kokoro, whisper] = await Promise.all([
+  const [textResults, comfyui] = await Promise.all([
     Promise.all(hosts.flatMap((host) => ports.map(({ port, guess }) => findTextServer(host, port, guess)))),
     firstOf(hosts, findComfy),
-    firstOf(hosts, findKokoro),
-    firstOf(hosts, findWhisper),
   ]);
   // Host networking answers the same server on both names; keep the first.
   const seenPorts = new Set<string>();
@@ -146,7 +123,7 @@ export async function scanLocalServices(ownPort = process.env.PORT): Promise<Sca
     seenPorts.add(port);
     return true;
   });
-  return { inContainer, text, comfyui, kokoro, whisper };
+  return { inContainer, text, comfyui };
 }
 
 export type ModelListing =

@@ -404,15 +404,15 @@ for (const seed of ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", 
 
 // Maps: every setting resolves from its own name, in the genre that owns it,
 // and free text that matches nothing still lands on a real file. Each map
-// id is spelled as a person would name the place, which is what the cue
-// table has to recognise for the plate to ever be drawn.
+// id is spelled as a person would name the place, which is what the scene
+// list has to recognise for the plate to ever be drawn.
 // A kind of scene draws its plate whatever language the place is named in;
 // a genre's own plate comes first, and a kind with several plates draws each
 // for some place. No kind falls back to the genre's plates, or the journey.
-const { cueIds } = await import("../src/lib/ambience/catalog.ts");
+const { sceneIds } = await import("../src/lib/scenes.ts");
 const SEEDS = Array.from({ length: 24 }, (_, index) => `loc-${index}`);
 for (const genre of GENRES) {
-  for (const scene of [...cueIds("bed"), null]) {
+  for (const scene of [...sceneIds(), null]) {
     for (const seed of SEEDS) {
       check(R.mapPlaceholder({ scene, genre }, seed), `map ${genre || "fantasy"}/${scene ?? "no kind"}`);
     }

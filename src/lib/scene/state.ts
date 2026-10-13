@@ -55,7 +55,6 @@ export type TitleCard = {
   // Gold for chapters, ember for a fight, dawn for a rest, plain for the
   // DM's own, act for the ends and beginnings of acts (a longer hold).
   tone: "gold" | "ember" | "dawn" | "plain" | "act";
-  sting?: string;
   at: number;
 };
 

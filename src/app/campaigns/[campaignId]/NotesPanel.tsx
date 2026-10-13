@@ -14,8 +14,6 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import type { CampaignMember } from "@/lib/campaign-types";
 import type { Note } from "@/lib/db/notes";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 
 // Campaign notes tab: the lead's public party notes and pinned events, the
 // suggestion queue, and each member's private notes. Character-scoped notes
@@ -89,15 +87,13 @@ function NoteCard({
             placeholder="Title (optional)"
             className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs outline-none focus:border-amber-600"
           />
-          <DictateField label="Note" onTranscript={(text) => setBody((current) => appendDictation(current, text, 2000))}>
-            <textarea
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              rows={3}
-              maxLength={2000}
-              className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-[11px] leading-4 outline-none focus:border-amber-600"
-            />
-          </DictateField>
+          <textarea
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            rows={3}
+            maxLength={2000}
+            className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-[11px] leading-4 outline-none focus:border-amber-600"
+          />
           <div className="flex gap-1.5">
             <button
               type="button"
@@ -277,22 +273,20 @@ export function NoteComposer({
           className="mb-1.5 w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs outline-none focus:border-amber-600"
         />
       ) : null}
-      <DictateField label="Note" onTranscript={(text) => setBody((current) => appendDictation(current, text, 2000))}>
-        <textarea
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          rows={2}
-          maxLength={2000}
-          placeholder={
-            visibility === "private"
-              ? "Only you will see this"
-              : steersStory || characterId
-                ? "Visible to the whole party"
-                : "Sent to the party lead for approval"
-          }
-          className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-[11px] leading-4 outline-none focus:border-amber-600"
-        />
-      </DictateField>
+      <textarea
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        rows={2}
+        maxLength={2000}
+        placeholder={
+          visibility === "private"
+            ? "Only you will see this"
+            : steersStory || characterId
+              ? "Visible to the whole party"
+              : "Sent to the party lead for approval"
+        }
+        className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-[11px] leading-4 outline-none focus:border-amber-600"
+      />
       {error ? <p className="motion-shake mt-1 text-[10px] text-red-400">{error}</p> : null}
       <button
         type="button"

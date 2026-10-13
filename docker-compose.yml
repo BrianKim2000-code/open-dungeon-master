@@ -18,11 +18,7 @@ services:
     image: ${ODM_IMAGE:-lebbi/open-dungeon-master}:${ODM_IMAGE_TAG:-latest}
     build:
       context: .
-      # `--build` also bakes EMBEDDING_MODEL into the image, if set, so its
-      # containers never download it.
       args:
-        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
-        EMBEDDING_DTYPE: ${EMBEDDING_DTYPE:-}
         # Agent programs to install into the image, by npm package name
         # ("@openai/codex"). The server finds and runs a program installed
         # inside its container; sign in once with
@@ -33,20 +29,10 @@ services:
     restart: unless-stopped
     ports:
       - "${ODM_PORT:-3005}:3005"
-      # Live voice chat. One port, both protocols. This carries the audio
-      # itself, which is not HTTP, so it does NOT go through a reverse proxy:
-      # open it on the firewall pointing at this host. Set VOICE_ANNOUNCED_IP
-      # below or the container advertises its own 172.x address and calls
-      # connect to silence.
-      - "${VOICE_RTC_PORT:-44444}:${VOICE_RTC_PORT:-44444}/udp"
-      - "${VOICE_RTC_PORT:-44444}:${VOICE_RTC_PORT:-44444}/tcp"
     extra_hosts:
       # Lets the container reach services bound to the host's loopback.
       - "host.docker.internal:host-gateway"
     environment:
-      # Leave empty to have a key generated into the data volume on first boot.
-      # Whatever you set here wins over the stored one.
-      DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:-}
       # The one-time code that creating the first (admin) account requires.
       # Leave empty to have one generated and printed in the logs at every
       # start until that account exists.
@@ -61,10 +47,8 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
 
-      # Images and speech. Each is optional; the app degrades gracefully.
+      # Images. Optional; the app degrades gracefully.
       COMFYUI_URL: ${COMFYUI_URL:-http://host.docker.internal:8188}
-      KOKORO_URL: ${KOKORO_URL:-http://host.docker.internal:8880}
-      STT_URL: ${STT_URL:-http://host.docker.internal:8870}
 
       # Set these when running behind a reverse proxy. APP_PUBLIC_URL also fixes
       # the Discord OAuth callback URL.
@@ -72,26 +56,6 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-}
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
-
-      # Live voice chat. Off unless VOICE_ENABLED=1, because it needs the port
-      # above opened AND the app served over https (browsers block microphone
-      # access on plain http), so it cannot just work by default.
-      #
-      # VOICE_ANNOUNCED_IP is required once enabled: the address a player's
-      # browser can reach this host on, normally your public IP. Without it the
-      # container announces its own 172.x address and calls stay silent.
-      # VOICE_DOMAIN optionally announces a hostname instead; it must resolve
-      # straight here, so a Cloudflare-proxied name will not do.
-      VOICE_ENABLED: ${VOICE_ENABLED:-0}
-      VOICE_RTC_PORT: ${VOICE_RTC_PORT:-44444}
-      VOICE_ANNOUNCED_IP: ${VOICE_ANNOUNCED_IP:-}
-      VOICE_DOMAIN: ${VOICE_DOMAIN:-}
-
-      # Embedding model for story recall. Empty = MiniLM, baked into the image.
-      # Any other must be 384-dim. After a change the server re-embeds the
-      # stored story in the background at its next start.
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
-      EMBEDDING_DTYPE: ${EMBEDDING_DTYPE:-}
 
       # Verbose DM turn logging.
       DM_DEBUG: ${DM_DEBUG:-}
@@ -102,11 +66,6 @@ services:
       - odm-data:/app/data
       - odm-uploads:/app/public/uploads
       - odm-generated:/app/public/generated
-      - odm-audio:/app/public/generated-audio
-      # The built-in speech recognition model the admin downloads, which an
-      # update would otherwise throw away. Only this folder: models/embeddings
-      # is baked into the image and must not be hidden by a mount.
-      - odm-speech:/app/models/speech
       # The agent program's sign-in (~/.codex, ~/.claude, ...), when one is
       # installed into the image with AGENT_PROGRAMS.
       - odm-home:/home/node
@@ -115,6 +74,4 @@ volumes:
   odm-data:
   odm-uploads:
   odm-generated:
-  odm-audio:
-  odm-speech:
   odm-home:

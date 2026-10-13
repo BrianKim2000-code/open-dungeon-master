@@ -58,9 +58,6 @@ function imagesProbeUrl(backend, comfyBaseUrl, fluxWorkerUrl) {
   return "";
 }
 
-function speechConfigured(explicitUrl, defaultReachable) {
-  return Boolean(explicitUrl.trim()) || defaultReachable;
-}
 
 function storyProbeUrl({ textProvider, customBaseUrl = "" }, ollamaBaseUrl) {
   if (textProvider === "none") {
@@ -76,9 +73,6 @@ function storyProbeUrl({ textProvider, customBaseUrl = "" }, ollamaBaseUrl) {
   return /\/v\d+$/.test(base) ? `${base}/models` : `${base}/v1/models`;
 }
 
-function ttsProbeUrl(kokoroBaseUrl) {
-  return `${kokoroBaseUrl.replace(/\/+$/, "")}/health`;
-}
 
 let failures = 0;
 function check(name, fn) {
@@ -196,13 +190,6 @@ check("portrait renders are gated on imagesAvailable", () => {
   assert.match(source, /export async function imagesAvailable\(\s*(settings\?:|\))/);
 });
 
-check("speech is configured by an explicit URL or a live default", () => {
-  assert.equal(speechConfigured("http://127.0.0.1:8880", false), true);
-  assert.equal(speechConfigured("", true), true);
-  assert.equal(speechConfigured("", false), false);
-  assert.equal(speechConfigured("   ", false), false);
-});
-
 // The story probe must accept whatever URL shape the owner pasted, the same
 // forgiveness customChatEndpoint extends to /chat/completions.
 check("story probe URLs land on the models listing", () => {
@@ -275,11 +262,6 @@ check("the story probe sends the backend's key, admin key first", () => {
     storyProbeHeaders({ textProvider: "none", customBaseUrl: "" }, { configured: "k", openaiCompat: "k", openRouter: "k" }),
     {},
   );
-});
-
-check("the tts probe hits Kokoro's health endpoint", () => {
-  assert.equal(ttsProbeUrl("http://127.0.0.1:8880"), "http://127.0.0.1:8880/health");
-  assert.equal(ttsProbeUrl("http://127.0.0.1:8880/"), "http://127.0.0.1:8880/health");
 });
 
 // The cache window is what makes the endpoint pollable: a dead backend costs

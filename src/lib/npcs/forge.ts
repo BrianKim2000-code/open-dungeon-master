@@ -218,26 +218,8 @@ export function relationGraph(
 
 // ---- the draft ----
 
-// Their own voice for read-aloud (docs/vtt-parity-implementation-plan.md
-// 8.2), or null for the narrator's.
-export type NpcVoice = { voiceId: string; speed: number };
-
-export function normalizeNpcVoice(raw: unknown): NpcVoice | null {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-  const record = raw as Record<string, unknown>;
-  const voiceId = typeof record.voiceId === "string" ? record.voiceId.trim().slice(0, 120) : "";
-  if (!voiceId) {
-    return null;
-  }
-  const speed = Number(record.speed);
-  return { voiceId, speed: Number.isFinite(speed) ? Math.round(Math.min(1.4, Math.max(0.7, speed)) * 100) / 100 : 1 };
-}
-
 export type NpcDraft = {
   name: string;
-  voice: NpcVoice | null;
   // The faction they belong to, by id; "" for none.
   factionId: string;
   aliases: string[];
@@ -261,7 +243,6 @@ export type NpcDraft = {
 export function blankDraft(): NpcDraft {
   return {
     name: "",
-    voice: null,
     factionId: "",
     aliases: [],
     attitude: "indifferent",
@@ -290,7 +271,6 @@ export function draftFrom(npc: {
   // Optional so rows stored before the column existed still open.
   role?: string;
   gender?: Gender;
-  voice?: NpcVoice | null;
   factionId?: string;
   statBlock?: string;
   agency: { personality: NpcPersonality | null; goals: NpcGoals; relations: NpcRelation[] };
@@ -298,7 +278,6 @@ export function draftFrom(npc: {
   return {
     statBlock: npc.statBlock ?? "",
     name: npc.name,
-    voice: npc.voice ? { ...npc.voice } : null,
     factionId: npc.factionId ?? "",
     aliases: [...npc.aliases],
     attitude: ATTITUDES.includes(npc.attitude as Attitude)
@@ -393,7 +372,6 @@ export function normalizeNpcDraft(input: unknown): DraftOutcome {
   return {
     draft: {
       name,
-      voice: normalizeNpcVoice(raw.voice),
       factionId: String(raw.factionId ?? "").trim().slice(0, 64),
       aliases,
       attitude,

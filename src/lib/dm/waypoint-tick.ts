@@ -27,8 +27,7 @@ import {
 // move_party). A tool call ticks a step when the DM tags it with the step's
 // number, or when the name it used matches the step's words. A name worded
 // differently and untagged is left to the judge: no similarity score can
-// tell "the drowned cathedral" from a different place that reads like it,
-// and its scale changes with the embedding model.
+// tell "the drowned cathedral" from a different place that reads like it.
 
 type ToolCall = { name: string; rawArguments: string };
 

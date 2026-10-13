@@ -30,11 +30,9 @@ async function test(name, run) {
 }
 
 // Read from the tree at run time, so the trace has to carry them: the
-// bundled world packs (the apps' payload keeps them from the trace), and
-// package.json as a module resolution base (standalone always writes one).
+// bundled world packs (the apps' payload keeps them from the trace).
 const BUILD_INPUTS = [
   { file: "src/lib/worlds/index.ts", text: '"src", "lib", "worlds", "bundled"' },
-  { file: "src/lib/image-variants.ts", text: '"package.json"' },
 ];
 
 function sourceFiles(dir) {

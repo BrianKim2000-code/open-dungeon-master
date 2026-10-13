@@ -113,11 +113,11 @@ export function FeelStep(props: StepProps & { active: boolean }) {
       ))}
 
       <p className="cc-note leading-relaxed">
-        Theatre inserts, drawing on the board, enemy intent and characters per player are choices
+        Drawing on the board, enemy intent and characters per player are choices
         too, but they are left out of the total.
       </p>
 
-      <NarratorFields {...props} className={cn(!gates.aiNarrates && !draft.ttsEnabled && "hidden")} />
+      <NarratorFields {...props} className={cn(!gates.aiNarrates && "hidden")} />
       <SafetyFields {...props} />
     </div>
   );

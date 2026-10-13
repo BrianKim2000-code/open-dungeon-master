@@ -121,7 +121,7 @@ await test("the single entry point routes cantrips and slots correctly", () => {
 const contentDb = "data/content/open5e.sqlite";
 if (existsSync(contentDb)) {
   await test("the shipped content pack parses at a useful rate", async () => {
-    const { default: Database } = await import("better-sqlite3-multiple-ciphers");
+    const { default: Database } = await import("better-sqlite3");
     const db = new Database(contentDb, { readonly: true });
     const rows = db
       .prepare("SELECT name, level, data_json FROM spells WHERE data_json LIKE '%damage%'")

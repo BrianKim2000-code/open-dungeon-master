@@ -140,17 +140,12 @@ async function requireRoom(needed: number, ...dirs: string[]) {
 // The database work (the consistent snapshot, and a restore's integrity
 // proof) runs in a separate Node process with the same SQLite module, so a
 // large world's VACUUM INTO or integrity_check does not hold the server's
-// event loop. The key travels in the environment, never the command line.
+// event loop.
 const DATABASE_SCRIPT = `
 const [mode, modulePath, source, target] = process.argv.slice(1);
 const Database = require(modulePath);
 const db = new Database(source, { readonly: true });
 try {
-  const key = process.env.ODM_BACKUP_DB_KEY || "";
-  if (key) {
-    db.pragma("cipher='chacha20'");
-    db.pragma("key='" + key.replaceAll("'", "''") + "'");
-  }
   if (mode === "vacuum") {
     db.exec("VACUUM INTO '" + target.replaceAll("'", "''") + "'");
   } else {
@@ -177,7 +172,7 @@ function sqliteModulePath(): string {
   }
   for (const base of bases) {
     try {
-      return createRequire(base).resolve("better-sqlite3-multiple-ciphers");
+      return createRequire(base).resolve("better-sqlite3");
     } catch {
       // Try the next place.
     }
@@ -188,14 +183,14 @@ function sqliteModulePath(): string {
 // Runs one database job in the child process; null when the child could not
 // be used (the module did not resolve, or the process failed to start), so
 // the caller does the work in this process as before rather than failing.
-async function inChild(mode: "vacuum" | "prove", source: string, target: string, key: string): Promise<string | null> {
+async function inChild(mode: "vacuum" | "prove", source: string, target: string): Promise<string | null> {
   const modulePath = sqliteModulePath();
   if (!modulePath) {
     return null;
   }
   try {
     const { stdout } = await run(process.execPath, ["-e", DATABASE_SCRIPT, mode, modulePath, source, target], {
-      env: { ...process.env, ODM_BACKUP_DB_KEY: key, ELECTRON_RUN_AS_NODE: "1" },
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
       encoding: "utf8",
       maxBuffer: 1024 * 1024,
     });
@@ -206,18 +201,14 @@ async function inChild(mode: "vacuum" | "prove", source: string, target: string,
   }
 }
 
-async function snapshotDatabase(db: string, snapshot: string, key: string) {
-  if ((await inChild("vacuum", db, snapshot, key)) !== null) {
+async function snapshotDatabase(db: string, snapshot: string) {
+  if ((await inChild("vacuum", db, snapshot)) !== null) {
     return;
   }
   await fs.promises.rm(snapshot, { force: true });
-  const Database = (await import("better-sqlite3-multiple-ciphers")).default;
+  const Database = (await import("better-sqlite3")).default;
   const handle = new Database(db, { readonly: true });
   try {
-    if (key) {
-      handle.pragma("cipher='chacha20'");
-      handle.pragma(`key='${key.replaceAll("'", "''")}'`);
-    }
     handle.exec(`VACUUM INTO '${snapshot.replaceAll("'", "''")}'`);
   } finally {
     handle.close();
@@ -260,19 +251,6 @@ async function hashFile(file: string): Promise<string> {
     stream.on("data", (chunk) => hash.update(chunk));
     stream.on("end", () => resolve(hash.digest("hex")));
   });
-}
-
-function envValue(file: string, key: string): string {
-  if (!fs.existsSync(file)) return "";
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return fs.readFileSync(file, "utf8").match(new RegExp(`^${escaped}=(.*)$`, "m"))?.[1]?.trim() || "";
-}
-
-function encryptionKey(): string {
-  const fromEnv = serverEnv("DB_ENCRYPTION_KEY").trim();
-  if (fromEnv) return fromEnv;
-  const dockerKey = path.join(/*turbopackIgnore: true*/ root(), "data", ".db-key");
-  return fs.existsSync(dockerKey) ? fs.readFileSync(dockerKey, "utf8").trim() : "";
 }
 
 // Only ever touch archives we named: a strict name plus a containment check,
@@ -338,7 +316,7 @@ async function buildBackup(options: { includeModels?: boolean }, phase: (name: s
   try {
     phase("snapshotting the database");
     const snapshot = path.join(stage, "snapshot.sqlite");
-    await snapshotDatabase(db, snapshot, encryptionKey());
+    await snapshotDatabase(db, snapshot);
 
     phase("copying files");
     const liveDb = path.resolve(db);
@@ -453,16 +431,7 @@ async function proveArchive(name: string): Promise<{ proof: RestoreProof; sha256
     fs.rmSync(`${dbInStage}-wal`, { force: true });
     fs.rmSync(`${dbInStage}-shm`, { force: true });
 
-    // Prefer the key the archive carries (it matches the archive's data);
-    // fall back to this server's key for archives made without one.
-    const key =
-      envValue(path.join(/*turbopackIgnore: true*/ stage, ".env.server"), "DB_ENCRYPTION_KEY") ||
-      (fs.existsSync(path.join(/*turbopackIgnore: true*/ stage, "data", ".db-key"))
-        ? fs.readFileSync(path.join(/*turbopackIgnore: true*/ stage, "data", ".db-key"), "utf8").trim()
-        : "") ||
-      encryptionKey();
-
-    const fromChild = await inChild("prove", dbInStage, "", key);
+    const fromChild = await inChild("prove", dbInStage, "");
     let proof: RestoreProof;
     if (fromChild !== null) {
       const result = JSON.parse(fromChild) as Partial<RestoreProof> & { integrity?: string };
@@ -471,13 +440,9 @@ async function proveArchive(name: string): Promise<{ proof: RestoreProof; sha256
       }
       proof = { campaigns: Number(result.campaigns), users: Number(result.users), messages: Number(result.messages) };
     } else {
-      const Database = (await import("better-sqlite3-multiple-ciphers")).default;
+      const Database = (await import("better-sqlite3")).default;
       const db = new Database(dbInStage, { readonly: true });
       try {
-        if (key) {
-          db.pragma("cipher='chacha20'");
-          db.pragma(`key='${key.replaceAll("'", "''")}'`);
-        }
         const integrity = db.pragma("integrity_check", { simple: true });
         if (integrity !== "ok") {
           throw new Error(`restored database integrity check failed: ${integrity}`);

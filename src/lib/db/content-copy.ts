@@ -23,10 +23,9 @@ import { dedupeName, type ImportKind } from "@/lib/workshop/import";
 
 type Row = Record<string, unknown>;
 
-// Columns that never travel, because they are worked out again at the
-// target rather than copied: a lore entry's vector is recomputed by
-// embedPendingLore, and who it was written for names the source table's
-// people.
+// Columns that never travel: who an entry was written for names the source
+// table's people, and a legacy embedding column is never carried (nothing
+// reads it).
 const NEVER_COPIED: Record<string, readonly string[]> = {
   lore_entries: ["embedding", "audience_json"],
 };

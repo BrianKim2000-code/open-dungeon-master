@@ -89,7 +89,7 @@ export function generateForStudio(
       seed,
       width: settings.width,
       height: settings.height,
-      scene: settings.scene ?? location?.ambience?.bed ?? null,
+      scene: settings.scene ?? location?.scene ?? null,
       theme: settings.theme,
       ambient: settings.ambient,
       pcCount: crowd.pcCount,

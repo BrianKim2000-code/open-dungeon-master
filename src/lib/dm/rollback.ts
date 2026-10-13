@@ -183,7 +183,7 @@ function rollbackNow(
     db.prepare(
       `UPDATE chapters
        SET status = 'open', seq_end = NULL, title = '', summary = '',
-           highlights_json = '[]', embedding = NULL, updated_at = ?
+           highlights_json = '[]', updated_at = ?
        WHERE campaign_id = ? AND chapter_index = ?`,
     ).run(nowIso(), campaignId, targetChapterIndex);
     restoreSnapshot(campaignId, snapshot.payload);

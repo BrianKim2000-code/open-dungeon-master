@@ -23,7 +23,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { aiEngine, call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-narrator");
-const world = await openWorld({ gameSettings: { ttsEnabled: false, narrationGuard: true } });
+const world = await openWorld({ gameSettings: { narrationGuard: true } });
 const kit = await combatKit(world);
 const ai = await aiEngine(world);
 const model = await fakeModel();
@@ -753,7 +753,7 @@ async function postAction(table, userId, body) {
 
 // A second table for the route, with its own fake model: the route wakes a
 // DM turn of its own, which must never reach a real backend.
-const routeWorld = await openWorld({ gameSettings: { ttsEnabled: false } });
+const routeWorld = await openWorld({ gameSettings: {} });
 const routeModel = await fakeModel();
 routeModel.pointAt(routeWorld);
 const lead = routeWorld.addHero({
@@ -847,7 +847,7 @@ async function agentCall(table, userId, routeName, body, agent = true) {
   return { status: response.status, json: await response.json() };
 }
 
-const agentWorld = await openWorld({ gameSettings: { ttsEnabled: false, narrationGuard: true } });
+const agentWorld = await openWorld({ gameSettings: { narrationGuard: true } });
 routeModel.pointAt(agentWorld);
 const { setDmMode } = await import("../src/lib/db/campaigns.ts");
 setDmMode(agentWorld.campaignId, "human", agentWorld.owner.id);

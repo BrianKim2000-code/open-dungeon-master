@@ -4,7 +4,6 @@ import { getCommonWorkshop } from "@/lib/db/workshop-common";
 import { refFor } from "@/lib/db/workshop-bundle-export";
 import type { OriginKind } from "@/lib/db/content-origins";
 import {
-  normalizeAmbience,
   normalizeDoors,
   normalizeDrawings,
   normalizeLabels,
@@ -48,8 +47,8 @@ export function insertBundleMap(
          (id, campaign_id, name, notes, tags_json, width, height, terrain, ambient,
           theme, lights_json, seed, backdrop_path, backdrop_transform_json, skin_json,
           outdoors, labels_json, props_json, doors_json, zones_json, drawings_json,
-          overlay_path, ambience_json, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          overlay_path, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -75,7 +74,6 @@ export function insertBundleMap(
       JSON.stringify(normalizeZones(map.zones, width, height)),
       JSON.stringify(normalizeDrawings(map.drawings, width, height)),
       art.overlay,
-      JSON.stringify(normalizeAmbience(map.ambience)),
       now,
       now,
     );

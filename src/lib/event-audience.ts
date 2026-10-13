@@ -124,7 +124,6 @@ export const EVENT_AUDIENCE: Readonly<Record<string, Audience>> = {
   whisper_activity: TABLE,
   side_activity: TABLE,
   ask_activity: TABLE,
-  transcript_updated: TABLE,
   // The director's arm is published already redacted.
   director_armed: TABLE,
   // Members and seats.
@@ -141,18 +140,9 @@ export const EVENT_AUDIENCE: Readonly<Record<string, Audience>> = {
   // Safety: the X-card is for everyone by definition.
   x_card: TABLE,
   safety_resumed: TABLE,
-  // Media and sound.
+  // Media.
   image_ready: TABLE,
   media_status: TABLE,
-  tts_stream: TABLE,
-  tts_ready: TABLE,
-  ambience_changed: TABLE,
-  ambience_sting: TABLE,
-  // Voice: who is on the call and who is speaking; signals carry no story.
-  voice_roster: TABLE,
-  voice_speaking: TABLE,
-  voice_audibility_changed: TABLE,
-  voice_mesh_signal: TABLE,
   // Presence and the heartbeat are not game events, but they pass the same door.
   presence: TABLE,
   ping: TABLE,

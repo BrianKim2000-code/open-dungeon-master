@@ -21,7 +21,6 @@ export function publishTitleCard(
     title: card.title,
     ...(card.subtitle ? { subtitle: card.subtitle } : {}),
     tone: card.tone,
-    ...(card.sting ? { sting: card.sting } : {}),
     at: Date.now(),
   };
   publishPersisted(campaignId, "title_card", full);

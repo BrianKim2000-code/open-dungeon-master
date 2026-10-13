@@ -133,10 +133,10 @@ await test("an agent's one-rule change keeps the group's other rules", async () 
 });
 
 await test("an overlay never takes a prototype from the body", () => {
-  const merged = layOver({ dmMode: "ai" }, JSON.parse('{"__proto__": {"polluted": true}, "ttsEnabled": true}'));
+  const merged = layOver({ dmMode: "ai" }, JSON.parse('{"__proto__": {"polluted": true}, "mapsEnabled": true}'));
   assert.equal(Object.getPrototypeOf(merged), Object.prototype);
   assert.equal(merged.polluted, undefined);
-  assert.deepEqual(merged, { dmMode: "ai", ttsEnabled: true });
+  assert.deepEqual(merged, { dmMode: "ai", mapsEnabled: true });
 });
 
 await test("a stored value pruning cannot heal reads as the defaults instead of throwing", () => {

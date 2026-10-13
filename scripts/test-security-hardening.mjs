@@ -86,9 +86,9 @@ await test("a co-DM changes table settings but cannot hand the game to the AI", 
   assert.equal(table.campaign().dmUserId, dm.id, "the DM lost the seat");
   assert.equal(table.campaign().assistantDmUserId, coDm.id);
 
-  const other = await ask(settingsRoute, "PATCH", { ambienceEnabled: false }, { campaignId: table.campaignId });
+  const other = await ask(settingsRoute, "PATCH", { mapsEnabled: false }, { campaignId: table.campaignId });
   assert.equal(other.status, 200);
-  assert.equal(table.campaign().gameSettings.ambienceEnabled, false);
+  assert.equal(table.campaign().gameSettings.mapsEnabled, false);
 });
 
 // ---- the board record ----
@@ -124,15 +124,15 @@ await test("the DM proper may still hand the game to the AI", async () => {
 
 // ---- mute ----
 
-await test("a muted member's audio is not transcribed into the table's record", async () => {
-  const route = await table.route("campaigns/[campaignId]/voice/transcript");
+await test("a muted member cannot put words in front of the table", async () => {
+  const route = await table.route("campaigns/[campaignId]/ask");
   assert.ok(moderation.setMemberMuted(table.campaignId, player.id, true));
   table.signIn(player);
-  const muted = await ask(route, "POST", {}, { campaignId: table.campaignId });
+  const muted = await ask(route, "POST", { question: "What now?" }, { campaignId: table.campaignId });
   assert.equal(muted.status, 403);
   assert.match((await muted.json()).error, /muted/);
   moderation.setMemberMuted(table.campaignId, player.id, false);
-  const open = await ask(route, "POST", {}, { campaignId: table.campaignId });
+  const open = await ask(route, "POST", { question: "What now?" }, { campaignId: table.campaignId });
   assert.notEqual(open.status, 403, "an unmuted member is refused as muted");
 });
 

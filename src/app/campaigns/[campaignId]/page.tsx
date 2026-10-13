@@ -38,7 +38,6 @@ export default function CampaignPage({
     markFxPlayed,
     markCameraDone,
     markTitleCardShown,
-    playSting,
   } = useCampaignStream(campaignId);
 
   useEffect(() => {
@@ -86,7 +85,6 @@ export default function CampaignPage({
       markFxPlayed={markFxPlayed}
       markCameraDone={markCameraDone}
       markTitleCardShown={markTitleCardShown}
-      playSting={playSting}
         />
       )}
       </Suspense>

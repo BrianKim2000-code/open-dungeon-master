@@ -41,8 +41,6 @@ export const TEXT_PORTS: ReadonlyArray<{ port: number; guess: TextServerKind }> 
 ];
 
 export const COMFYUI_PORT = 8188;
-export const KOKORO_PORT = 8880;
-export const WHISPER_PORT = 8870;
 
 // Where to look. Inside a container 127.0.0.1 is the container itself, so
 // the host is asked for by its Docker name first; host networking makes
@@ -178,7 +176,7 @@ export type KeyProvider = {
   // OpenAI setup preselects the same one (open-dungeon-master-client
   // src/shared/ai-setup.ts DEFAULT_MODEL).
   preferred: readonly string[];
-  // One key also covers pictures, narration and dictation.
+  // One key also covers pictures.
   coversMedia: boolean;
 };
 
@@ -328,12 +326,6 @@ export function pickZImageFiles(lists: Record<ZImageSlot, readonly string[]>): Z
 // for the admin; empty once every file is there.
 export function zImageMissing(files: ZImageFiles): string[] {
   return (Object.keys(Z_IMAGE_SLOTS) as ZImageSlot[]).filter((slot) => !files[slot]).map((slot) => Z_IMAGE_SLOTS[slot].what);
-}
-
-// Kokoro-FastAPI's voice list, from GET /v1/audio/voices.
-export function readKokoroVoices(json: unknown): string[] {
-  const voices = (json as { voices?: unknown } | null)?.voices;
-  return Array.isArray(voices) ? voices.filter((voice): voice is string => typeof voice === "string") : [];
 }
 
 function hostOf(url: string): string {

@@ -3,7 +3,7 @@
 import { AlignLeft, Bot, Image as ImageIcon, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
-import { ImagesNote } from "@/app/campaigns/[campaignId]/NarrationNote";
+import { ImagesNote } from "@/app/campaigns/[campaignId]/ImagesNote";
 import { Select } from "@/components/ui/Select";
 import type { MaskedStorySettings } from "@/lib/db/settings";
 import type { HarnessOffer } from "@/lib/harness/policy";

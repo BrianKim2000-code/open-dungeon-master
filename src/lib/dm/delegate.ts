@@ -28,7 +28,6 @@ import {
   parseMonsterDecision,
   type MonsterDecision,
 } from "@/lib/dm/delegation";
-import { enqueueNarrationAudio } from "@/lib/tts";
 import { mergeLines } from "@/lib/dm/speech";
 import { modelLines } from "@/lib/dm/speech-lines";
 import { extractStoryText, stripReasoningArtifacts } from "@/lib/story-prompt";
@@ -366,15 +365,5 @@ export async function expandBeat(
     return { error: "Could not store the spoken take." };
   }
   publishPersisted(campaign.id, "message_updated", { message: updated });
-  if (campaign.gameSettings.ttsEnabled) {
-    void enqueueNarrationAudio(
-      campaign.id,
-      updated.id,
-      updated.content,
-      updated.speech,
-      campaign.gameSettings,
-      updated.speaker ?? null,
-    );
-  }
   return { content: updated.content };
 }

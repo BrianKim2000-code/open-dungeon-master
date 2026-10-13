@@ -2,7 +2,6 @@ import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { serverEnv } from "../server-env.ts";
 import { maintenanceState } from "../maintenance.ts";
 import { populateFeatures, populateFeaturesForClasses } from "@/lib/srd/features";
 import { packSubclassExtras } from "@/lib/content/archetype-tables";
@@ -254,15 +253,14 @@ function ensureSchema(db: SqliteDatabase) {
       ON library_characters(user_id, updated_at);
 
     -- DM personalities (docs/vtt-parity-implementation-plan.md 9.2): a
-    -- preset over strictness, tone and the narrator's voice. user_id NULL
-    -- is a stock preset; a user's own rows sit beside them.
+    -- preset over strictness and tone. user_id NULL is a stock preset; a
+    -- user's own rows sit beside them.
     CREATE TABLE IF NOT EXISTS library_personalities (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       blurb TEXT NOT NULL DEFAULT '',
       gm_json TEXT NOT NULL DEFAULT '{}',
-      tts_voice TEXT NOT NULL DEFAULT 'af_heart',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -776,7 +774,7 @@ function ensureSchema(db: SqliteDatabase) {
     -- may read a fact through the API: 'party' (everyone), 'dm' (prompt-only
     -- secret), or a JSON array of character ids. Superseding keeps history:
     -- a new fact about the same subject retires the old row instead of
-    -- editing it. embedding stays NULL until the semantic index fills it.
+    -- editing it.
     CREATE TABLE IF NOT EXISTS world_facts (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -791,19 +789,16 @@ function ensureSchema(db: SqliteDatabase) {
       source TEXT NOT NULL DEFAULT 'chapter'
         CHECK (source IN ('chapter','compaction','manual','simulation')),
       source_seq INTEGER,
-      embedding BLOB,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_world_facts
       ON world_facts(campaign_id, status, category);
 
-    -- Semantic memory index: verbatim transcript spans ("scenes") from
-    -- closed chapters with local embeddings (384-dim Float32 BLOBs),
-    -- built at chapter close by src/lib/dm/memory-index.ts. Two-phase
-    -- recall: cosine over chapter-summary embeddings picks chapters, then
-    -- cosine over their scenes returns verbatim text. Brute-force JS math;
-    -- no vector extension.
+    -- Memory index: verbatim transcript spans ("scenes") from closed
+    -- chapters, built at chapter close by src/lib/dm/memory-index.ts.
+    -- Two-phase recall: chapter titles and summaries pick the chapters,
+    -- then a lexical search over their scenes returns verbatim text.
     CREATE TABLE IF NOT EXISTS scene_chunks (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -811,7 +806,6 @@ function ensureSchema(db: SqliteDatabase) {
       seq_start INTEGER NOT NULL,
       seq_end INTEGER NOT NULL,
       text TEXT NOT NULL,
-      embedding BLOB NOT NULL,
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_scene_chunks
@@ -836,7 +830,7 @@ function ensureSchema(db: SqliteDatabase) {
 
     -- Lead-authored world lore (the world bible): structured entries the DM
     -- prompt samples from and search_lore queries. Pinned entries always
-    -- reach the prompt; the rest compete on embedding similarity.
+    -- reach the prompt; the rest compete on lexical relevance.
     CREATE TABLE IF NOT EXISTS lore_entries (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -846,7 +840,6 @@ function ensureSchema(db: SqliteDatabase) {
       body TEXT NOT NULL,
       tags_json TEXT NOT NULL DEFAULT '[]',
       pinned INTEGER NOT NULL DEFAULT 0,
-      embedding BLOB,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -891,7 +884,7 @@ function ensureSchema(db: SqliteDatabase) {
     -- House-rules chunks: campaigns.house_rules_text split into retrievable
     -- pieces (src/lib/dm/rules-logic.ts). Rechunked on every save; enabled and
     -- pinned flags survive by fuzzy match. Pinned chunks always reach the
-    -- prompt; enabled ones compete on embedding similarity per turn.
+    -- prompt; enabled ones compete on lexical relevance per turn.
     CREATE TABLE IF NOT EXISTS rule_chunks (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -900,7 +893,6 @@ function ensureSchema(db: SqliteDatabase) {
       text TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
       pinned INTEGER NOT NULL DEFAULT 0,
-      embedding BLOB,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1056,7 +1048,7 @@ function ensureSchema(db: SqliteDatabase) {
     --
     -- The body is ALSO inserted as a campaign_messages row (author_type 'dm',
     -- message_id below), and that message is what chapters, compaction,
-    -- scene-chunk embedding, retrieval, recap and the export all read. This
+    -- the scene index, retrieval, recap and the export all read. This
     -- table is the provenance the transcript cannot carry: which DM passages
     -- were summaries rather than live narration, what kind of story each one
     -- recorded, and whether the DM typed it, spoke it, or accepted a draft.
@@ -1371,10 +1363,6 @@ function ensureSchema(db: SqliteDatabase) {
     // (src/lib/dm/scene-tracker-logic.ts). One at a time, like the active
     // encounter, so a column rather than a table.
     ["scene_tracker_json", `TEXT NOT NULL DEFAULT ''`],
-    // What is playing: the ambience bed and music cue the table last set
-    // (src/lib/ambience/logic.ts). '' reads as silence, which is what every
-    // campaign that predates the sound library has.
-    ["ambience_json", `TEXT NOT NULL DEFAULT ''`],
     // The rider's mount, keyed by character id (src/lib/srd/mounts.ts). A
     // campaign-level map rather than a sheet column because a mount is a fact
     // about a scene, not about a character: it is left at the stable, and a
@@ -1426,11 +1414,11 @@ function ensureSchema(db: SqliteDatabase) {
     ["must_change_password", `INTEGER NOT NULL DEFAULT 0`],
     // Discord account id for "Sign in with Discord"; NULL when unlinked.
     ["discord_id", `TEXT`],
-    // Per-account preferences (audio volumes and mutes) that should follow
-    // the person between browsers. One JSON blob rather than columns because
-    // every reader wants all of it at once and absent keys mean "use the
-    // default", exactly like the client's localStorage cache of the same
-    // values (src/lib/audio-prefs.ts).
+    // Per-account preferences (the chat-chime toggle, the dice look) that
+    // should follow the person between browsers. One JSON blob rather than
+    // columns because every reader wants all of it at once and absent keys
+    // mean "use the default", exactly like the client's localStorage cache
+    // of the same values (src/lib/audio-prefs.ts).
     ["settings_json", `TEXT NOT NULL DEFAULT '{}'`],
   ]);
   db.exec(
@@ -1690,9 +1678,9 @@ function ensureSchema(db: SqliteDatabase) {
 
   addColumns("locations", [
     // The prepared map this place stands on, so arriving offers the DM a
-    // one-tap deploy, and the sound the place makes.
+    // one-tap deploy, and the kind of place this is (src/lib/scenes.ts).
     ["prepared_map_id", `TEXT`],
-    ["ambience_json", `TEXT`],
+    ["scene", `TEXT`],
   ]);
 
   addColumns("battle_tokens", [
@@ -1736,39 +1724,6 @@ function ensureSchema(db: SqliteDatabase) {
   // The shelf a person wrote by hand (#171), which a restock refills rather
   // than rerolling from the pack. '' is a shop stocked from the pack.
   addColumns("shops", [["prepared_stock_json", `TEXT NOT NULL DEFAULT ''`]]);
-
-  // Transcript lines (docs/vtt-parity-implementation-plan.md 13.3): what
-  // was said at a transcribed table, by whom, on both clocks. Never fed to
-  // the DM prompt.
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS voice_transcript (
-      id TEXT PRIMARY KEY,
-      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL,
-      speaker TEXT NOT NULL,
-      text TEXT NOT NULL,
-      clock_label TEXT NOT NULL DEFAULT '',
-      started_at TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_voice_transcript_campaign ON voice_transcript(campaign_id, started_at);
-  `);
-
-  // Read-aloud voices for speakers who are not NPCs (issue 97): a character
-  // at the table ("pc:<sheet id>") or a kind of monster ("monster:<name>").
-  // An NPC's voice stays on its own row (npcs.voice_json), where the cast
-  // editor and the world packs already keep it.
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS campaign_voices (
-      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-      speaker_key TEXT NOT NULL,
-      name TEXT NOT NULL DEFAULT '',
-      voice_id TEXT NOT NULL,
-      speed REAL NOT NULL DEFAULT 1,
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (campaign_id, speaker_key)
-    );
-  `);
 
   // Calendar events (docs/vtt-parity-implementation-plan.md 7.2): a moment
   // on the in-world clock the world tick fires when the clock crosses it.
@@ -1876,9 +1831,6 @@ function ensureSchema(db: SqliteDatabase) {
     ["doors_json", `TEXT NOT NULL DEFAULT '{}'`],
     ["zones_json", `TEXT NOT NULL DEFAULT '[]'`],
     ["overlay_path", `TEXT NOT NULL DEFAULT ''`],
-    // The sound the place makes: cue ids for the bed and the music, played
-    // when the map goes on the table.
-    ["ambience_json", `TEXT NOT NULL DEFAULT '{}'`],
   ]);
   // Where each enemy starts, who is hidden, hit point and name overrides,
   // and what the fight is worth (src/lib/dm/encounter-template-logic.ts).
@@ -1955,8 +1907,6 @@ function ensureSchema(db: SqliteDatabase) {
     // on author_user_id forces those rows to carry the campaign owner's id,
     // so this flag is what distinguishes them in the UI.
     ["author_kind", `TEXT NOT NULL DEFAULT 'user'`],
-    // Embedding of title+body for search_lore; NULL until indexed.
-    ["embedding", `BLOB`],
   ]);
 
   addColumns("dm_whispers", [
@@ -1981,9 +1931,6 @@ function ensureSchema(db: SqliteDatabase) {
   ]);
 
   addColumns("chapters", [
-    // Embedding of the chapter summary, for phase-1 chapter picking
-    // in semantic recall. NULL until the chapter is indexed.
-    ["embedding", `BLOB`],
     // The in-world date the chapter closed on, for the timeline.
     ["clock_label", `TEXT NOT NULL DEFAULT ''`],
   ]);
@@ -2057,9 +2004,6 @@ function ensureSchema(db: SqliteDatabase) {
   ]);
 
   addColumns("npcs", [
-    // Their own voice for read-aloud (docs/vtt-parity-implementation-plan.md
-    // 8.2): { voiceId, speed }. NULL reads in the narrator's voice.
-    ["voice_json", `TEXT`],
     // The faction they belong to (docs/vtt-parity-implementation-plan.md
     // section 6); '' for none.
     ["faction_id", `TEXT NOT NULL DEFAULT ''`],
@@ -2975,19 +2919,7 @@ export function resyncLibraryTraining(db: SqliteDatabase): number {
   return changed;
 }
 
-let plaintextWarned = false;
-
-function requireDbKey() {
-  const key = serverEnv("DB_ENCRYPTION_KEY");
-  if (!key) {
-    throw new Error(
-      "DB_ENCRYPTION_KEY is not set. Generate one with `openssl rand -hex 32` and add it to .env.server. " +
-        "For an existing plaintext database, then run: node scripts/migrate-encrypt-db.mjs",
-    );
-  }
-
-  return key;
-}
+// Encryption removed: the database is stored unencrypted for simplicity.
 
 // Module-level (not on globalThis) so a dev HMR reload of this file re-runs
 // ensureSchema once on the next call, picking up schema edits; in prod it
@@ -3027,32 +2959,14 @@ export function getDatabase() {
     return globalThis.__localRoleplayDb;
   }
 
-  const key = requireDbKey();
   mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = openDatabase(dbPath);
-  if (db.encrypted) {
-    db.pragma("cipher='chacha20'");
-    db.pragma(`key='${key.replaceAll("'", "''")}'`);
-  } else if (!plaintextWarned) {
-    // Node's built-in SQLite (the engine on hosts without the native
-    // module, such as the Android app) has no cipher: the file is plain.
-    plaintextWarned = true;
-    console.warn(
-      `[db] ${db.engine} SQLite engine cannot encrypt; ${dbPath} is stored unencrypted.`,
-    );
-  }
   let tables = 0;
   try {
     tables = Number(Object.values(db.prepare("SELECT count(*) FROM sqlite_master").get() as object)[0]) || 0;
-  } catch {
+  } catch (error) {
     db.close();
-    throw new Error(
-      db.encrypted
-        ? `Could not decrypt ${dbPath}: wrong or missing DB_ENCRYPTION_KEY. ` +
-            "If this database predates encryption, run: node scripts/migrate-encrypt-db.mjs"
-        : `Could not open ${dbPath}: it is encrypted and the ${db.engine} SQLite engine has no cipher. ` +
-            "Set ODM_SQLITE_DRIVER=native on a host with the native module.",
-    );
+    throw new Error(`Could not open ${dbPath}: ${(error as Error).message}`);
   }
   // A new database hands the pages its deletes free back to the disk a
   // little at a time (src/lib/ops/retention.ts). Only possible before the

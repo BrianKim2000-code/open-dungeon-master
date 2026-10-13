@@ -3,11 +3,11 @@
 // data-tour values set in the session components; prepare names are the
 // side effects SessionView performs before a step (which tab to open,
 // which column a phone shows). Steps whose anchor is not on screen are
-// skipped, so one list serves every table: a tab that is off (maps,
-// voice, narration) simply never gets a step, and the cinematic frame's
-// pieces (the party rail from a wide table up, the turn order in the top
-// bar during a fight, the quest line once there is a quest) only get one
-// where they are showing.
+// skipped, so one list serves every table: a tab that is off (maps)
+// simply never gets a step, and the cinematic frame's pieces (the party
+// rail from a wide table up, the turn order in the top bar during a fight,
+// the quest line once there is a quest) only get one where they are
+// showing.
 import type { TourStep } from "@/lib/tours/logic";
 
 export const PLAYER_TOUR_ID = "table-player";
@@ -39,13 +39,6 @@ export const PLAYER_TOUR: TourStep[] = [
     title: "Your hand, in a fight",
     body: "On your turn in combat your options arrive as cards: each weapon, each prepared spell, your class features and the basic actions, with the numbers from your sheet. Pick a card, pick who it lands on, then press the gold button. A dimmed card is spent; press it to hear why. Or type your move below, as ever.",
     anchors: ["battle-hand"],
-    prepare: "show-chat",
-  },
-  {
-    id: "talk",
-    title: "Hold to talk",
-    body: "Hold the microphone and dictate instead of typing; the words land in the box for you to check before sending.",
-    anchors: ["composer-talk"],
     prepare: "show-chat",
   },
   {
@@ -113,12 +106,6 @@ export const PLAYER_TOUR: TourStep[] = [
     title: "Dice",
     body: "Every roll is made by the server, never invented, and the latest one flashes up over the story with its total. This menu turns the tumbling 3D dice on or off, opens the editor for your own dice colours, and on a phone lets you shake to roll.",
     anchors: ["header-dice"],
-  },
-  {
-    id: "voice",
-    title: "Voice chat",
-    body: "Join the call from here and talk to the table without another app. It stays up whichever panel you switch to.",
-    anchors: ["header-voice"],
   },
   {
     id: "help",

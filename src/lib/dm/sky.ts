@@ -3,13 +3,11 @@
 // implementation-plan.md section 2). refreshSky is called by everything
 // that moves the clock (travel, rests, pass_time) and by set_weather; it
 // rolls a new sky when a dawn was crossed or a long leg passed, stores it
-// on the clock, publishes the persisted scene_state, and lets the room's
-// ambience follow a storm.
+// on the clock and publishes the persisted scene_state.
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getClock, setClock } from "@/lib/db/clock";
 import { breakDown, isDark, seasonOf, type CampaignClock } from "@/lib/dm/calendar";
 import { publishSceneState } from "@/lib/dm/scene-state";
-import { followWeatherAmbience } from "@/lib/dm/ambience-tools";
 import { climateForGenre, describeWeather, rollWeather, type Climate } from "@/lib/srd/weather";
 import { dayPartOf, type SceneState, type Weather } from "@/lib/scene/state";
 
@@ -58,7 +56,6 @@ export function refreshSky(
   const clock = getClock(campaignId);
   const climate = campaignClimate(campaign);
   let weather = clock.weather;
-  const previous = clock.weather;
   if (input.force !== undefined) {
     weather = input.force;
   } else if (skyIsDue(input.before ?? clock, clock, input.minutes ?? 0)) {
@@ -70,8 +67,5 @@ export function refreshSky(
   }
   const scene = sceneFromClock({ ...clock, weather }, climate);
   publishSceneState(campaignId, scene);
-  if (weather && (!previous || previous.sky !== weather.sky || previous.wind !== weather.wind)) {
-    followWeatherAmbience(campaign, weather);
-  }
   return scene;
 }

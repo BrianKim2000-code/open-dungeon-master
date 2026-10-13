@@ -79,10 +79,6 @@ export type CatalogField = {
   // One line under the input. Says what the server does with the value,
   // not what the value is.
   help?: string;
-  // A one-line text field a DM would rather say than type (a milestone's
-  // sentence), so the console pins a microphone on it the way it does on
-  // every longtext.
-  dictate?: boolean;
   // A select that also takes a typed value: the options are the ones the
   // engine knows (the SRD conditions), and the typed one is for a story
   // condition it tracks by name only.

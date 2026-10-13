@@ -89,10 +89,8 @@ export type LightZone = {
   kind: ZoneKind;
 };
 
-// Cue ids from src/lib/ambience/catalog.ts, or "" for "leave it alone".
-export type SceneAmbience = { bed: string; music: string };
 
-export const EMPTY_AMBIENCE: SceneAmbience = { bed: "", music: "" };
+
 
 type Raw = Record<string, unknown>;
 
@@ -367,11 +365,6 @@ export function normalizeZones(raw: unknown, width: number, height: number): Lig
     }
   }
   return out;
-}
-
-export function normalizeAmbience(raw: unknown): SceneAmbience {
-  const source = (raw ?? {}) as Raw;
-  return { bed: text(source.bed, 60), music: text(source.music, 60) };
 }
 
 // ---- what the engine and the people see ----

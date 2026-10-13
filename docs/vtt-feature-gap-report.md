@@ -1,6 +1,9 @@
 # Feature gap report: Open Dungeon Master against the VTT and world-building field
 
-Dated 2026-09-13, against ODM 0.18.0. Companion to
+Dated 2026-09-13, against ODM 0.18.0. The audio features several rows below
+weigh — voice chat, three-layer ambience, narration read aloud, push-to-talk —
+were removed in October 2026; read those verdicts as of the audit date, not
+today's. Companion to
 `docs/workshop-parity-audit.md` (2026-09-05), which compared the workshop to
 Foundry's prep tools only. This document widens the bar in two directions:
 every product a table might otherwise use (Foundry VTT and its essential

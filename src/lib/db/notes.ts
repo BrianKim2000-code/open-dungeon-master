@@ -1,5 +1,4 @@
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { embed, vectorToBuffer } from "@/lib/embeddings";
 
 // Campaign and character notes. Campaign scope (characterId null) covers the
 // lead's public party notes, member suggestions (public + pending), and
@@ -103,7 +102,6 @@ export function insertNote(input: {
       now,
       now,
     );
-  void embedNote(id);
   return getNoteById(id)!;
 }
 
@@ -134,41 +132,7 @@ export function updateNote(
       nowIso(),
       noteId,
     );
-  if (patch.title !== undefined || patch.body !== undefined) {
-    void embedNote(noteId);
-  }
   return getNoteById(noteId);
-}
-
-// Background pass over every note in a campaign that still has no vector:
-// one whose save-time embed failed, or every note after the embedding model
-// changed (src/lib/dm/embedding-reindex.ts).
-export async function embedPendingNotes(campaignId: string) {
-  const pending = getDatabase()
-    .prepare(`SELECT id FROM campaign_notes WHERE campaign_id = ? AND embedding IS NULL`)
-    .all(campaignId) as Array<{ id: string }>;
-  for (const row of pending) {
-    await embedNote(row.id);
-  }
-}
-
-// Fire-and-forget embedding for search_lore; NULL just means the note only
-// matches by keyword.
-async function embedNote(noteId: string) {
-  try {
-    const note = getNoteById(noteId);
-    if (!note) {
-      return;
-    }
-    const [vector] = await embed([`${note.title}\n${note.body}`]);
-    if (vector) {
-      getDatabase()
-        .prepare(`UPDATE campaign_notes SET embedding = ? WHERE id = ?`)
-        .run(vectorToBuffer(vector), noteId);
-    }
-  } catch (error) {
-    console.error("[notes] embedding failed", error);
-  }
 }
 
 export function deleteNote(noteId: string): boolean {

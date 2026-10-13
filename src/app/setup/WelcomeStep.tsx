@@ -10,7 +10,6 @@ type Update = (change: (draft: Draft) => Draft) => void;
 const STOPS = [
   { glyph: "ui-ai", title: "The storyteller", line: "A model on this computer, an API key, an agent you already pay for, or a person." },
   { glyph: "ui-paint", title: "Pictures", line: "Portraits, scene art and battle maps. Optional." },
-  { glyph: "tab-ambience", title: "Voice", line: "Narration read aloud, and push-to-talk dictation. Optional." },
   { glyph: "tab-characters", title: "Players", line: "The address to share, and who may make an account." },
   { glyph: "system-share", title: "Your own agent", line: "Claude Code, Codex or opencode working here as you. Optional." },
 ];
@@ -34,8 +33,6 @@ export function WelcomeStep({
       text: `${entry.label} at ${host(entry.baseUrl)}${entry.models.length ? ` (${entry.models.length} ${entry.models.length === 1 ? "model" : "models"})` : ""}`,
     })),
     ...(scan?.comfyui ? [{ key: "comfy", text: `ComfyUI at ${host(scan.comfyui.url)}` }] : []),
-    ...(scan?.kokoro ? [{ key: "kokoro", text: `Kokoro voices at ${host(scan.kokoro.url)}` }] : []),
-    ...(scan?.whisper ? [{ key: "whisper", text: `Whisper dictation at ${host(scan.whisper.url)}` }] : []),
   ];
   return (
     <div className="space-y-5">

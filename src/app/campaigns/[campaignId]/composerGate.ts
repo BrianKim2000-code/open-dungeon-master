@@ -4,11 +4,11 @@ import type { Floor } from "@/lib/db/campaigns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether this player may send right now, and what the box should say while
-// they wait. Four things can hold the composer: the opening narration is
-// still playing for this user, the lead has the floor held, it is somebody
-// else's turn in combat, or the spotlight is on other players. Table talk
-// (OOC) and lead directions never wait on the floor, and neither does the
-// Ask strip, which does not come through this composer at all.
+// they wait. Three things can hold the composer: the lead has the floor
+// held, it is somebody else's turn in combat, or the spotlight is on other
+// players. Table talk (OOC) and lead directions never wait on the floor,
+// and neither does the Ask strip, which does not come through this composer
+// at all.
 //
 // Pure so the reading is easy to follow in one place; SessionView memoizes
 // the lists it hands in.
@@ -19,7 +19,6 @@ export function composerGate({
   kind,
   myName,
   leadPrivate,
-  openingNarrationPlaying,
   enemyTurns = false,
 }: {
   floor: Floor;
@@ -28,8 +27,6 @@ export function composerGate({
   kind: InputKind;
   myName: string;
   leadPrivate: boolean;
-  // The campaign's first DM passage is being read aloud to this user.
-  openingNarrationPlaying: boolean;
   // The fight's floor is held for the enemies' turns (PublicEncounter
   // enemyTurns), not for table talk.
   enemyTurns?: boolean;
@@ -57,14 +54,8 @@ export function composerGate({
           )
           .map((sheet) => sheet.name)
       : [];
-  // The opening narration gets the table's attention. A question about it is
-  // exactly the kind of thing someone wants to ask while it plays, and the
-  // Ask strip is never blocked, so this only has to spare OOC.
-  const narrationBlocked = openingNarrationPlaying && kind !== "ooc";
-  const inputBlocked = floorBlocked || holdBlocked || initiativeBlocked || narrationBlocked;
-  const placeholder = narrationBlocked
-    ? "The Dungeon Master is setting the scene... (OOC still open)"
-    : holdBlocked
+  const inputBlocked = floorBlocked || holdBlocked || initiativeBlocked;
+  const placeholder = holdBlocked
       ? floor.mode === "hold" && floor.next.mode === "initiative" && enemyTurns
         ? "The enemies are taking their turns... (OOC still open)"
         : "The party lead has the floor held for discussion... (OOC still open)"

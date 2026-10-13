@@ -21,7 +21,6 @@ const {
   redactFx,
 } = await import("../src/lib/battlemap/fx-plan.ts");
 const { damageTone, DAMAGE_PALETTE } = await import("../src/lib/battlemap/damage-palette.ts");
-const { STING_CUES } = await import("../src/lib/ambience/catalog.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -29,39 +28,33 @@ function test(name, fn) {
   passed += 1;
 }
 
-const stingIds = new Set(STING_CUES.map((cue) => cue.id));
 const A = { x: 2, y: 2 };
 const B = { x: 5, y: 2 };
 
-test("a natural 20 plans a crit with a gold tone and the crit sting", () => {
+test("a natural 20 plans a crit with a gold tone", () => {
   const fx = planAttackFx({ from: A, to: B, hit: true, crit: true, damage: 14 });
   assert.equal(fx.kind, "attack");
   assert.equal(fx.outcome, "crit");
   assert.equal(fx.amount, 14);
-  assert.equal(fx.sting, "hit_crit");
   assert.equal(fxTone(fx), "#d4ab3a");
-  assert.ok(stingIds.has(fx.sting), "the crit sting is in the catalog");
 });
 
-test("a miss and a fumble plan no number and the miss sting", () => {
+test("a miss and a fumble plan no number", () => {
   const miss = planAttackFx({ from: A, to: B, hit: false, crit: false, damage: 9 });
   assert.equal(miss.outcome, "miss");
   assert.equal(miss.amount, undefined);
-  assert.equal(miss.sting, "swing_miss");
   const fumble = planAttackFx({ from: A, to: B, hit: false, crit: false, fumble: true });
   assert.equal(fumble.outcome, "fumble");
 });
 
-test("melee and ranged hits pick their own sting and flag", () => {
+test("melee and ranged hits pick their own flag", () => {
   const melee = planAttackFx({ from: A, to: B, hit: true, crit: false, damage: 5 });
   assert.equal(melee.ranged, false);
-  assert.equal(melee.sting, "hit_melee");
   const ranged = planAttackFx({ from: A, to: B, hit: true, crit: false, damage: 5, ranged: true });
   assert.equal(ranged.ranged, true);
-  assert.equal(ranged.sting, "hit_ranged");
 });
 
-test("a fire spell plans fire: ember tone, fire sting", () => {
+test("a fire spell plans fire: ember tone", () => {
   const fx = planSpellFx({
     from: A,
     to: B,
@@ -73,8 +66,6 @@ test("a fire spell plans fire: ember tone, fire sting", () => {
   assert.equal(fx.kind, "spell");
   assert.equal(fx.damageType, "fire");
   assert.equal(fxTone(fx), DAMAGE_PALETTE.fire.color);
-  assert.equal(fx.sting, "spell_fire");
-  assert.ok(stingIds.has(fx.sting));
 });
 
 test("every damage type has a tone and unknown types fall back to bone", () => {
@@ -156,23 +147,20 @@ test("no effect is planned for a roll the table cannot see", () => {
   );
 });
 
-test("heal, death, door, hazard and teleport carry catalog stings", () => {
+test("heal, death, door, hazard and teleport plan their effects", () => {
   const heal = planHealFx({ to: A, amount: 7 });
   assert.equal(heal.kind, "heal");
   assert.equal(heal.amount, 7);
   const death = planDeathFx({ to: A, name: "Goblin" });
   assert.equal(death.kind, "death");
   const door = planDoorFx({ at: A, state: "locked" });
-  assert.equal(door.sting, "door_locked");
+  assert.equal(door.kind, "door");
   const open = planDoorFx({ at: A, state: "open" });
-  assert.equal(open.sting, "door_creak");
+  assert.equal(open.kind, "door");
   const fall = planHazardFx({ to: A, hazard: "falling", damageType: "bludgeoning", amount: 6 });
-  assert.equal(fall.sting, "thud");
+  assert.equal(fall.kind, "hazard");
   const teleport = planTeleportFx({ from: A, to: B, tokenId: "t1" });
   assert.equal(teleport.kind, "teleport");
-  for (const fx of [heal, death, door, open, fall, teleport]) {
-    assert.ok(stingIds.has(fx.sting), `${fx.kind} sting ${fx.sting} is in the catalog`);
-  }
 });
 
 test("redaction strips the number and nothing else", () => {

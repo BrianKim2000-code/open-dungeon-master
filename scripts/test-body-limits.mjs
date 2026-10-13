@@ -13,7 +13,6 @@ const { MAX_PDF_BYTES, MAX_UPLOAD_BYTES } = await import("../src/lib/uploads-sto
 const workshopBundle = await import("../src/lib/workshop/bundle-schema.ts");
 const characterBundle = await import("../src/lib/character-bundle.ts");
 const { MAX_MANIFEST_BYTES } = await import("../src/lib/worlds/types.ts");
-const { MESH_SIGNAL_MAX_BYTES } = await import("../src/lib/voice/mesh-logic.ts");
 const { AZGAAR_LIMITS } = await import("../src/lib/overworld/azgaar.ts");
 
 let passed = 0;
@@ -75,9 +74,6 @@ test("every route's own cap fits inside its budget", () => {
   assert.ok(Math.ceil(AZGAAR_LIMITS.maxChars * 1.4) <= bodyLimitFor("/api/campaigns/x/overworld/import"), "Azgaar files");
   assert.ok(characterBundle.MAX_BUNDLE_BYTES < bodyLimitFor("/api/characters/import"), "a character file");
   assert.ok(MAX_MANIFEST_BYTES < bodyLimitFor("/api/workshops/w/plugin"), "a world pack");
-  assert.ok(8 * MIB < bodyLimitFor("/api/stt"), "a dictation recording");
-  assert.ok(6 * MIB < bodyLimitFor("/api/campaigns/x/voice/transcript"), "a call ring");
-  assert.ok(MESH_SIGNAL_MAX_BYTES < bodyLimitFor("/api/campaigns/x/voice/mesh/signal"), "a mesh signal");
 });
 
 test("next.config.ts lets the proxy copy exactly the largest budget", () => {

@@ -18,7 +18,7 @@ import {
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import { layOver } from "@/lib/schemas/parse-keeping-valid";
 
 export const runtime = "nodejs";

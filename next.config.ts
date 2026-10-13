@@ -107,10 +107,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // mediasoup spawns a native worker binary and resolves it by path, so
-  // bundling it breaks the lookup exactly the way it does for better-sqlite3.
-  // multilingual-stemmer reads its .wasm beside its own module the same way.
-  serverExternalPackages: ["better-sqlite3-multiple-ciphers", "mediasoup", "multilingual-stemmer"],
+  // better-sqlite3 shim is plain JS but kept external for compatibility;
+  // multilingual-stemmer reads its .wasm beside its own module.
+  serverExternalPackages: ["better-sqlite3", "multilingual-stemmer"] as unknown as string[],
   turbopack: {
     root: process.cwd(),
   },
@@ -127,38 +126,9 @@ const nextConfig: NextConfig = {
   ...(dockerBuild
     ? {
         output: "standalone" as const,
-        // File tracing misses all three native modules: better-sqlite3 is kept
-        // out of the bundle by serverExternalPackages, onnxruntime-node (the
-        // embedding runtime) resolves its .node binding by a computed path,
-        // and mediasoup spawns a standalone worker executable that nothing
-        // ever imports, so tracing has no reference to follow.
-        // onnxruntime-node's own JavaScript is missed too: transformers.js
-        // loads it through createRequire, which the tracer cannot follow, so
-        // without dist/ and package.json the image carried the binding alone
-        // and every embed failed with "Cannot find module 'onnxruntime-node'".
-        // It then requires onnxruntime-common's CommonJS build, while the
-        // tracer only saw transformers.js import the ESM one (1.2 MB whole).
-        // Only the Linux binding for the CPU the image is built on is shipped
-        // (linux/x64 on the published amd64 image, linux/arm64 when the image
-        // is built on an arm64 host, issue #39); embeddings are CPU-only.
-        // The WASM picture codecs (src/lib/image-variants.ts) are loaded
-        // inside a worker thread from a code string, so nothing imports
-        // them statically and the tracer would miss them too.
-        // LICENSE is read by nothing, so nothing traces it, but the MIT
-        // notice has to travel with every copy: the image's /app and the
-        // apps' server payload (whose prune keeps it) both start from here.
+        // Simplified: only the shim and license need tracing.
         outputFileTracingIncludes: {
-          "/*": [
-            "node_modules/better-sqlite3-multiple-ciphers/**/*",
-            "node_modules/onnxruntime-node/package.json",
-            "node_modules/onnxruntime-node/dist/**/*",
-            "node_modules/onnxruntime-common/**/*",
-            `node_modules/onnxruntime-node/bin/napi-v6/linux/${process.arch}/**/*`,
-            "node_modules/mediasoup/worker/out/Release/**/*",
-            "node_modules/@jsquash/**/*",
-            "node_modules/wasm-feature-detect/**/*",
-            "LICENSE",
-          ],
+          "/*": ["node_modules/better-sqlite3/**/*", "LICENSE"],
         },
       }
     : {}),

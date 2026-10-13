@@ -17,12 +17,6 @@ const SIGNUPS: Record<Draft["signupMode"], string> = {
   closed: "No new accounts",
 };
 
-const STT_WORDS: Record<string, string> = {
-  whisper: "Dictation by the Whisper server",
-  builtin: "Dictation by the built-in engine",
-  openai: "Dictation by OpenAI, on the key",
-};
-
 function rows(input: {
   draft: Draft;
   caps: Capabilities | null;
@@ -57,19 +51,6 @@ function rows(input: {
         : caps.images.configured && caps.images.reachable
           ? { key: "pictures", title: "Pictures", tone: "ok", text: draft.pictures === "comfyui" ? "ComfyUI paints them" : draft.pictures === "openai" ? "OpenAI paints them, on the key" : "The agent paints them", step: steps.pictures }
           : { key: "pictures", title: "Pictures", tone: "warn", text: "Saved, but not answering yet. Tables use placeholders until it does.", step: steps.pictures };
-  const narration: Row =
-    draft.narration === "off"
-      ? { key: "narration", title: "Narration", tone: "off", text: "Text only", step: steps.voice }
-      : wait
-        ? { key: "narration", title: "Narration", tone: "wait", text: "Asking…", step: steps.voice }
-        : caps.tts.configured && caps.tts.reachable
-          ? { key: "narration", title: "Narration", tone: "ok", text: draft.narration === "kokoro" ? "Kokoro reads it aloud" : "OpenAI reads it aloud, on the key", step: steps.voice }
-          : { key: "narration", title: "Narration", tone: "warn", text: "Saved, but not answering yet.", step: steps.voice };
-  const dictation: Row = wait
-    ? { key: "dictation", title: "Dictation", tone: "wait", text: "Asking…", step: steps.voice }
-    : caps.stt.configured
-      ? { key: "dictation", title: "Dictation", tone: "ok", text: STT_WORDS[caps.stt.backend] ?? "Ready", step: steps.voice }
-      : { key: "dictation", title: "Dictation", tone: "off", text: "Off. The Voice step can download the built-in engine.", step: steps.voice };
   const players: Row = {
     key: "players",
     title: "Players",
@@ -80,7 +61,7 @@ function rows(input: {
   const agent: Row = input.agentConnected
     ? { key: "agent", title: "Your agent", tone: "ok", text: "Connection made", step: steps.agent }
     : { key: "agent", title: "Your agent", tone: "off", text: "Not connected (optional)", step: steps.agent };
-  return [story, pictures, narration, dictation, players, agent];
+  return [story, pictures, players, agent];
 }
 
 // The last step: what the server can do now, asked live, each line with a

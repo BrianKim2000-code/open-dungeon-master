@@ -146,7 +146,11 @@ const copyOf = (campaignId, kind, originRowId) =>
     assert.equal(npc.archived, 1, "an archived NPC came back to life");
     assert.equal(npc.bonds_json, "[]");
     assert.equal(one(`SELECT drawn_json FROM roll_tables WHERE campaign_id = ?`, target.id).drawn_json, "[]");
-    assert.equal(one(`SELECT embedding FROM lore_entries WHERE campaign_id = ?`, target.id).embedding, null);
+    assert.equal(
+      one(`SELECT title, body FROM lore_entries WHERE campaign_id = ?`, target.id).body,
+      filled.lore_entries.body,
+      "a lore entry did not travel whole",
+    );
     const region = one(`SELECT * FROM overworld_maps WHERE campaign_id = ?`, target.id);
     assert.deepEqual(JSON.parse(region.anchors_json), { [place.id]: { x: 1, y: 1 } });
     const shop = one(`SELECT * FROM shops WHERE campaign_id = ?`, target.id);

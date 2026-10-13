@@ -97,7 +97,7 @@ const campaign = createCampaign(lead.id, {
   maxPlayers: 2,
   startingLevel: 1,
   difficulty: "normal",
-  gameSettings: { ttsEnabled: false },
+  gameSettings: {},
 });
 updateStorySettings(campaign.id, {
   textProvider: "custom",

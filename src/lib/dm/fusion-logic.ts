@@ -147,42 +147,21 @@ export type RankableCandidate = {
   id: string;
   // IDF-weighted lexical overlap in [0, 1].
   lexical: number;
-  // Cosine similarity, or null when this candidate has no embedding yet.
-  similarity: number | null;
 };
 
-// The shared retrieval shape: score every candidate both ways, rank each
-// signal independently, fuse the ranks, and return the best ids.
-//
-// There is no cosine floor. What a cosine means depends on the embedding
-// model and the language (one model scores unrelated text at 0.3, another at
-// 0.8), so no fixed value can tell relevant from unrelated. Every caller hands
-// the result to a reader that judges relevance itself (the DM, the Ask and
-// lore-check calls, a person at the console), and every caller caps how many
-// it hands over. A candidate qualifies on any lexical overlap or any vector.
-//
-// Each ranking is cut to the limit before fusing. RRF scores a candidate in
-// both lists above one in a single list, so without the cut a weak word
-// overlap with a weak cosine would outrank the strongest cosine-only match:
-// a paraphrase sharing no word with the query would lose to noise.
+// The shared retrieval shape: rank the candidates by lexical score and
+// return the best ids. Every caller hands the result to a reader that judges
+// relevance itself (the DM, the Ask and lore-check calls, a person at the
+// console), and every caller caps how many it hands over.
 export function fuseRanked(
   candidates: RankableCandidate[],
-  options: { limit: number; k?: number },
+  options: { limit: number },
 ): string[] {
-  const lexicalRanking = candidates
+  return candidates
     .filter((candidate) => candidate.lexical > 0)
     .sort((a, b) => b.lexical - a.lexical)
     .slice(0, options.limit)
     .map((candidate) => candidate.id);
-  const semanticRanking = candidates
-    .filter((candidate) => candidate.similarity !== null)
-    .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0))
-    .slice(0, options.limit)
-    .map((candidate) => candidate.id);
-  return rankByFusion(fuseRRF([lexicalRanking, semanticRanking], options.k)).slice(
-    0,
-    options.limit,
-  );
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {

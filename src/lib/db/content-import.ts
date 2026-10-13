@@ -4,7 +4,6 @@ import { resolveMonster } from "@/lib/bestiary";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { rosterMonsters } from "@/lib/db/workshop-bundle-shelf";
 import { getCampaignById, updateGameSettings, type Campaign } from "@/lib/db/campaigns";
-import { embedPendingLore } from "@/lib/db/lore";
 import { listBeats } from "@/lib/db/workshop-beats";
 import { compileBoard, summarizeCompile, type CompiledBoard } from "@/lib/workshop/board-compile";
 import {
@@ -470,12 +469,6 @@ export function runContentImport(input: {
     const world = copyWorldDoc(sourceId, campaignId, (shelf, id) => main.resolve(kinds[shelf], id));
     counts.copied += world.count;
     worldConflicts = world.conflicts;
-  }
-
-  if (selected.has("lore") || storyboard) {
-    void embedPendingLore(campaignId).catch(() => {
-      // A missing vector only means keyword fallback for that entry.
-    });
   }
 
   // A Cast member's stat block or a fight's monster that nothing at this

@@ -47,8 +47,8 @@ type ChapterRow = {
   updated_at: string;
 };
 
-// Explicit column list so the embedding BLOB never rides along on ordinary
-// chapter reads (listChapters runs every DM turn).
+// Explicit column list for ordinary chapter reads (listChapters runs
+// every DM turn).
 const CHAPTER_COLUMNS =
   "id, campaign_id, chapter_index, title, summary, highlights_json, seq_start, seq_end, status, clock_label, act, saga, created_at, updated_at";
 
@@ -202,23 +202,15 @@ export function setChapterAct(chapterId: string, act: number | null, saga: numbe
   return getChapter(chapterId);
 }
 
-// Semantic-index support: the chapter summary's embedding, used for
-// phase-1 chapter picking in recall (src/lib/dm/memory-index.ts).
-export function setChapterEmbedding(chapterId: string, embedding: Buffer) {
-  getDatabase()
-    .prepare(`UPDATE chapters SET embedding = ? WHERE id = ?`)
-    .run(embedding, chapterId);
-}
-
 // title and summary come along so phase-1 recall can score chapters
-// lexically as well as by embedding; a chapter whose summary names the person
-// being asked about should place even when its vector does not stand out.
-export function listChapterEmbeddings(
+// lexically; a chapter whose summary names the person being asked about
+// should place even when its words elsewhere do not stand out.
+export function listClosedChapterTexts(
   campaignId: string,
-): Array<{ id: string; index: number; title: string; summary: string; embedding: Buffer | null }> {
+): Array<{ id: string; index: number; title: string; summary: string }> {
   return getDatabase()
     .prepare(
-      `SELECT id, chapter_index, title, summary, embedding FROM chapters
+      `SELECT id, chapter_index, title, summary FROM chapters
        WHERE campaign_id = ? AND status = 'closed'
        ORDER BY chapter_index ASC`,
     )
@@ -229,14 +221,12 @@ export function listChapterEmbeddings(
         chapter_index: number;
         title: string | null;
         summary: string | null;
-        embedding: Buffer | null;
       };
       return {
         id: raw.id,
         index: raw.chapter_index,
         title: raw.title ?? "",
         summary: raw.summary ?? "",
-        embedding: raw.embedding,
       };
     });
 }

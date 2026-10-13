@@ -2,6 +2,11 @@
 
 ## Delivered
 
+Entries describe what shipped when. The audio features several of them name —
+voice chat, ambience and music, narration read aloud, push-to-talk dictation —
+were removed in October 2026, along with the embeddings runtime; retrieval and
+the assist rank by words alone now.
+
 **Phase 1 (2026-07-17):** fork foundation. Accounts, campaigns with invite
 codes and lobbies, structured SRD 5.1 character sheets, the server-side
 dice engine, the SSE real-time layer, and the AI Dungeon Master tool loop

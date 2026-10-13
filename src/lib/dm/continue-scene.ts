@@ -1,4 +1,4 @@
-import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
+import { getCampaignById } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import {
   getCampaignMessage,
@@ -10,7 +10,6 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { requestDmMessage } from "@/lib/dm/model";
 import { setDmStatus } from "@/lib/dm/status";
 import { stripToolText } from "@/lib/dm/tool-text";
-import { enqueueNarrationAudio } from "@/lib/tts";
 import { mergeLines } from "@/lib/dm/speech";
 import { modelLines } from "@/lib/dm/speech-lines";
 import { extractStoryText } from "@/lib/story-prompt";
@@ -36,20 +35,6 @@ import {
 // the prose grows.
 
 export type ContinueResult = { message: CampaignMessage } | { error: string; status: number };
-
-function refreshNarrationAudio(campaign: Campaign, message: CampaignMessage) {
-  if (!campaign.gameSettings.ttsEnabled) {
-    return;
-  }
-  void enqueueNarrationAudio(
-    campaign.id,
-    message.id,
-    message.content,
-    message.speech,
-    campaign.gameSettings,
-    message.speaker ?? null,
-  );
-}
 
 export async function runContinueScene(input: {
   campaignId: string;
@@ -146,6 +131,5 @@ export async function runContinueScene(input: {
   if (!updated) {
     return { error: "Could not store the continuation.", status: 500 };
   }
-  refreshNarrationAudio(campaign, updated);
   return { message: updated };
 }

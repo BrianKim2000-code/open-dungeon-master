@@ -96,31 +96,6 @@ export function picturesPatch(choice: PicturesChoice): Patch {
   return { images: { defaultBackend: "", comfyUrl: "" } };
 }
 
-export type NarrationChoice =
-  | { kind: "kokoro"; url: string; voice: string }
-  // OpenAI's speech API: blank key borrows the storyteller's OpenAI key.
-  | { kind: "openai"; apiKey: string }
-  | { kind: "off" };
-
-export function narrationPatch(choice: NarrationChoice): Patch {
-  if (choice.kind === "kokoro") {
-    return {
-      speech: { ttsProvider: "kokoro", kokoroUrl: choice.url.trim().replace(/\/+$/, ""), ttsVoice: choice.voice.trim() },
-    };
-  }
-  if (choice.kind === "openai") {
-    const apiKey = choice.apiKey.trim();
-    return {
-      speech: { ttsProvider: "openai", ttsBaseUrl: "", ttsModel: "", ttsVoice: "", ...(apiKey ? { ttsApiKey: apiKey } : {}) },
-    };
-  }
-  return { speech: { ttsProvider: "off" } };
-}
-
-// Dictation needs no answer: a Whisper at its usual address is found on
-// its own, and without one the built-in engine or an OpenAI key takes over
-// (src/lib/stt-logic.ts).
-
 export type JoiningChoice = {
   signupMode: "open" | "invite" | "closed";
   publicUrl: string;

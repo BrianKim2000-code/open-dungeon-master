@@ -39,7 +39,6 @@ import { salvageJsonToolCalls } from "@/lib/dm/json-salvage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { fulfillMessageImage } from "@/lib/dm/images";
 import { imageProducerReady } from "@/lib/image-generate";
-import { enqueueNarrationAudio } from "@/lib/tts";
 import { requestDmMessage } from "@/lib/dm/model";
 import { releaseHarnessConversation } from "@/lib/harness/bridge";
 import { toMcpTools } from "@/lib/harness/render";
@@ -127,7 +126,7 @@ import {
   updateCurrentLocationDetails,
   upsertCurrentLocation,
 } from "@/lib/db/locations";
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import { compactHistoryInBackground } from "@/lib/dm/compaction";
 import { createDeltaBatcher } from "@/lib/dm/delta-buffer";
 import {
@@ -165,7 +164,6 @@ import {
 } from "@/lib/dm/relationship-tools";
 import { PARTY_TOOL_NAMES, partyTools } from "@/lib/dm/party-tools";
 import { SCENE_TOOL_NAMES, sceneTools } from "@/lib/dm/scene-tools";
-import { AMBIENCE_TOOL_NAMES, ambienceTools, followSceneAmbience } from "@/lib/dm/ambience-tools";
 import { MOUNT_TOOL_NAMES, mountTools } from "@/lib/dm/mount-tools";
 import { effectTools, EFFECT_TOOL_NAMES } from "@/lib/dm/effect-tools";
 import { worldTools, WORLD_TOOL_NAMES } from "@/lib/dm/world-tools";
@@ -718,11 +716,6 @@ export function dmTurnTools(
     // business: a chase clock and an initiative order are two answers to
     // the same question, and nobody saddles up mid-round.
     ...(inEncounter ? [] : sceneTools),
-    // Sound is offered in and out of a fight: a sting lands mid-round as
-    // often as a bed changes between them. Silent for a table that has
-    // the library switched off, which is why it is gated here rather
-    // than left to the handler to refuse.
-    ...(campaign.gameSettings.ambienceEnabled ? ambienceTools : []),
     ...(inEncounter ? [] : mountTools),
     ...encounterTools(inEncounter),
     // The table's prepared fights, by name, when it has any (#154).
@@ -1028,7 +1021,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         (EFFECT_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
         (SCENE_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
         (MOUNT_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
-        (AMBIENCE_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
         (BINDER_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
         (FACTION_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
         (SHOP_TOOL_NAMES as readonly string[]).includes(toolCall.name) ||
@@ -1766,9 +1758,9 @@ export function handleLocationCall(
   } catch {
     return { error: "Invalid arguments." };
   }
-  const beds = sceneIds();
-  if (args.scene !== undefined && !beds.includes(String(args.scene))) {
-    return { error: `Unknown scene "${String(args.scene)}"; use one of: ${beds.join(", ")}.` };
+  const scenes = sceneIds();
+  if (args.scene !== undefined && !scenes.includes(String(args.scene))) {
+    return { error: `Unknown scene "${String(args.scene)}"; use one of: ${scenes.join(", ")}.` };
   }
   const scene = args.scene === undefined ? undefined : String(args.scene);
   const layoutDescription =
@@ -1818,21 +1810,14 @@ export function handleLocationCall(
     }
   }
 
-  // The kind of place is its sound: stored as the place's bed, so the
-  // battle map and the stand-in picture read the same value.
+  // The kind of place: stored on the place, so the battle map and the
+  // stand-in picture read the same value.
   if (scene !== undefined) {
-    const ambience = { bed: scene, music: location.ambience?.music ?? "" };
-    setLocationLinks(location.id, { ambience });
-    location = { ...location, ambience };
+    setLocationLinks(location.id, { scene });
+    location = { ...location, scene };
   }
 
   publishPersisted(campaign.id, "location_updated", { location });
-
-  // The place is what the room should be hearing, so a DM who never touches
-  // the sound controls still gets a cave that sounds like one; a held layer
-  // and a table with scene following switched off are both left alone
-  // inside the helper.
-  followSceneAmbience(campaign, location.ambience?.bed || null);
 
   // Render when the area has no map yet, or when an update materially
   // changed the recorded layout.
@@ -2059,16 +2044,6 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   if (message.imageRequest && imageProducerReady(context.campaign.settings)) {
     void fulfillMessageImage(campaignId, message.id, message.imageRequest, context.campaign.settings);
   }
-  if (context.campaign.gameSettings.ttsEnabled) {
-    void enqueueNarrationAudio(
-      campaignId,
-      message.id,
-      content,
-      message.speech,
-      context.campaign.gameSettings,
-    );
-  }
-
   turn.status = "done";
   saveDmTurn(turn);
 }

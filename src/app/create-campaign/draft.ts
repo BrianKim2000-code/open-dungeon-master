@@ -38,23 +38,11 @@ export type CampaignDraft = {
   // Storyboard and kept it on (issue 249). Never sent to the server.
   storySetupKept: boolean;
   dicePolicy: DicePolicy;
-  ttsEnabled: boolean;
-  ttsVoice: string;
-  // The narrator's pace, and whether speakers nobody chose a voice for are
-  // cast from the server's voices as they first speak (issue 97).
-  ttsSpeed: number;
-  ttsAutoCast: boolean;
   mapsEnabled: boolean;
-  ambienceEnabled: boolean;
-  // Scene-following is only meaningful once ambience is on, and is shown as
-  // a second toggle beside it rather than buried.
-  ambienceAuto: boolean;
   // Players may draw on the live board (the DM always may).
   boardDrawing: boolean;
   // The board shows what enemies look likely to do next.
   enemyIntent: boolean;
-  // Theatre inserts: the speaking NPC's face over the scene art.
-  presentation: "plain" | "theatre";
   // Several characters per player: off, one at a time, or all at once.
   multiCharacter: "off" | "one_active" | "all_active";
   multiclassingEnabled: boolean;
@@ -81,7 +69,6 @@ export type CampaignDraft = {
   startingWealth: GameSettings["startingWealth"];
   maxCompanions: number;
   maxGuests: number;
-  voiceChat: GameSettings["voice"];
 };
 
 export const DEFAULT_DRAFT: CampaignDraft = {
@@ -102,16 +89,9 @@ export const DEFAULT_DRAFT: CampaignDraft = {
   aiStorySetup: true,
   storySetupKept: false,
   dicePolicy: "digital_only",
-  ttsEnabled: true,
-  ttsVoice: "af_heart",
-  ttsSpeed: 1,
-  ttsAutoCast: false,
   mapsEnabled: true,
-  ambienceEnabled: true,
-  ambienceAuto: true,
   boardDrawing: true,
   enemyIntent: true,
-  presentation: "plain",
   multiCharacter: "off",
   multiclassingEnabled: true,
   worldSimulation: true,
@@ -143,18 +123,6 @@ export const DEFAULT_DRAFT: CampaignDraft = {
   startingWealth: "equipment",
   maxCompanions: 2,
   maxGuests: 2,
-  voiceChat: {
-    enabled: true,
-    turnEnforcement: "soft",
-    transcribe: false,
-    rules: {
-      proximity: false,
-      hearingRangeFeet: 30,
-      sayRange: false,
-      wallsAttenuate: false,
-      downedGoDeaf: false,
-    },
-  },
 };
 
 export type Patch = (changes: Partial<CampaignDraft>) => void;
@@ -170,7 +138,6 @@ export type WizardGates = {
   aiNarrates: boolean;
   storyKnownMissing: boolean;
   storyUnreachable: boolean;
-  ttsAvailable: boolean;
   mapsAvailable: boolean;
 };
 

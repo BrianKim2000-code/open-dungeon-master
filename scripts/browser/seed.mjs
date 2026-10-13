@@ -21,7 +21,7 @@ const PASSWORD = "Browser-2026-pass";
 const TITLE = "Regression Table";
 const LOBBY_TITLE = "Regression Lobby";
 
-const world = await openWorld({ campaign: { title: TITLE }, gameSettings: { ttsEnabled: true } });
+const world = await openWorld({ campaign: { title: TITLE }, gameSettings: {} });
 const kit = await combatKit(world);
 const { getDatabase } = await import("../../src/lib/db/core.ts");
 const campaigns = await import("../../src/lib/db/campaigns.ts");
@@ -173,7 +173,7 @@ const lobby = campaigns.createCampaign(world.owner.id, {
   maxPlayers: 6,
   startingLevel: 1,
   difficulty: "normal",
-  gameSettings: { ttsEnabled: false },
+  gameSettings: {},
 });
 
 // A DM offer waiting on the lead's own character, so the offer bar has
@@ -204,7 +204,7 @@ const quiet = campaigns.createCampaign(world.owner.id, {
   maxPlayers: 6,
   startingLevel: 5,
   difficulty: "normal",
-  gameSettings: { ttsEnabled: false },
+  gameSettings: {},
 });
 const joinedQuiet = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(quiet.id).inviteCode);
 if ("error" in joinedQuiet) {
@@ -251,7 +251,7 @@ const prepared = campaigns.createCampaign(world.owner.id, {
   maxPlayers: 6,
   startingLevel: 1,
   difficulty: "normal",
-  gameSettings: { ttsEnabled: false },
+  gameSettings: {},
 });
 campaigns.setStoryArc(
   prepared.id,

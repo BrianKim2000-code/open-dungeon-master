@@ -8,12 +8,12 @@ import { publishEphemeral } from "@/lib/events";
 
 // `aliases` are the other names they answer to, so a line tagged "Marla"
 // finds Marla Venn (src/lib/dm/speech.ts).
-export type CastMember = { id: string; name: string; portraitUrl: string; hasVoice: boolean; aliases?: string[] };
+export type CastMember = { id: string; name: string; portraitUrl: string; aliases?: string[] };
 
 export function publicCast(campaignId: string): CastMember[] {
   return listNpcs(campaignId)
     .filter((npc) => !npc.archived)
-    .map((npc) => ({ id: npc.id, name: npc.name, portraitUrl: npc.portraitUrl, hasVoice: npc.voice !== null, aliases: npc.aliases }));
+    .map((npc) => ({ id: npc.id, name: npc.name, portraitUrl: npc.portraitUrl, aliases: npc.aliases }));
 }
 
 export function publishCast(campaignId: string) {

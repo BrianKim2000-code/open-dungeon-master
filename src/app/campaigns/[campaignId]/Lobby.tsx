@@ -16,8 +16,6 @@ import { LobbyGroupHead, LobbyHero, LobbyRealDice, enter } from "@/app/campaigns
 import { LobbyRoomCode } from "@/app/campaigns/[campaignId]/LobbyRoomCode";
 import { LorePanel } from "@/app/campaigns/[campaignId]/LorePanel";
 import { RulesPanel } from "@/app/campaigns/[campaignId]/RulesPanel";
-import { VoicePanel } from "@/app/campaigns/[campaignId]/VoicePanel";
-import { useVoiceSpeaking } from "@/app/campaigns/[campaignId]/liveStore";
 import { resolveCompanionMode } from "@/lib/schemas/game-settings";
 import { isPrimaryDm, lobbyBlocker, partySlotCount, viewerCaps } from "@/lib/dm/viewer";
 import {
@@ -57,7 +55,6 @@ const EMPTY_MESSAGES: never[] = [];
 
 export function Lobby({ state, refresh }: { state: CampaignState; refresh: () => void }) {
   const { campaign, me, members, sheets } = state;
-  const voiceSpeaking = useVoiceSpeaking();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [buildingCompanion, setBuildingCompanion] = useState(false);
@@ -586,32 +583,7 @@ export function Lobby({ state, refresh }: { state: CampaignState; refresh: () =>
             />
           ) : null}
 
-          {/* The call is open in the lobby, so the table can talk while people
-              are still building characters. Pointless in a solo campaign, which
-              is the same reason the party list is hidden there. No floor to
-              show: the game has not started, so everyone can talk. */}
-          {!isSolo ? (
-            <section className="reveal lobby-enter order-7 mb-6" style={enter(3)}>
-              <VoicePanel
-                campaignId={campaign.id}
-                meUserId={me.id}
-                roster={state.voiceRoster}
-                speaking={voiceSpeaking}
-                audibilityVersion={state.voiceAudibilityVersion}
-                meshSignal={state.voiceMeshSignal}
-                adjudicates={adjudicates}
-                steersStory={steersStory}
-                transcribe={campaign.gameSettings.voice.transcribe}
-              />
-              {campaign.gameSettings.voice.transcribe ? (
-                <p className="reveal mt-2 text-xs text-amber-300/80">
-                  This table is transcribed: while voice is on, what each person says is written down with their name for the story log. Turn it off in campaign settings.
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-
-          <div className="lobby-enter order-8" style={enter(4)}>
+          <div className="lobby-enter order-7" style={enter(4)}>
             <LobbyGroupHead glyph="tab-settings" title="Table settings" />
             <GameSettingsPanel
               campaignId={campaign.id}

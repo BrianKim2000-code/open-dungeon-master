@@ -1,40 +1,22 @@
 "use client";
 
-// Account-backed audio preferences (narration, ambience, chat chime).
+// Account-backed audio preferences (chat chime).
 //
 // localStorage stays what the hooks actually read, because it answers
 // synchronously, works offline, and survives the server being unreachable;
 // the account copy only exists so a second browser starts where the first
 // left off. So: hydrate localStorage from GET /api/profile once per page
-// load, and write every change through to PATCH /api/profile on a debounce
-// (volume sliders fire continuously). A failed fetch in either direction
-// changes nothing the user can see.
+// load, and write every change through to PATCH /api/profile on a debounce.
+// A failed fetch in either direction changes nothing the user can see.
 //
-// Voice prefs (mic id, push-to-talk, peer volumes) deliberately do NOT sync;
-// see useVoicePrefs.ts for why they are per-machine.
 
-export type AudioPrefField =
-  | "narrationMuted"
-  | "narrationVolume"
-  | "ambienceMuted"
-  | "ambienceVolume"
-  // How the room and the music sit against the ambience volume, 0..1 each,
-  // for a listener who wants the tavern but not the lute.
-  | "ambienceBedLevel"
-  | "ambienceMusicLevel"
-  | "chimeMuted";
+export type AudioPrefField = "chimeMuted";
 
 // The localStorage keys and change events predate the account sync and are
 // shared with the hooks (which import them from here), so an account value
 // arriving after mount reaches already-rendered controls through the same
 // path a local toggle does.
 export const AUDIO_PREF_FIELDS: Record<AudioPrefField, { key: string; event: string }> = {
-  narrationMuted: { key: "odm_tts_muted", event: "odm-tts-prefs" },
-  narrationVolume: { key: "odm_tts_volume", event: "odm-tts-prefs" },
-  ambienceMuted: { key: "odm_ambience_muted", event: "odm-ambience-prefs" },
-  ambienceVolume: { key: "odm_ambience_volume", event: "odm-ambience-prefs" },
-  ambienceBedLevel: { key: "odm_ambience_bed_level", event: "odm-ambience-prefs" },
-  ambienceMusicLevel: { key: "odm_ambience_music_level", event: "odm-ambience-prefs" },
   chimeMuted: { key: "odm_chat_chime_muted", event: "odm-chime-prefs" },
 };
 

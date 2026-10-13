@@ -74,7 +74,7 @@ export const WORKSHOP_GUIDES: ToolGuide[] = [
       "Tap the map in the drawer to open the editor.",
       "Paint with the brush, line, outline, box and fill tools; undo is there when a stroke goes wrong.",
       "Place lights, doors, labels and props with their tools; a bystander prop offers the cast as a dropdown.",
-      "Set the theme, ambient light, tags and notes, and the sound the map makes.",
+      "Set the theme, ambient light, tags and notes.",
       "Put it on the table when a campaign is running, or open it as a scene.",
     ],
     tips: [

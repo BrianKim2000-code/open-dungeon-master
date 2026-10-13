@@ -369,7 +369,7 @@ await test("Every tool description reaches an agent program whole: none is longe
   const everything = {
     ...campaign,
     storyArc: campaign.storyArc ?? { beats: [] },
-    gameSettings: { ...campaign.gameSettings, worldSimulation: true, ambienceEnabled: true, relationships: "on", romance: "on", companions: "full" },
+    gameSettings: { ...campaign.gameSettings, worldSimulation: true, relationships: "on", romance: "on", companions: "full" },
   };
   const tools = [...dmTurnToolCatalogue(everything, true, false), runPreparedEncounterTool];
   assert.ok(tools.length > 90, `the whole catalogue (${tools.length} tools)`);

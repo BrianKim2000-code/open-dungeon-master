@@ -169,8 +169,6 @@ function makeState(sheet) {
         customGenreText: "",
         aiStorySetup: true,
         dicePolicy: "digital_only",
-        ttsEnabled: false,
-        ttsVoice: "af_heart",
         mapsEnabled: false,
         midGameJoinOpen: false,
         holdSubmissions: false,

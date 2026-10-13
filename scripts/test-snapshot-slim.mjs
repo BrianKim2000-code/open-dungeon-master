@@ -1,7 +1,6 @@
 // The table snapshot no longer grows with a campaign's whole history (audit
 // P9): older closed chapters ride without their summary and highlights (the
-// story panel reads them from /chapters), and narration takes are listed
-// only for the messages the snapshot carries.
+// story panel reads them from /chapters).
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
@@ -20,8 +19,6 @@ const { createUser } = await import("../src/lib/db/users.ts");
 const { createCampaign, allocateSeq } = await import("../src/lib/db/campaigns.ts");
 const { mintSession } = await import("../src/lib/auth.ts");
 const { closeChapterRow, ensureOpenChapter, listChapters, SNAPSHOT_FULL_CHAPTERS } = await import("../src/lib/db/chapters.ts");
-const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
-const { narrationAudioFor, narrationAudioPath } = await import("../src/lib/tts.ts");
 const snapshotRoute = await import("../src/app/api/campaigns/[campaignId]/route.ts");
 const chaptersRoute = await import("../src/app/api/campaigns/[campaignId]/chapters/route.ts");
 
@@ -71,23 +68,6 @@ await test("the story panel's own read still has every summary", async () => {
   assert.equal(chapters.filter((chapter) => chapter.status === "closed" && chapter.summary.length > 100).length, CLOSED);
   assert.ok(chapters.every((chapter) => !chapter.abridged));
   assert.equal(listChapters(campaign.id).length, CLOSED + 1);
-});
-
-await test("narration takes are listed only for the transcript the snapshot carries", async () => {
-  const ids = [];
-  for (let index = 0; index < 130; index += 1) {
-    const message = insertCampaignMessage({ campaignId: campaign.id, seq: allocateSeq(campaign.id), authorType: "dm", content: `Passage ${index}`, speech: [] });
-    ids.push(message.id);
-    const file = narrationAudioPath(campaign.id, message.id);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, "mp3");
-  }
-  const body = await snapshot();
-  const shown = new Set(body.messages.map((message) => message.id));
-  assert.ok(Object.keys(body.narrationAudio).length > 0);
-  assert.ok(Object.keys(body.narrationAudio).every((id) => shown.has(id)));
-  assert.ok(!(ids[0] in body.narrationAudio), "the oldest passage's take is not in the snapshot");
-  assert.deepEqual(Object.keys(narrationAudioFor(campaign.id, [ids[0], "nope"])), [ids[0]]);
 });
 
 removeTempDir(dir);

@@ -134,16 +134,10 @@ const NOT_NAMES = {
   "app/admin/AdminUsagePanel.tsx": 1, // lastActivityAt
   "components/rulebook/PagePrep.tsx": 1, // updatedAt
   "components/ui/ListControls.tsx": 1, // updatedAt, then compareNames
-  "lib/ambience/library.ts": 1, // cue ids
-  "lib/tts-cast.ts": 1, // voice ids
   "lib/db/overworld.ts": 1, // createdAt
   "lib/dm/call-tracker-logic.ts": 1, // call ids
   "lib/dm/chapter-lod.ts": 3, // chapter ids
   "lib/ops/backup.ts": 1, // createdAt
-  "lib/voice/mesh-logic.ts": 1, // joinedAt
-  "lib/voice/turn-logic.ts": 1, // raisedAt
-  "lib/voice/peers.ts": 1, // joinedAt
-  "lib/voice/transcript.ts": 1, // peer ids
   "lib/worldforge/time.ts": 1, // event ids, after compareNames on titles
   "lib/worldforge/web.ts": 1, // entry refs
   "lib/worldforge/format.ts": 1, // story ids

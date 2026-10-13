@@ -1,7 +1,7 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { byName } from "@/lib/language/text-logic";
 import { matchEntity, mergeAliases, normalizeName, type EntityMatch } from "@/lib/dm/entity-logic";
-import { normalizeNpcVoice, type NpcDraft, type NpcVoice } from "@/lib/npcs/forge";
+import { type NpcDraft } from "@/lib/npcs/forge";
 import { isUploadedImagePath } from "@/lib/uploads";
 import { storedGender, type Gender } from "@/lib/gender";
 import {
@@ -37,8 +37,6 @@ export type Npc = {
   arcCastId: string;
   // A face, as a /uploads/ path, or "". Shown, never read by any rule.
   portraitUrl: string;
-  // Their own read-aloud voice, or null for the narrator's.
-  voice: NpcVoice | null;
   // The faction they belong to (src/lib/db/factions.ts); "" for none.
   factionId: string;
   // What they do ("merchant", "cyberpunk-fixer", or whatever the DM typed).
@@ -72,7 +70,6 @@ type NpcRow = {
   portrait_url: string | null;
   role: string | null;
   gender: string | null;
-  voice_json: string | null;
   faction_id: string | null;
   stat_block?: string | null;
   archived: number;
@@ -103,7 +100,6 @@ function mapNpc(row: NpcRow): Npc {
     // Refused rather than trusted, the same belt and braces a map backdrop
     // gets: a path that is not one this app wrote reads back as no face.
     portraitUrl: isUploadedImagePath(row.portrait_url) ? row.portrait_url : "",
-    voice: normalizeNpcVoice(parseJson<unknown>(row.voice_json ?? "null", null)),
     factionId: row.faction_id ?? "",
     statBlock: row.stat_block ?? "",
     archived: row.archived === 1,
@@ -256,8 +252,8 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     `INSERT INTO npcs
        (id, campaign_id, name, attitude, trait, location, role, gender, last_shift_turn,
         aliases_json, personality_json, goals_json, relations_json,
-        bonds_json, pressure_json, arc_cast_id, portrait_url, voice_json, faction_id, stat_block, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', '', ?, ?, ?, 0, ?, ?)`,
+        bonds_json, pressure_json, arc_cast_id, portrait_url, faction_id, stat_block, archived, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', '', ?, ?, 0, ?, ?)`,
   ).run(
     id,
     campaignId,
@@ -271,7 +267,6 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     draft.personality ? JSON.stringify(draft.personality) : "",
     JSON.stringify(draft.goals),
     JSON.stringify(draft.relations),
-    draft.voice ? JSON.stringify(draft.voice) : null,
     draft.factionId,
     draft.statBlock ?? "",
     now,
@@ -295,7 +290,7 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
   db.prepare(
     `UPDATE npcs
      SET name = ?, attitude = ?, trait = ?, location = ?, role = ?, gender = ?, aliases_json = ?,
-         personality_json = ?, goals_json = ?, relations_json = ?, voice_json = ?, faction_id = ?, stat_block = ?, updated_at = ?
+         personality_json = ?, goals_json = ?, relations_json = ?, faction_id = ?, stat_block = ?, updated_at = ?
      WHERE id = ?`,
   ).run(
     draft.name,
@@ -308,23 +303,12 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
     draft.personality ? JSON.stringify(draft.personality) : "",
     JSON.stringify(draft.goals),
     JSON.stringify(draft.relations),
-    draft.voice ? JSON.stringify(draft.voice) : null,
     draft.factionId,
     draft.statBlock ?? "",
     nowIso(),
     npcId,
   );
   return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(npcId) as NpcRow);
-}
-
-// Their read-aloud voice alone, for the table's voices panel (issue 97):
-// the rest of the record is left exactly as it stands.
-export function setNpcVoice(campaignId: string, npcId: string, voice: NpcVoice | null): boolean {
-  return (
-    getDatabase()
-      .prepare(`UPDATE npcs SET voice_json = ?, updated_at = ? WHERE id = ? AND campaign_id = ?`)
-      .run(voice ? JSON.stringify(voice) : null, nowIso(), npcId, campaignId).changes > 0
-  );
 }
 
 // "" takes the face away. Nothing validates the path here: the routes accept

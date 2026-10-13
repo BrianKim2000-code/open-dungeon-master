@@ -29,7 +29,7 @@ import { aiEngine, call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 import { caster } from "./lib/enforce-spell-kit.mjs";
 
 const { test, finish } = suite("test-enforce-player-word");
-const world = await openWorld({ campaign: { maxPlayers: 20 }, gameSettings: { ttsEnabled: false, dicePolicy: "real_allowed" } });
+const world = await openWorld({ campaign: { maxPlayers: 20 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
 const ai = await aiEngine(world);
 const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
@@ -291,7 +291,7 @@ await test("A player's own End Turn needs no line first: the button, and odm_end
 });
 
 await test("An agent program in the DM seat gets the refusal through the console's route; the person in the seat does not.", async () => {
-  const table = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const table = await openWorld({ gameSettings: {} });
   const { setDmMode } = await import("../src/lib/db/campaigns.ts");
   setDmMode(table.campaignId, "human", table.owner.id);
   const tamsin = table.addHero({ name: "Tamsin", class: "fighter", level: 5, abilities: { str: 16 }, proficiencies: TRAINED, maxHp: 60, equipment: [{ name: "Longsword", qty: 1 }], user: table.addUser("tamsin") });

@@ -191,8 +191,8 @@ export async function currentUser(scope: UsageScope = openUsageScope()): Promise
   const user = getSessionUser(hashToken(token));
   if (user) {
     // Work this request does outside any campaign (a library portrait,
-    // dictation, an upload) is the account's in the usage ledger and its
-    // record of who made which file.
+    // an upload) is the account's in the usage ledger and its record of
+    // who made which file.
     fillUsageScope(scope, { userId: user.id });
   }
   return user;

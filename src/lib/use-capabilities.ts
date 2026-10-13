@@ -15,11 +15,6 @@ export type ClientCapabilities = {
   story: { configured: boolean; reachable: boolean; model?: string };
   utility: { configured: boolean };
   images: { configured: boolean; reachable: boolean; backend: string; openaiPlace?: string };
-  // provider and place arrive from servers newer than 0.24.5.
-  tts: { configured: boolean; reachable: boolean; provider?: "kokoro" | "openai" | "off"; place?: string };
-  // backend and wantsWav arrive from servers newer than 0.23.11.
-  stt: { configured: boolean; backend?: "whisper" | "builtin" | "openai" | "none"; wantsWav?: boolean };
-  voice: { enabled: boolean; mode: string };
 };
 
 let cached: ClientCapabilities | null = null;
@@ -80,9 +75,4 @@ export function offersImages(capabilities: ClientCapabilities | null): boolean {
 // Is there a text model for suggestions, drafts and the AI storyteller?
 export function offersStoryModel(capabilities: ClientCapabilities | null): boolean {
   return capabilities === null || capabilities.story.configured;
-}
-
-// Is there a speech-to-text service to dictate into a field with?
-export function offersDictation(capabilities: ClientCapabilities | null): boolean {
-  return capabilities === null || capabilities.stt.configured;
 }

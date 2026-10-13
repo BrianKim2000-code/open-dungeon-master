@@ -11,10 +11,8 @@ export function SafetyFields({ draft, patch }: StepProps) {
     <SafetyToneFields
       safety={normalizeSafety(draft.safety)}
       gm={normalizeGm(draft.gm)}
-      ttsVoice={draft.ttsVoice}
       onSafety={(safety) => patch({ safety })}
       onGm={(gm) => patch({ gm })}
-      onVoice={(ttsVoice) => patch({ ttsVoice })}
     />
   );
 }

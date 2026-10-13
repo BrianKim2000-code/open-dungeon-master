@@ -17,10 +17,6 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { GENRE_PRESETS, genrePreset } from "@/lib/genres";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import { WorldPackGallery } from "@/components/WorldPackGallery";
-import { useTtsVoices, voiceLabel, VoicePicker } from "@/components/VoicePicker";
-import { NarrationNote } from "@/app/campaigns/[campaignId]/NarrationNote";
-import { CharacterVoices } from "@/app/campaigns/[campaignId]/CharacterVoices";
-import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import { SafetyToneFields } from "@/components/SafetyToneFields";
 import type { GameSettings } from "@/lib/schemas/game-settings";
 import {
@@ -92,18 +88,10 @@ export function GameSettingsPanel({
   steersStory: boolean;
 }) {
   const [busy, setBusy] = useState(false);
-  const voices = useTtsVoices();
   // Every control here renders the server's settings, so a refused PATCH
   // changes nothing on screen; without this line it changes nothing silently.
   const [error, setError] = useState("");
   const [packs, setPacks] = useState<WorldPackSummary[]>([]);
-  // Whether any ambience audio is actually on disk. The library ships empty
-  // (public/ambience is gitignored and filled by npm run fetch-ambience), so
-  // a lead can switch ambience on and hear nothing with no clue why; this
-  // powers the hint on the Ambience row. Defaults to true so the hint never
-  // flashes on installs that are fine while the answer is in flight.
-  const [ambienceInstalled, setAmbienceInstalled] = useState(true);
-  const [ambienceCounts, setAmbienceCounts] = useState<Record<"bed" | "music" | "sting", { installed: number; total: number }> | null>(null);
 
   // Installed world packs, so the lead can switch worlds after creation. An
   // empty list simply hides the row.
@@ -121,28 +109,6 @@ export function GameSettingsPanel({
       cancelled = true;
     };
   }, []);
-
-  // Asked lazily like the world packs above, and only when the answer could
-  // matter: the hint renders for the lead with ambience switched on, so
-  // nobody else pays for the request.
-  useEffect(() => {
-    if (!steersStory || !settings.ambienceEnabled) {
-      return;
-    }
-    let cancelled = false;
-    void fetch("/api/ambience")
-      .then((response) => (response.ok ? response.json() : { tracks: {} }))
-      .then((data) => {
-        if (!cancelled) {
-          setAmbienceInstalled(Object.keys(data.tracks ?? {}).length > 0);
-          setAmbienceCounts(data.counts ?? null);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [steersStory, settings.ambienceEnabled]);
 
   async function patch(update: Partial<GameSettings>) {
     setBusy(true);
@@ -197,18 +163,6 @@ export function GameSettingsPanel({
             {settings.dicePolicy === "real_allowed" ? "Real dice allowed" : "Digital dice only"}
           </span>
           <span className="flex items-center gap-1.5">
-            <GameIcon icon={{ kind: "glyph", key: "cue-bell" }} size="size-5" />
-            {settings.ttsEnabled
-              ? `Narration on (${voiceLabel(voices, settings.ttsVoice)})`
-              : "Narration off"}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <GameIcon icon={{ kind: "glyph", key: "tab-ambience" }} size="size-5" />
-            {settings.ambienceEnabled
-              ? `Ambience on${settings.ambienceAuto ? " (follows the scene)" : ""}`
-              : "Ambience off"}
-          </span>
-          <span className="flex items-center gap-1.5">
             <GameIcon icon={{ kind: "glyph", key: "tab-map" }} size="size-5" />
             {settings.mapsEnabled ? "Maps on" : "Maps off"}
           </span>
@@ -259,7 +213,6 @@ export function GameSettingsPanel({
             AI companions: {COMPANION_LABELS[settings.companions]}
           </span>
         </div>
-        {settings.ttsEnabled ? <CharacterVoices campaignId={campaignId} settings={settings} steersStory={false} /> : null}
       </section>
     );
   }
@@ -402,46 +355,7 @@ export function GameSettingsPanel({
           </Tooltip>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="pk-rowlabel">Narration</span>
-          <SettingToggle label="Narration" on={settings.ttsEnabled} onToggle={() => patch({ ttsEnabled: !settings.ttsEnabled })}>
-            {settings.ttsEnabled ? "On" : "Off"}
-          </SettingToggle>
-          {settings.ttsEnabled ? (
-            <>
-              <VoicePicker
-                size="sm"
-                label="Narration voice"
-                value={settings.ttsVoice}
-                onChange={(ttsVoice) => patch({ ttsVoice })}
-              />
-              <VoicePreviewButton voice={settings.ttsVoice} />
-            </>
-          ) : null}
-        </div>
-        {settings.ttsEnabled ? (
-          <CharacterVoices campaignId={campaignId} settings={settings} steersStory patch={patch} />
-        ) : null}
-        {settings.ttsEnabled ? <NarrationNote /> : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="pk-rowlabel">Faces</span>
-          <Tooltip content="Theatre inserts: when a passage has someone speaking, their portrait comes up over the scene art while their lines play.">
-            <SettingToggle on={settings.presentation === "theatre"} onToggle={() => patch({ presentation: settings.presentation === "theatre" ? "plain" : "theatre" })}>
-              {settings.presentation === "theatre" ? "Theatre inserts on" : "Theatre inserts off"}
-            </SettingToggle>
-          </Tooltip>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="pk-rowlabel">Ambience</span>
-          <SettingToggle label="Ambience" on={settings.ambienceEnabled} onToggle={() => patch({ ambienceEnabled: !settings.ambienceEnabled })}>
-            {settings.ambienceEnabled ? "On" : "Off"}
-          </SettingToggle>
-          {settings.ambienceEnabled ? (
-            <Tooltip content="Pick a bed from each new place and switch to combat music when a fight starts. Off leaves every change to the DM.">
-              <SettingToggle on={settings.ambienceAuto} onToggle={() => patch({ ambienceAuto: !settings.ambienceAuto })}>
-                {settings.ambienceAuto ? "Follows the scene" : "DM sets it"}
-              </SettingToggle>
-            </Tooltip>
-          ) : null}
+          <span className="pk-rowlabel">Board</span>
           <Tooltip content="Players may draw on the live board: a plan of attack, a circle round a door. The DM always may.">
             <SettingToggle on={settings.boardDrawing} onToggle={() => patch({ boardDrawing: !settings.boardDrawing })}>
               {settings.boardDrawing ? "Players may draw" : "Only the DM draws"}
@@ -452,22 +366,6 @@ export function GameSettingsPanel({
               Enemy intent {settings.enemyIntent ? "on" : "off"}
             </SettingToggle>
           </Tooltip>
-          {settings.ambienceEnabled && !ambienceInstalled ? (
-            // The catalog knows the cues but no audio is on disk, so the
-            // toggle above is currently a promise of silence. Say so where
-            // it is being switched on rather than letting the table wonder.
-            <span className="text-stone-500">
-              This server has no sound library on disk, so this plays silence. The library ships with
-              the game; the server admin can restore it from the admin panel (Sound library).
-            </span>
-          ) : settings.ambienceEnabled && ambienceCounts ? (
-            <span className="text-stone-500">
-              Audio for {ambienceCounts.bed.installed} of {ambienceCounts.bed.total} rooms,{" "}
-              {ambienceCounts.music.installed} of {ambienceCounts.music.total} moods and{" "}
-              {ambienceCounts.sting.installed} of {ambienceCounts.sting.total} sounds. The speaker in the
-              table header opens the sound panel.
-            </span>
-          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Extras</span>
@@ -623,10 +521,8 @@ export function GameSettingsPanel({
           <SafetyToneFields
             safety={settings.safety}
             gm={settings.gm}
-            ttsVoice={settings.ttsVoice}
             onSafety={(safety) => patch({ safety })}
             onGm={(gm) => patch({ gm })}
-            onVoice={(ttsVoice) => patch({ ttsVoice })}
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -643,111 +539,6 @@ export function GameSettingsPanel({
               ? "Narration that contradicts the dice goes back for one rewrite."
               : "The DM's narration is persisted exactly as written."}
           </span>
-        </div>
-        {/* Live voice chat. The rules below are a list rather than a single
-            proximity checkbox on purpose: "players only hear people within 30
-            feet" is one table's house rule, and the next table will want a
-            different one. They are all inputs to one function
-            (src/lib/voice/audibility.ts). */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="pk-rowlabel">Voice</span>
-          <Tooltip content="Live voice chat for this table, in the lobby and during play. The server also has its own switch, and needs a media port open; if voice is off server-wide this has no effect.">
-            <SettingToggle on={settings.voice.enabled} onToggle={() =>
-                patch({ voice: { ...settings.voice, enabled: !settings.voice.enabled } })}>
-              Voice chat {settings.voice.enabled ? "on" : "off"}
-            </SettingToggle>
-          </Tooltip>
-          {settings.voice.enabled ? (
-            <>
-              <Tooltip content="How hard the floor is enforced on microphones. Soft shows whose turn it is without muting anyone. Strict pauses a player's microphone on the server, so the mute is real rather than a greyed-out button. Off ignores the floor entirely. The DM is never muted by any of these.">
-                <span className="inline-flex min-w-0 max-w-full">
-                  <Select<"off" | "soft" | "strict">
-                    size="sm"
-                    label="Turn enforcement on microphones"
-                    value={settings.voice.turnEnforcement}
-                    onChange={(turnEnforcement) => patch({ voice: { ...settings.voice, turnEnforcement } })}
-                    options={[
-                      { value: "off", label: "Turns: ignored" },
-                      { value: "soft", label: "Turns: shown" },
-                      { value: "strict", label: "Turns: enforced" },
-                    ]}
-                    className={selectClass}
-                  />
-                </span>
-              </Tooltip>
-              <Tooltip content="Transcription: each speaker's microphone is written down with their name, for the beat drafter and the chapter summary. Never read by the DM prompt. The lobby says out loud that the table is being transcribed while this is on.">
-                <SettingToggle on={settings.voice.transcribe} onToggle={() => patch({ voice: { ...settings.voice, transcribe: !settings.voice.transcribe } })}>
-                  Transcription {settings.voice.transcribe ? "on" : "off"}
-                </SettingToggle>
-              </Tooltip>
-              <Tooltip content="Distance decides who hears whom, using the battle map. Outside combat, or with no map, everyone hears everyone as usual. The DM always hears everyone and is always heard.">
-                <SettingToggle on={settings.voice.rules.proximity} onToggle={() =>
-                    patch({
-                      voice: {
-                        ...settings.voice,
-                        rules: { ...settings.voice.rules, proximity: !settings.voice.rules.proximity },
-                      },
-                    })}>
-                  Proximity {settings.voice.rules.proximity ? "on" : "off"}
-                </SettingToggle>
-              </Tooltip>
-              {settings.voice.rules.proximity ? (
-                <>
-                  <span className="inline-flex min-w-0 max-w-full" title="How far a normal speaking voice carries">
-                    <Select
-                      size="sm"
-                      label="How far a normal speaking voice carries"
-                      value={String(settings.voice.rules.hearingRangeFeet)}
-                      onChange={(value) =>
-                        patch({ voice: { ...settings.voice, rules: { ...settings.voice.rules, hearingRangeFeet: Number(value) } } })
-                      }
-                      options={[15, 30, 60, 120].map((feet) => ({ value: String(feet), label: `${feet} ft` }))}
-                      className={selectClass}
-                    />
-                  </span>
-                  <Tooltip content="Lets each player pick whisper (5 ft), normal, or shout (120 ft). The range is the speaker's, because shouting is something you do rather than something done to you.">
-                    <SettingToggle on={settings.voice.rules.sayRange} onToggle={() =>
-                        patch({
-                          voice: {
-                            ...settings.voice,
-                            rules: { ...settings.voice.rules, sayRange: !settings.voice.rules.sayRange },
-                          },
-                        })}>
-                      Whisper/shout {settings.voice.rules.sayRange ? "on" : "off"}
-                    </SettingToggle>
-                  </Tooltip>
-                  <Tooltip content="A wall between two characters muffles the voice rather than silencing it. Hearing through a door is a real thing, and audio that vanished at a doorway would read as a bug. Fog of war never gates audio: not seeing someone has nothing to do with hearing them.">
-                    <SettingToggle on={settings.voice.rules.wallsAttenuate} onToggle={() =>
-                        patch({
-                          voice: {
-                            ...settings.voice,
-                            rules: {
-                              ...settings.voice.rules,
-                              wallsAttenuate: !settings.voice.rules.wallsAttenuate,
-                            },
-                          },
-                        })}>
-                      Walls muffle {settings.voice.rules.wallsAttenuate ? "on" : "off"}
-                    </SettingToggle>
-                  </Tooltip>
-                </>
-              ) : null}
-              <Tooltip content="A character at 0 hit points stops hearing the table. They still hear the DM, and they are still heard.">
-                <SettingToggle on={settings.voice.rules.downedGoDeaf} onToggle={() =>
-                    patch({
-                      voice: {
-                        ...settings.voice,
-                        rules: {
-                          ...settings.voice.rules,
-                          downedGoDeaf: !settings.voice.rules.downedGoDeaf,
-                        },
-                      },
-                    })}>
-                  Downed go deaf {settings.voice.rules.downedGoDeaf ? "on" : "off"}
-                </SettingToggle>
-              </Tooltip>
-            </>
-          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Bonds</span>

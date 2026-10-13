@@ -4,26 +4,22 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Database from "better-sqlite3-multiple-ciphers";
+import Database from "better-sqlite3";
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "odm-backup-test-"));
 const backupDir = path.join(root, "backups");
 const restoreDir = path.join(root, "restored");
-const key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 try {
   fs.mkdirSync(path.join(root, "data"), { recursive: true });
   fs.mkdirSync(path.join(root, "public", "uploads"), { recursive: true });
   fs.mkdirSync(path.join(root, "models"), { recursive: true });
-  fs.writeFileSync(path.join(root, ".env.server"), `DB_ENCRYPTION_KEY=${key}\n`);
   fs.writeFileSync(path.join(root, "public", "uploads", "keep.txt"), "asset survives\n");
   fs.writeFileSync(path.join(root, "models", "keep.Modelfile"), "FROM test\n");
 
   const dbPath = path.join(root, "data", "local-roleplay.sqlite");
   const db = new Database(dbPath);
-  db.pragma("cipher='chacha20'");
-  db.pragma(`key='${key}'`);
   db.exec(`
     CREATE TABLE campaigns (id TEXT PRIMARY KEY);
     CREATE TABLE users (id TEXT PRIMARY KEY);
@@ -54,8 +50,6 @@ try {
   assert.equal(fs.readFileSync(path.join(restoreDir, "models", "keep.Modelfile"), "utf8"), "FROM test\n");
 
   const restoredDb = new Database(path.join(restoreDir, "data", "local-roleplay.sqlite"), { readonly: true });
-  restoredDb.pragma("cipher='chacha20'");
-  restoredDb.pragma(`key='${key}'`);
   assert.equal(restoredDb.prepare("SELECT COUNT(*) AS n FROM campaigns").get().n, 1);
   restoredDb.close();
 
@@ -84,7 +78,7 @@ try {
     assert.equal(fs.readFileSync(path.join(bystander, "keep.txt"), "utf8"), "not the backup's to delete\n");
   }
 
-  console.log("backup/restore: verified archive round-trip and encrypted DB integrity");
+  console.log("backup/restore: verified archive round-trip and DB integrity");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }

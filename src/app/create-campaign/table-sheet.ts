@@ -3,7 +3,7 @@ import type { CampaignDraft, WizardGates } from "@/app/create-campaign/draft";
 // The table sheet's pure half: which switches the Feel step shows, in which
 // group, which of them the "features on" total counts, and what a press
 // does to the draft. FeelStep draws this; scripts/test-world-portals.mjs
-// holds the count to thirteen.
+// holds the count to ten.
 
 // Which of the table features are switched on, counting only the ones the
 // wizard actually showed: a hidden toggle is not a choice the table made.
@@ -13,10 +13,7 @@ export function featuresOn(draft: CampaignDraft, gates: WizardGates): number {
   const bonds = draft.relationships !== "off";
   return [
     aiNarrates && draft.aiStorySetup,
-    draft.ttsEnabled,
     draft.mapsEnabled,
-    draft.ambienceEnabled,
-    draft.ambienceEnabled && draft.ambienceAuto,
     draft.multiclassingEnabled,
     aiNarrates && draft.worldSimulation,
     draft.inventoryApprovals,
@@ -35,11 +32,7 @@ export type SheetRowKey =
   | "aiStorySetup"
   | "narrationGuard"
   | "worldSimulation"
-  | "ttsEnabled"
   | "mapsEnabled"
-  | "ambienceEnabled"
-  | "ambienceAuto"
-  | "presentation"
   | "relationships"
   | "romance"
   | "multiCharacter"
@@ -77,7 +70,7 @@ type RowSpec = {
   counted: boolean;
   aiOnly?: boolean;
   tableOnly?: boolean;
-  needs?: "ambienceEnabled" | "relationships";
+  needs?: "relationships";
   info?: SheetInfo;
 };
 
@@ -87,11 +80,7 @@ const ROWS: RowSpec[] = [
   { key: "aiStorySetup", group: "narration", counted: true, aiOnly: true },
   { key: "narrationGuard", group: "narration", counted: true, aiOnly: true, info: "narrationGuard" },
   { key: "worldSimulation", group: "narration", counted: true, aiOnly: true, info: "livingWorld" },
-  { key: "ttsEnabled", group: "senses", counted: true },
   { key: "mapsEnabled", group: "senses", counted: true },
-  { key: "ambienceEnabled", group: "senses", counted: true },
-  { key: "ambienceAuto", group: "senses", counted: true, needs: "ambienceEnabled" },
-  { key: "presentation", group: "senses", counted: false },
   { key: "relationships", group: "people", counted: true, info: "bonds" },
   { key: "romance", group: "people", counted: true, needs: "relationships", info: "romance" },
   { key: "multiCharacter", group: "people", counted: false },
@@ -106,13 +95,12 @@ const ROWS: RowSpec[] = [
 
 const GROUPS: Array<{ id: SheetGroupId; label: string; note: string }> = [
   { id: "narration", label: "The narrator", note: "only with an AI narrator" },
-  { id: "senses", label: "Sight and sound", note: "" },
+  { id: "senses", label: "The board", note: "" },
   { id: "people", label: "People and the floor", note: "" },
   { id: "rules", label: "Rules at the table", note: "" },
 ];
 
 function parentOn(draft: CampaignDraft, needs: RowSpec["needs"]): boolean {
-  if (needs === "ambienceEnabled") return draft.ambienceEnabled;
   if (needs === "relationships") return draft.relationships !== "off";
   return true;
 }
@@ -129,24 +117,10 @@ function copy(spec: RowSpec, draft: CampaignDraft, gates: WizardGates): { label:
       return { label: "Outcome check", hint: "Narration that contradicts the dice is rewritten" };
     case "worldSimulation":
       return { label: "Living world", hint: "Off-screen schemes and rumors advance on their own" };
-    case "ttsEnabled":
-      return {
-        label: "Voice narration",
-        hint: gates.ttsAvailable ? "Spoken DM narration" : "No speech service on this server",
-      };
     case "mapsEnabled":
       return {
         label: "Maps",
         hint: gates.mapsAvailable ? "AI-drawn area maps" : "Drawn once this server can paint pictures",
-      };
-    case "ambienceEnabled":
-      return { label: "Ambience", hint: "Room tone, music and stings" };
-    case "ambienceAuto":
-      return { label: "Sound follows the scene", hint: "Off leaves it to the DM" };
-    case "presentation":
-      return {
-        label: "Theatre inserts",
-        hint: "A speaking NPC's face over the scene art while their lines play",
       };
     case "relationships":
       return { label: "Bonds", hint: "NPCs remember how each character treated them" };
@@ -184,8 +158,6 @@ function copy(spec: RowSpec, draft: CampaignDraft, gates: WizardGates): { label:
 
 function knobOf(key: SheetRowKey, draft: CampaignDraft): 0 | 0.5 | 1 {
   switch (key) {
-    case "presentation":
-      return draft.presentation === "theatre" ? 1 : 0;
     case "relationships":
       return draft.relationships !== "off" ? 1 : 0;
     case "romance":
@@ -212,9 +184,9 @@ export function tableSheet(draft: CampaignDraft, gates: WizardGates): SheetGroup
         on: knob > 0,
         knob,
         counted: spec.counted,
-        // One server switch away rather than a feature this install can
-        // never have, so the row stays visible and says why it is off.
-        disabled: spec.key === "ttsEnabled" && !gates.ttsAvailable,
+        // Nothing needs a server switch to stay visible any more, but the
+        // field stays so FeelStep can grey out a row that ever needs it.
+        disabled: false,
         dependent: Boolean(spec.needs),
         info: spec.info ?? null,
       };
@@ -232,8 +204,6 @@ export function countableRows(gates: WizardGates): number {
 // everything else flips.
 export function flipRow(draft: CampaignDraft, key: SheetRowKey): Partial<CampaignDraft> {
   switch (key) {
-    case "presentation":
-      return { presentation: draft.presentation === "theatre" ? "plain" : "theatre" };
     case "relationships":
       return { relationships: draft.relationships !== "off" ? "off" : "on" };
     case "romance":

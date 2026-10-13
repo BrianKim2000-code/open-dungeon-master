@@ -35,48 +35,10 @@ chapters, drops each page's repeated title, and corrects the few conversion
 slips listed in the script's `ERRATA`. The rulebook shows the attribution on
 its contents page and ends with the SRD's legal notice as its last page.
 
-## Ambience and music
+## Audio
 
-`src/lib/ambience/catalog.ts` names the cues the app can play. The files in
-`public/ambience/` ship with the project and are **not under the project's
-licence**: each is a public-domain or open-licensed recording from
-OpenGameArt, Kevin MacLeod's incompetech catalogue, Wikimedia Commons,
-Freesound or the Internet Archive, under the licence recorded beside it in
-`src/lib/ambience/sources.json` and `public/ambience/manifest.json` and shown
-on the `/licenses` page. Where a recording was re-encoded or cut to length
-its title says "excerpt"; those are adaptations made under the same licence,
-with the same credit. The release's sound pack (`ambience-pack.zip`) carries
-the same files and credits.
-
-The script reads the licence each source records for a file and refuses
-anything it cannot positively identify, including a blank licence field. It
-accepts public-domain dedications (CC0 and the Public Domain Mark), which
-impose no obligation on a downstream user, and the attribution licences
-(CC BY, CC BY-SA and OGA-BY), which oblige you to keep the credit visible,
-which the app does for you: every file's title, author, source URL and
-licence are written into `data/ambience-lock.json` and
-`public/ambience/manifest.json`, listed on the in-app `/licenses` page under
-"Sound library", and travel inside the sound pack as `credits.json`.
-`--public-domain-only` narrows the script to CC0 and the Public Domain Mark.
-NonCommercial and NoDerivatives licences are refused under every setting,
-because whether a given install is a commercial or a derivative use is a
-question about the operator, not about this project, and the script must not
-answer it on their behalf. The shipped pins (`src/lib/ambience/sources.json`)
-list each track's licence beside its URL.
-
-Takes made with a music model (`scripts/generate-ambience.mjs`, ACE-Step 1.5,
-MIT) are credited as generated and stay out of the pack unless an operator
-asks for them.
-
-Files an operator supplies by hand (dropped into `public/ambience/`, or pinned
-in `data/ambience-sources.json`) are credited as locally supplied. The licence
-for those is the operator's to establish and to stand behind; this project
-makes no claim about them.
-
-**The rule for contributors:** do not add audio files to this repository, and
-do not add a source to the fetch script that cannot report a machine-readable
-licence per file. A cue with no file is silent, which is a visible and
-harmless failure. A cue playing something nobody can account for is not.
+The app ships no audio: no sound library, no music, no read-aloud voice. Do
+not add audio files to this repository.
 
 ## Expanded options (original content)
 

@@ -2,7 +2,7 @@ import type { SystemGlyph } from "@/lib/system-glyphs";
 import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
-import { sceneIds } from "@/lib/ambience/catalog";
+import { sceneIds } from "@/lib/scenes";
 import { z } from "zod";
 import {
   allocateSeq,
@@ -61,7 +61,6 @@ import {
 } from "@/lib/dm/can-act";
 import { acWithEffects, enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { characterInitiativeExpression } from "@/lib/dm/contest-roll";
-import { followCombatAmbience } from "@/lib/dm/ambience-tools";
 import {
   createBattleMapForEncounter,
   handleMoveToken,
@@ -344,17 +343,7 @@ function handleStartEncounter(
         ? "The party strikes first"
         : "Roll initiative",
     tone: "ember",
-    sting: "sword_clash",
   });
-
-  // Initiative is starting: the room's music changes, and the harder the
-  // fight reads the bigger the music. The bed is left alone, because the
-  // cave they are fighting in is still a cave.
-  followCombatAmbience(
-    campaign,
-    true,
-    evaluation.verdict === "deadly" || evaluation.verdict === "beyond_deadly",
-  );
 
   // The AI's fight rolls its initiative now, for every character whose dice
   // the server rolls, so the fight opens in this same call; a player who

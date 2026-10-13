@@ -1,32 +1,19 @@
 # syntax=docker/dockerfile:1
 
-# Open Dungeon Master as a single image. Everything the app needs is baked in:
-# the Next.js build, the Open5e content pack, and the embedding model.
-# Only the AI services stay outside (llama.cpp, ComfyUI, Kokoro TTS, STT).
-#
-# Built on glibc rather than Alpine: better-sqlite3-multiple-ciphers and
-# onnxruntime-node both publish glibc prebuilds, and musl would force a slow
-# source compile of the first and has no build of the second at all. A
-# scanner that proposes an Alpine tag is proposing an image that cannot run
-# this app; OS-level fixes are taken with apt-get upgrade in both stages
-# instead, which pulls the patched Debian packages at build time.
+# Open Dungeon Master - simplified build without native modules.
+# Uses Node.js built-in sqlite (node:sqlite) and no transformers/voice/blueooth.
 
 # --------------------------------------------------------------- dependencies
 FROM node:22.23.2-trixie-slim AS deps
 WORKDIR /app
 
-# Toolchain for the two native modules, in case no prebuild matches the platform.
 RUN apt-get update \
   && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+  && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-# The postinstall hook runs this; copy it in before the rest of the source so
-# the install layer stays cached across ordinary code changes.
 COPY scripts/copy-dice-assets.mjs ./scripts/
-# A full install, not --ignore-scripts: better-sqlite3-multiple-ciphers and
-# onnxruntime-node fetch their native binaries from an install script.
 RUN npm ci
 
 # --------------------------------------------------------------------- build
@@ -35,61 +22,18 @@ WORKDIR /app
 
 COPY . .
 
-# 3D dice textures and sounds. The postinstall hook already ran in the deps
-# stage; rerunning is cheap and keeps this independent of the COPY order.
 RUN node scripts/copy-dice-assets.mjs
 
-# Bake the content pack (spells, monsters, items, feats, subclasses) and the
-# embedding model, so a running container never needs the internet to
-# answer a rules lookup or a semantic story recall. The pack comes from this
-# version's GitHub release asset; only an unreleased build rebuilds it from
-# api.open5e.com, which goes down often enough to have failed a publish.
+# Content pack for rules lookup - baked so container works offline.
 RUN node scripts/fetch-content-pack.mjs
-# The default model is always baked. A table that plays in another language
-# can bake its model too with --build-arg EMBEDDING_MODEL=... (and
-# EMBEDDING_DTYPE), so its containers never download it; the runtime
-# EMBEDDING_MODEL setting still picks which one is used.
-ARG EMBEDDING_MODEL=
-ARG EMBEDDING_DTYPE=
-RUN env -u EMBEDDING_MODEL -u EMBEDDING_DTYPE npm run fetch-model \
-  && if [ -n "$EMBEDDING_MODEL" ]; then npm run fetch-model; fi
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# The build context has no .git, so the commit this image is made from is
-# passed in for the About dialog (next.config.ts). The published image gets
-# it from its workflow; a local build may pass
-# --build-arg ODM_BUILD_COMMIT=$(git rev-parse HEAD), and without it the
-# dialog shows the release number alone.
 ARG ODM_BUILD_COMMIT=
 ARG ODM_BUILD_DESCRIBE=
 RUN DOCKER_BUILD=1 ODM_BUILD_COMMIT="$ODM_BUILD_COMMIT" ODM_BUILD_DESCRIBE="$ODM_BUILD_DESCRIBE" npm run build
 
-# Trim the standalone bundle here, not in the runner stage: deleting a file in a
-# later layer does not reclaim the bytes the earlier COPY already wrote.
-#
-# onnxruntime-node ships every platform plus the CUDA and TensorRT execution
-# providers (~400MB), and this app only ever embeds on CPU. Only the Linux
-# binding for the CPU this image is built on stays: the one next.config.ts
-# traces, chosen by process.arch here too (x64 on the published amd64 image,
-# arm64 for an image built on an arm64 host, issue #39). The GPU providers
-# exist only in the x64 build, so on arm64 that line finds nothing. The build
-# stops here if the binding is missing, before the runner stage embeds with it.
-# File tracing also copies what the server reads from the tree itself: the
-# bundled world packs, which bring most of src/lib along. The runner stage
-# copies src/ and public/ whole, so a traced copy would only sit a second
-# time in the layer below; it goes here. Run-time state (data/, models/, the
-# uploads) is kept out of the trace where its paths are built, and stays on
-# this list as a guard with the docs older builds swept in; the runner
-# re-adds what is needed at paths a volume cannot hide.
+# Trim standalone bundle - remove docs and build artifacts not needed at runtime.
 RUN cd .next/standalone \
-  && keep="node_modules/onnxruntime-node/bin/napi-v6/linux/$(node -p process.arch)" \
-  && test -f "$keep/onnxruntime_binding.node" \
-     || { echo "No onnxruntime-node binding at $keep for this build platform" >&2; exit 1; } \
-  && for dir in node_modules/onnxruntime-node/bin/napi-v6/*/*; do \
-       [ "$dir" = "$keep" ] || rm -rf "$dir"; \
-     done \
-  && rm -f  "$keep/libonnxruntime_providers_cuda.so" \
-            "$keep/libonnxruntime_providers_tensorrt.so" \
   && rm -rf data models docs public src package-lock.json tsconfig.tsbuildinfo \
             README.md CLAUDE.md AGENTS.md eslint.config.mjs postcss.config.mjs
 
@@ -97,20 +41,11 @@ RUN cd .next/standalone \
 FROM node:22.23.2-trixie-slim AS runner
 WORKDIR /app
 
-# The patched Debian packages, as in the deps stage, plus the system CA
-# store: Node carries its own roots, so ODM never needed it, but an agent
-# program installed into this image (Codex is a native binary) fails every
-# HTTPS request without it, the device-code sign-in first (issue #132).
 RUN apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# Agent programs to bake into the image, as npm package names separated by
-# spaces: "@openai/codex", "@anthropic-ai/claude-code", "opencode-ai". Empty
-# by default. A program installed here is found and run by the server
-# (src/lib/harness/status.ts); its sign-in lives in /home/node, which
-# docker-compose.yml keeps on a volume. See docs/agent-harness.md.
 ARG AGENT_PROGRAMS=""
 RUN if [ -n "$AGENT_PROGRAMS" ]; then npm install -g $AGENT_PROGRAMS && npm cache clean --force; fi
 
@@ -120,43 +55,23 @@ ENV NODE_ENV=production \
     PORT=3005 \
     CONTENT_DB_PATH=/app/content/open5e.sqlite
 
-# Every COPY sets ownership inline. A trailing `chown -R /app` would rewrite
-# every file into a second 250MB layer instead.
-#
-# The standalone bundle carries its own trimmed node_modules plus server.js.
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
 
-# The embedding cache directory is hard-coded to <cwd>/models/embeddings in
-# src/lib/embeddings.ts, so it has to live here and must not be a mount point.
-COPY --from=build --chown=node:node /app/models/embeddings ./models/embeddings
-
-# The content pack lives outside /app/data so the data volume cannot hide it.
+# Content pack outside data so volume cannot hide it.
 COPY --from=build --chown=node:node /app/data/content/open5e.sqlite ./content/open5e.sqlite
 
-# Source and scripts, so maintenance commands work through `docker compose exec`
-# (make-admin.mjs and backfill-embeddings.mjs import TypeScript from src/).
+# Source and scripts for maintenance commands.
 COPY --from=build --chown=node:node /app/src ./src
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/tsconfig.json ./tsconfig.json
 
-# Runtime state. Creating these before any volume is attached is what seeds a
-# fresh named volume with ownership the unprivileged user can write to.
-# models/speech holds the built-in speech recognition model the admin
-# downloads (src/lib/stt-builtin.ts); on a volume it survives an update.
 RUN mkdir -p data public/uploads public/generated public/generated-audio logs models/speech \
   && chmod +x scripts/docker-entrypoint.sh \
-  && chown node:node data public/uploads public/generated public/generated-audio logs models models/speech
+  && chown node:node data public/uploads public/generated public/generated-audio logs
 
 USER node
-
-# Embed once with only what this image ships, as the user that runs it. The
-# standalone tracer once dropped the embedding runtime's JavaScript (see
-# next.config.ts) and nothing failed: every container quietly fell back to
-# keyword search. A missing module now fails the build here instead. The
-# default model is already baked, so nothing is downloaded.
-RUN node scripts/fetch-embedding-model.mjs
 
 EXPOSE 3005
 

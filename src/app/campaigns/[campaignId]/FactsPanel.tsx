@@ -9,8 +9,6 @@ import { cn } from "@/lib/cn";
 import type { WorldFact } from "@/lib/db/facts";
 import { FACT_CATEGORIES, type FactCategory } from "@/lib/dm/fact-logic";
 import { KitButton, PanelError, RowMenu, panelField, panelRow } from "./PanelKit";
-import { DictateField } from "@/components/DictateField";
-import { appendDictation } from "@/lib/dictation";
 
 // The world-state fact sheet: server-tracked canon extracted at chapter
 // close (plus manual pins). Everyone sees party-known facts; the lead can
@@ -85,16 +83,14 @@ function FactCard({
     <ContextMenu as="li" items={editing ? [] : items} label={fact.subject || CATEGORY_LABELS[fact.category]} className={panelRow}>
       {editing ? (
         <div className="reveal space-y-1.5">
-          <DictateField label="Fact" onTranscript={(spoken) => setText((current) => appendDictation(current, spoken, 300))}>
-            <textarea
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              rows={2}
-              maxLength={300}
-              aria-label="Fact"
-              className={cn(panelField, "leading-5")}
-            />
-          </DictateField>
+          <textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={2}
+            maxLength={300}
+            aria-label="Fact"
+            className={cn(panelField, "leading-5")}
+          />
           <div className="flex gap-1.5">
             <KitButton
               tone="primary"
@@ -220,17 +216,15 @@ function FactComposer({
         aria-label="Subject"
         className={cn(panelField, "mb-1.5")}
       />
-      <DictateField label="Fact" onTranscript={(text) => setFact((current) => appendDictation(current, text, 300))}>
-        <textarea
-          value={fact}
-          onChange={(event) => setFact(event.target.value)}
-          rows={2}
-          maxLength={300}
-          placeholder="One sentence the DM must never contradict"
-          aria-label="Fact"
-          className={cn(panelField, "leading-5")}
-        />
-      </DictateField>
+      <textarea
+        value={fact}
+        onChange={(event) => setFact(event.target.value)}
+        rows={2}
+        maxLength={300}
+        placeholder="One sentence the DM must never contradict"
+        aria-label="Fact"
+        className={cn(panelField, "leading-5")}
+      />
       {error ? <PanelError className="mt-1">{error}</PanelError> : null}
       <KitButton tone="secondary" onClick={submit} disabled={busy || !fact.trim()} busy={busy} className="mt-1.5 w-full">
         {busy ? null : <BookMarked className="size-3.5" />}

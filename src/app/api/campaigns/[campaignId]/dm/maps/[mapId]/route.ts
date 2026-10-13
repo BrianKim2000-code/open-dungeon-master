@@ -143,7 +143,6 @@ export async function PATCH(
       props: body.props,
       zones: body.zones,
       overlayPath: body.overlayPath,
-      ambience: body.ambience,
     });
     if ("error" in scene) {
       return Response.json({ error: scene.error }, { status: 409 });
