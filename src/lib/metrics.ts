@@ -1,12 +1,10 @@
 import { monitorEventLoopDelay, type IntervalHistogram } from "node:perf_hooks";
 import { dmQueueTotals } from "@/lib/dm/queue";
 import { openStreamCount } from "@/lib/live-streams";
-import { mediaQueueStats } from "@/lib/media-queue";
 
 // What the server process is doing, for an admin judging whether it keeps
 // up (audit P15): how late the event loop runs, memory, open live streams,
-// and how deep the DM and media queues are and how long their last jobs
-// waited. Counts and timings only: nothing about a campaign's content or a
+// and how deep the DM queue is and how long its last jobs waited. Counts and timings only: nothing about a campaign's content or a
 // player is kept. The loop histogram costs one timer at 20 ms resolution.
 
 declare global {
@@ -34,7 +32,6 @@ export interface ProcessMetrics {
   memoryMb: { rss: number; heapUsed: number; heapTotal: number; external: number };
   openStreams: number;
   dmQueue: { campaigns: number; jobs: number };
-  mediaQueues: ReturnType<typeof mediaQueueStats>;
 }
 
 export function processMetrics(): ProcessMetrics {
@@ -59,6 +56,5 @@ export function processMetrics(): ProcessMetrics {
     memoryMb: { rss: mb(memory.rss), heapUsed: mb(memory.heapUsed), heapTotal: mb(memory.heapTotal), external: mb(memory.external) },
     openStreams: openStreamCount(),
     dmQueue: dmQueueTotals(),
-    mediaQueues: mediaQueueStats(),
   };
 }

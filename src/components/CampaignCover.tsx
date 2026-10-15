@@ -9,7 +9,7 @@ import { campaignPlaceholder } from "@/lib/placeholders";
 // Size comes from the caller: the default is a 16:9 block that fills its
 // column, and className overrides it (cn merges Tailwind classes).
 //
-// Status is the in-memory render state from src/lib/campaign-cover.ts. Only
+// Status is the in-memory upload state. Only
 // queued and generating draw anything (a spinner over the placeholder);
 // a failed render simply shows the placeholder again, because the dialog is
 // the place to say why, not every tile.

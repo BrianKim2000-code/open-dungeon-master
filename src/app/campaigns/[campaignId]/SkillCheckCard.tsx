@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 // and the die that tumbles, takes its modifier and lands its total. Shared
 // by the parked roll (PendingRollCard) and the roll as it arrives in the
 // chronicle (RollCard). It is the card AROUND a roll: the 3D dice tray
-// (DiceOverlay) is a different thing and is not touched from here.
+// (the dice tray) is a different thing and is not touched from here.
 //
 // Violet on purpose: risk reads as a different colour from the gold of
 // everything the player has already earned. Classes live in

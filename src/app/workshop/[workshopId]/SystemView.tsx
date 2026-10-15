@@ -1,11 +1,10 @@
 "use client";
 
-import { ArrowLeft, CircleHelp } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { IconRail, type IconRailItem } from "@/components/ui/IconRail";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { headIcon } from "@/app/workshop/kit";
 import { Suspense, lazy } from "react";
 import { PanelLoading } from "@/app/campaigns/[campaignId]/side-panel-loaders";
 
@@ -59,7 +58,6 @@ export function SystemView({
   world = null,
   onChange,
   onBack,
-  onHelp,
   onRulesApplied,
   onHomebrewChanged,
   onPregensChanged,
@@ -74,8 +72,6 @@ export function SystemView({
   world?: WorldCount | null;
   onChange: (system: SystemId) => void;
   onBack: () => void;
-  // The guide for this tool and its tour.
-  onHelp: () => void;
   onRulesApplied: () => void;
   onHomebrewChanged: () => void;
   onPregensChanged: () => void;
@@ -107,16 +103,6 @@ export function SystemView({
         <GameIcon icon={systemGlyph(current.id)} size="size-9" />
         <h2 className="gold-title font-display text-xl tracking-wide">{current.label}</h2>
         <span className="text-sm text-stone-500">{count.phrase}</span>
-        <button
-          type="button"
-          aria-label={`How ${current.label} works`}
-          title="Guide and tour for this tool"
-          onClick={onHelp}
-          data-tour="system-help"
-          className={cn(ui.iconAction, headIcon, "ml-auto")}
-        >
-          <CircleHelp className="size-4" />
-        </button>
       </div>
       <div data-tour="system-rail">
         <IconRail

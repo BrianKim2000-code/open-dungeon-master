@@ -151,7 +151,7 @@ await test("request_roll offers damageType, so a damage roll the engine applies 
 
 await test("Every tool the rules name is one the turn offers, and every other snake_case word is one of the tools' own arguments.", async () => {
   const { dmTurnToolCatalogue } = await import("../src/lib/dm/turn.ts");
-  const catalogue = dmTurnToolCatalogue(world.campaign(), true, false);
+  const catalogue = dmTurnToolCatalogue(world.campaign(), false);
   const tools = new Set(catalogue.map((entry) => entry.function.name));
   const argumentWords = new Set();
   const walk = (value) => {
@@ -209,7 +209,7 @@ const { dmTurnToolCatalogue } = await import("../src/lib/dm/turn.ts");
 const { companionRules } = await import("../src/lib/dm/prompt.ts");
 
 function offeredTools() {
-  return dmTurnToolCatalogue(world.campaign(), true, false);
+  return dmTurnToolCatalogue(world.campaign(), false);
 }
 
 function offeredTool(name) {

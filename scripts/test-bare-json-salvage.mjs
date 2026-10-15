@@ -72,7 +72,7 @@ const probe = createCampaign(lead.id, {
   difficulty: "normal",
   gameSettings: {},
 });
-const catalogue = dmTurnToolCatalogue(getCampaignById(probe.id), false, false);
+const catalogue = dmTurnToolCatalogue(getCampaignById(probe.id), false);
 {
   const question = salvageJsonToolCalls('{"characterIds": ["c1"], "prompt": "Where do you move?"}', catalogue);
   assert.equal(question.text, "");

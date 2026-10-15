@@ -1,9 +1,7 @@
 "use client";
 
-import { ScrollText } from "lucide-react";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ui } from "@/lib/ui";
 import type { SessionUser } from "@/lib/campaign-types";
 import { offersStoryModel, useCapabilities, type ClientCapabilities } from "@/lib/use-capabilities";
 import { CreateCampaignDialog } from "@/app/CreateCampaignDialog";
@@ -11,8 +9,6 @@ import { StarterDialog } from "@/app/home/StarterDialog";
 import { AccountMenu, AppBrand, AppHomeButton } from "@/components/AccountMenu";
 import { DeletionBanner } from "@/components/DeletionBanner";
 import { NotificationBell } from "@/components/NotificationBell";
-import { HowToPlayDialog } from "@/components/HowToPlayDialog";
-import { Tooltip } from "@/components/ui/Tooltip";
 import type { WorkshopSummary } from "@/app/workshop/types";
 import { YourTables } from "@/app/home/CampaignList";
 import { ContinueHero, EmptyHero, FailedHero, LoadingHero, RecapPanel, ScreenBackdrop } from "@/app/home/ContinueHero";
@@ -56,7 +52,6 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
   const [createOpen, setCreateOpen] = useState(() => requestedWizard() === "campaign");
   const [soloOpen, setSoloOpen] = useState(() => requestedWizard() === "solo");
   const [starterOpen, setStarterOpen] = useState(() => requestedWizard() === "starter");
-  const [howToOpen, setHowToOpen] = useState(false);
   const joinInputRef = useRef<HTMLInputElement | null>(null);
   const capabilities = useCapabilities();
 
@@ -201,12 +196,6 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
           <div className="ts-cluster">
             <AppHomeButton />
             <NotificationBell />
-            <Tooltip content="What this app is and how a table works" side="bottom">
-              <button type="button" onClick={() => setHowToOpen(true)} className={ui.btnSmall} aria-label="How to play">
-                <ScrollText className="size-4" />
-                <span className="hidden sm:inline">How to play</span>
-              </button>
-            </Tooltip>
             <span className="ts-username" aria-hidden="true">{user.username}</span>
             <AccountMenu user={user} onLogout={onLogout} />
           </div>
@@ -267,7 +256,6 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
         <CreateCampaignDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={onCreated} />
         <CreateCampaignDialog solo open={soloOpen} onOpenChange={setSoloOpen} onCreated={onCreated} />
         <StarterDialog open={starterOpen} onOpenChange={setStarterOpen} onCreated={onCreated} />
-        <HowToPlayDialog open={howToOpen} onOpenChange={setHowToOpen} />
       </div>
     </main>
   );

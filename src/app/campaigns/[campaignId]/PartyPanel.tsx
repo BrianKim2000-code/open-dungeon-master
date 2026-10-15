@@ -23,7 +23,6 @@ import { CharacterSheetDialog } from "@/app/campaigns/[campaignId]/CharacterShee
 import { TradeDialog } from "@/app/campaigns/[campaignId]/TradeDialog";
 import { CompanionBuilderDialog } from "@/app/campaigns/[campaignId]/CompanionBuilderDialog";
 import { DiceSourcesButton } from "@/app/campaigns/[campaignId]/DiceSourcesDialog";
-import { DiceLookButton } from "@/components/DiceLookEditor";
 import { LeadEditDialog } from "@/app/campaigns/[campaignId]/LeadEditDialog";
 import type { CampaignMember } from "@/lib/campaign-types";
 import type { Note } from "@/lib/db/notes";
@@ -861,7 +860,6 @@ export function PartyPanel({
                   <ImagePlus className="size-3.5" />
                   {sheet.portrait ? "Change portrait" : "Add portrait"}
                 </KitButton>
-                {mine ? <DiceLookButton /> : null}
                 {mine && realDiceAllowed && myMember ? (
                   <>
                     <RealDiceToggle campaignId={sheet.campaignId} member={myMember} />

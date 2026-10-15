@@ -837,7 +837,7 @@ export function campaignPlaceholder(genre: string | null | undefined, seed = "")
 
 // ---- maps ----
 
-// A place's kind of scene (an ambience bed, src/lib/ambience/catalog.ts)
+// A place's kind of scene (src/lib/scenes.ts)
 // picks its plate, whatever language the place was named in. A kind with
 // several plates draws one by hash, so every plate stays reachable. A place
 // with no kind, or a kind no plate shows, draws one of a reskinned genre's
@@ -944,7 +944,7 @@ const GENRE_SCENE_PLATES: Record<string, ScenePlates> = {
 };
 
 export type MapLook = {
-  // The place's ambience bed, or nothing when it has none.
+  // The place's scene kind, or nothing when it has none.
   scene?: string | null;
   genre?: string | null;
 };

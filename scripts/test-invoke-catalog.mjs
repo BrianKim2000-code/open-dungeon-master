@@ -81,7 +81,6 @@ const TOOL_SOURCES = [
   "src/lib/dm/settlement-tools.ts",
   "src/lib/dm/split-damage.ts",
   "src/lib/dm/explore-tools.ts",
-  "src/lib/image-tool.ts",
 ];
 
 const aiToolNames = new Set();
@@ -197,7 +196,7 @@ test("the console offers every entry exactly once", () => {
 
 test("every catalog entry reaches a handler through the façade", () => {
   // The other direction of the same promise, and the one that was actually
-  // broken: request_player_input and generate_image sat in the catalog, and
+  // broken: request_player_input sat in the catalog, and
   // were offered as console forms, with no arm in the dispatcher to answer
   // them. A button that can only ever return "the engine has no action called
   // that" is worse than a missing button, because nothing looks wrong.

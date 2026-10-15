@@ -209,19 +209,3 @@ export function draftMessages(input: { worldName: string; name: string; typeName
   ];
 }
 
-// WorldForge paints each type its own way: a face, a vista, a sigil, an
-// illustration. The name is left out on purpose: an image model is not
-// improved by a proper noun it has never seen.
-export function paintPrompt(shelf: Shelf, typeName: string, about: string, style: string): string {
-  const what =
-    shelf === "npc"
-      ? "Tabletop RPG character portrait, head and shoulders, centered, looking at viewer"
-      : shelf === "location"
-        ? "Sweeping fantasy landscape painting of a place, atmospheric, cinematic lighting, matte painting"
-        : shelf === "faction"
-          ? "Heraldic sigil of a faction, a crest on a shield or banner, rich symbolic detail, centered emblem, no people"
-          : /artifact|item|relic|weapon|object/i.test(typeName)
-            ? "A single legendary object on its own, museum-quality rendering on a dark background, no people, no figures"
-            : "Detailed fantasy illustration of the subject described, evocative and painterly";
-  return [what, style, about.replace(/\s+/g, " ").slice(0, 400), "No text, no letters"].filter(Boolean).join(". ");
-}

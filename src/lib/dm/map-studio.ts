@@ -48,7 +48,7 @@ export type StudioSettings = {
   height?: number;
   theme?: MapTheme;
   ambient?: AmbientLight;
-  // The kind of place (an ambience bed id); absent, the current place's.
+  // The kind of place; absent, the current place's.
   scene?: string;
 };
 

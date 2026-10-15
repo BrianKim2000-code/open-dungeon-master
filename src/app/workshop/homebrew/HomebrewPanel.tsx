@@ -12,7 +12,6 @@ import { describeHomebrew } from "@/lib/homebrew/gear";
 import type { VariantRules } from "@/lib/rulesets/logic";
 import { Sheet } from "@/components/ui/Sheet";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { ListTally, sortRows, type RowSort } from "@/app/workshop/ListHead";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { HomebrewEditor } from "@/app/workshop/homebrew/HomebrewEditor";
@@ -58,12 +57,6 @@ export function HomebrewPanel({
   const { loaded, loadError, settle } = useLoadStatus();
 
   // The tour's "open the editor" step.
-  useTourPrepare((name) => {
-    if (name === "open-homebrew-editor" && !editing) {
-      setError("");
-      setEditing({ id: null, draft: blankDraft(kind) });
-    }
-  });
 
   const load = useCallback(
     () =>

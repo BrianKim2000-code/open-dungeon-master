@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { PIXEL_ICONS, UserAvatar, ui } from "@/lib/ui";
-import { DiceLookEditor } from "@/components/DiceLookEditor";
 import { PageLoading, PageNotice, PageSection, PageShell } from "@/components/PageShell";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
@@ -254,14 +253,6 @@ export default function SettingsPage() {
           Shown next to your name in lobbies and at the table. Character portraits are set on each
           character.
         </p>
-      </PageSection>
-
-      <PageSection
-        heading="Your dice"
-        glyph="die-d20"
-        intro="The virtual dice that tumble across every table you sit at. Pick a set to start from, then change the colours, pattern and finish; the preview rolls as you go."
-      >
-        <DiceLookEditor />
       </PageSection>
 
       {deviceWorld && !me.isAdmin ? null : (

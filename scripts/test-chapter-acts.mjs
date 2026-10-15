@@ -19,8 +19,6 @@ const { closeChapterRow, ensureOpenChapter, getChapter, listChapters, setChapter
 );
 const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
 const { normalizeStoryArc, recordActRecap } = await import("../src/lib/dm/arc-logic.ts");
-const { buildStoryDocument } = await import("../src/lib/export/story-document.ts");
-const { renderStoryHtml } = await import("../src/lib/export/html.ts");
 const { homeGlanceFor } = await import("../src/lib/db/home-glance.ts");
 
 let passed = 0;
@@ -84,9 +82,8 @@ try {
     assert.equal(result.closed.saga, null);
   });
 
-  test("the story export heads each act once, with the recap the table heard", () => {
-    // A third chapter in act 2 and a fourth one after it, same act: one
-    // heading for the pair.
+  test("two chapters in one act keep the same stamp, and the recap lands on the arc", () => {
+    // A third chapter in act 2 and a fourth one after it, same act.
     say("Beneath the reliquary.");
     let seqEnd = say("The tomb opens.");
     closeChapterRow(ensureOpenChapter(campaign.id).id, {
@@ -107,9 +104,16 @@ try {
       act: 2,
       saga: 1,
     });
-    // Re-stamp the first chapter so the document has two acts to head.
+    // Re-stamp the first chapter so the list has two acts to tell apart.
     const first = listChapters(campaign.id)[0];
     setChapterAct(first.id, 1, 1);
+    const closed = listChapters(campaign.id);
+    assert.deepEqual(
+      closed.filter((chapter) => chapter.act === 2).length,
+      2,
+      "both act-2 chapters carry act 2",
+    );
+    assert.equal(getChapter(first.id).act, 1);
     const arc = recordActRecap(
       normalizeStoryArc({
         premise: "The heart wakes.",
@@ -132,17 +136,22 @@ try {
       { act: 1, sagaIndex: 1, title: "The Drowned Road", recap: "You crossed the marsh and paid the ferryman." },
     );
     setStoryArc(campaign.id, arc);
-    const doc = buildStoryDocument(campaign.id);
-    const headings = doc.chapters.map((chapter) => chapter.actHeading ?? "");
-    assert.deepEqual(headings, ["Act I: The Drowned Road", "", "Act II: Beneath the Reliquary", "", ""]);
-    assert.equal(doc.chapters[0].actRecap, "You crossed the marsh and paid the ferryman.");
-    assert.equal(doc.chapters[2].actRecap, undefined);
-    const html = renderStoryHtml(doc);
-    assert.ok(html.includes("Act I: The Drowned Road"));
-    assert.ok(html.includes("paid the ferryman"));
-    // The DM's milestones never reach the document.
-    assert.ok(!html.includes("drowned city"));
-    assert.ok(!html.includes("Find the tomb"));
+    // The recap lands on the arc's act list, keyed by act and saga, once.
+    assert.deepEqual(
+      arc.actRecaps.map((entry) => entry.act),
+      [1],
+    );
+    assert.equal(arc.actRecaps[0].recap, "You crossed the marsh and paid the ferryman.");
+    assert.equal(arc.actRecaps[0].title, "The Drowned Road");
+    // A second recap for the same act replaces the first rather than stacking.
+    const again = recordActRecap(arc, {
+      act: 1,
+      sagaIndex: 1,
+      title: "The Drowned Road",
+      recap: "You paid him twice.",
+    });
+    assert.equal(again.actRecaps.length, 1);
+    assert.equal(again.actRecaps[0].recap, "You paid him twice.");
   });
 
   test("the title screen's glance names the act the open chapter is in", () => {

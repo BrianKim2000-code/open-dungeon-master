@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { cancelAccountDeletion, requestAccountDeletion } from "@/lib/account-deletion";
 import { PasswordBusyError, currentUser, endSession, passwordBusyResponse, unauthorized, verifyPassword } from "@/lib/auth";
-import { isValidDiceLook, type DiceLook } from "@/lib/dice/dice-look";
 import {
   NO_PASSWORD_SENTINEL,
   getUserByUsername,
@@ -13,14 +12,8 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// The dice look is checked field by field by the dice module rather than
-// spelled out again here, so the two can never disagree on a texture name.
-const diceLookSchema = z.custom<DiceLook>(isValidDiceLook, "Invalid dice look.");
-
-// The player's dice look synced across browsers (src/lib/dice/dice-look-store.ts).
-const settingsSchema = z.object({
-  diceLook: diceLookSchema.optional(),
-});
+// Account preferences, a partial patch merged over the stored ones.
+const settingsSchema = z.object({}).strict();
 
 const patchSchema = z.object({
   avatar: z

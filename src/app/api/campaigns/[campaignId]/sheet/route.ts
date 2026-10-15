@@ -29,7 +29,6 @@ import {
   listSheetsForUser,
   patchSheet,
 } from "@/lib/db/sheets";
-import { queueLibraryPortrait } from "@/lib/portrait";
 import { createSheetSchema, patchSheetSchema } from "@/lib/schemas/sheet";
 import {
   classGrantsFor,
@@ -216,9 +215,6 @@ export async function POST(
     libraryCharacter.id,
   );
   admitted.settle();
-  // The finished render lands on this campaign clone too (portrait.ts
-  // mirrors to sheets whose portrait is still empty).
-  queueLibraryPortrait(libraryCharacter);
   seatAddedSheet(context.campaign, targetUserId, sheet.id);
   publishPersisted(campaignId, "sheet_updated", { sheet });
   announceMidGameJoin(context, sheet);
@@ -232,8 +228,7 @@ export async function POST(
 // Replace the caller's lobby character: switch to a library character,
 // edit the current one in place, or build a brand-new one. All three
 // shapes re-run the copy-on-instantiate path so level adaptation stays
-// authoritative; the builder submits back the portrait it was prefilled
-// with, so a fresh render only queues when the player cleared it.
+// authoritative.
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
@@ -286,7 +281,6 @@ export async function PUT(
       });
       return Response.json({ error: result.error }, { status: 400 });
     }
-    queueLibraryPortrait(character);
     publishReplacement(context, existing, result);
     return Response.json({ sheet: result });
   }
@@ -341,10 +335,6 @@ export async function PUT(
         edit.data.sheet,
         character.id,
       );
-      // A portrait cleared to be redrawn is drawn from the edited sheet.
-      if (!edit.data.sheet.portrait) {
-        queueLibraryPortrait({ ...character, sheet: edit.data.sheet });
-      }
       publishReplacement(context, replaced, sheet);
       return Response.json({ sheet });
     }
@@ -371,7 +361,6 @@ export async function PUT(
       });
       return Response.json({ error: result.error }, { status: 400 });
     }
-    queueLibraryPortrait(updated);
     publishReplacement(context, replaced, result);
     return Response.json({ sheet: result });
   }
@@ -408,7 +397,6 @@ export async function PUT(
     libraryCharacter.id,
   );
   replaced.settle();
-  queueLibraryPortrait(libraryCharacter);
   publishReplacement(context, existing, sheet);
   return Response.json({ sheet });
 }

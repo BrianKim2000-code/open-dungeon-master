@@ -33,12 +33,9 @@ import { listSheets } from "@/lib/db/sheets";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
-import { generateImageTool, parseGenerateImageToolCall } from "@/lib/image-tool";
 import { createStreamingArtifactFilter, extractReplyText, extractStoryText } from "@/lib/story-prompt";
 import { salvageJsonToolCalls } from "@/lib/dm/json-salvage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { fulfillMessageImage } from "@/lib/dm/images";
-import { imageProducerReady } from "@/lib/image-generate";
 import { requestDmMessage } from "@/lib/dm/model";
 import { releaseHarnessConversation } from "@/lib/harness/bridge";
 import { toMcpTools } from "@/lib/harness/render";
@@ -118,7 +115,7 @@ import {
   CHARACTER_EVENT_KINDS,
   type CharacterEventKind,
 } from "@/lib/db/character-events";
-import { enqueueLocationMap } from "@/lib/dm/maps";
+
 import {
   getCurrentLocation,
   listLocations,
@@ -676,7 +673,6 @@ async function advance(context: TurnContext, turn: DmTurn) {
 export function dmTurnTools(
   campaign: Campaign,
   inEncounter: boolean,
-  imageEnabled: boolean,
   leanTools: boolean,
 ): unknown[] {
   return [
@@ -724,7 +720,6 @@ export function dmTurnTools(
     ...(inEncounter ? [] : restTools),
     ...companionTools(campaign),
     ...(leanTools ? [] : mutationTools),
-    ...(imageEnabled ? [generateImageTool] : []),
     ];
 }
 
@@ -736,14 +731,13 @@ export function dmTurnTools(
 // An agent program is handed the whole catalogue once, in and out of a fight
 // alike (dmTurnToolCatalogue), so that is what it is charged.
 export function dmTurnToolTokens(campaign: Campaign): number {
-  const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   const leanTools = process.env.DM_LEAN_TOOLS === "1";
   if (campaign.settings.textProvider === "harness") {
-    return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, imageEnabled, leanTools))));
+    return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, leanTools))));
   }
   return Math.max(
-    estimateTokens(JSON.stringify(dmTurnTools(campaign, false, imageEnabled, leanTools))),
-    estimateTokens(JSON.stringify(dmTurnTools(campaign, true, imageEnabled, leanTools))),
+    estimateTokens(JSON.stringify(dmTurnTools(campaign, false, leanTools))),
+    estimateTokens(JSON.stringify(dmTurnTools(campaign, true, leanTools))),
   );
 }
 
@@ -751,10 +745,10 @@ export function dmTurnToolTokens(campaign: Campaign): number {
 // program reads its tool list once, when it starts (src/lib/harness/bridge.ts),
 // so a turn that starts a fight must already have the combat tools on it; the
 // bridge refuses any call the loop is not offering at that moment.
-export function dmTurnToolCatalogue(campaign: Campaign, imageEnabled: boolean, leanTools: boolean): unknown[] {
+export function dmTurnToolCatalogue(campaign: Campaign, leanTools: boolean): unknown[] {
   return [
-    ...dmTurnTools(campaign, false, imageEnabled, leanTools),
-    ...dmTurnTools(campaign, true, imageEnabled, leanTools),
+    ...dmTurnTools(campaign, false, leanTools),
+    ...dmTurnTools(campaign, true, leanTools),
   ];
 }
 
@@ -768,8 +762,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   let failed = "";
   let spotlightSet = false;
 
-  const imageEnabled =
-    campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   // DM_LEAN_TOOLS=1 trims the mutation tools if the model's tool fidelity
   // suffers under the full set.
   const leanTools = process.env.DM_LEAN_TOOLS === "1";
@@ -814,7 +806,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const finalCall = turn.callIndex === MAX_MODEL_CALLS - 1;
     // Rebuilt each iteration (see dmTurnTools).
     const inEncounter = Boolean(getActiveEncounter(campaignId));
-    const tools = dmTurnTools(campaign, inEncounter, imageEnabled, leanTools);
+    const tools = dmTurnTools(campaign, inEncounter, leanTools);
     // Fresh reasoning-artifact filter per model call; each call is its own
     // stream. Withheld trailing text is flushed after the call completes.
     const filter = createStreamingArtifactFilter();
@@ -826,7 +818,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       tools,
       harness: {
         campaignId,
-        catalogue: dmTurnToolCatalogue(campaign, imageEnabled, leanTools),
+        catalogue: dmTurnToolCatalogue(campaign, leanTools),
         turn: true,
       },
       // Force pure narration on the last permitted call so a tool-happy
@@ -936,12 +928,12 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const toolCalls = [...extractToolCalls(message?.tool_calls), ...salvagedCalls];
     // Only an action this table's turn can be offered is run. The lists
     // below sort calls by name alone, so without this a model could reach a
-    // tool the table's settings had taken off its list (pictures switched
-    // off, a stage disabled, the lean set) simply by naming it. A call from
+    // tool the table's settings had taken off its list (a stage disabled,
+    // the lean set) simply by naming it. A call from
     // the other side of a fight still runs, as it always has: the model
     // often starts a fight and swings in one reply, and each action checks
     // the state it needs. A refused call is answered with an error below.
-    const catalogue = dmTurnToolCatalogue(campaign, imageEnabled, leanTools);
+    const catalogue = dmTurnToolCatalogue(campaign, leanTools);
     const runnable = toolCalls.filter((toolCall) => offersTool(catalogue, toolCall.name));
     if (finalCall && toolCalls.length) {
       finalCallLeaked = true;
@@ -1130,12 +1122,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       }
       whisperResults.set(whisperCall.id ?? "send_whisper", result);
     }
-    if (!turn.imageArgs) {
-      const parsedImage = parseGenerateImageToolCall(echoedToolCalls);
-      if (parsedImage?.prompt) {
-        turn.imageArgs = { prompt: parsedImage.prompt, reason: parsedImage.reason };
-      }
-    }
 
     // Spotlight: hand the floor to the named characters. Not during a
     // fight: the initiative order owns the floor there, and a spotlight
@@ -1166,8 +1152,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       switch (toolCall.name) {
         case "request_player_input":
           return playerInputResult(spotlightSet, inFight, narrateNow);
-        case "generate_image":
-          return { ok: true, note: "The picture is queued with this turn." };
         case "move_party":
         case "update_location":
           return locationResults.get(toolCall.id ?? toolCall.name) ?? { ok: true };
@@ -1318,7 +1302,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // initiative order owns the floor) and one naming no player's
       // character (nobody was handed the floor), which used to close the
       // turn on the empty-turn line. A reply of other calls that need no
-      // follow-up (complete_beat, generate_image, a tool that does not
+      // follow-up (complete_beat, a tool that does not
       // exist) and no prose ended the same way, and is narrated the same way.
       if ((spotlightSet || toolCalls.length > 0) && !turn.narrationParts.length && !finalCall) {
         turn.conversation.push({
@@ -1768,10 +1752,8 @@ export function handleLocationCall(
   const connections = Array.isArray(args.connections)
     ? args.connections.map(String).slice(0, 12)
     : undefined;
-  const visionClear = args.visionClear === true;
 
   let location;
-  let previousLayout = "";
   let movedToNewLocation = false;
   if (toolName === "move_party") {
     const name = typeof args.name === "string" ? args.name.trim() : "";
@@ -1803,7 +1785,6 @@ export function handleLocationCall(
     }
     setCampaignScene(campaign.id, location.name);
   } else {
-    previousLayout = getCurrentLocation(campaign.id)?.layoutDescription ?? "";
     location = updateCurrentLocationDetails(campaign.id, { layoutDescription, connections });
     if (!location) {
       return { error: "No current location; call move_party first." };
@@ -1819,19 +1800,6 @@ export function handleLocationCall(
 
   publishPersisted(campaign.id, "location_updated", { location });
 
-  // Render when the area has no map yet, or when an update materially
-  // changed the recorded layout.
-  const layoutRevised =
-    toolName === "update_location" && location.layoutDescription !== previousLayout;
-  const mapEnqueued =
-    visionClear &&
-    campaign.gameSettings.mapsEnabled &&
-    imageProducerReady(campaign.settings) &&
-    (!location.mapImage || layoutRevised);
-  if (mapEnqueued) {
-    void enqueueLocationMap(campaign, location.id);
-  }
-
   return {
     ok: true,
     location: location.name,
@@ -1842,7 +1810,7 @@ export function handleLocationCall(
       ? {
           movedToNewLocation: true,
           _locationId: location.id,
-          _mapAvailable: mapEnqueued || Boolean(location.mapImage),
+          _mapAvailable: Boolean(location.mapImage),
         }
       : {}),
   };
@@ -1993,26 +1961,12 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
     content = `${turn.rollIds.map((id) => `[roll:${id}]`).join("\n")}\n\n${content}`;
   }
 
-  const imageEnabled =
-    context.campaign.settings.imageGenerationEnabled && context.campaign.settings.autoImages;
   const seq = claimed ?? allocateSeq(campaignId);
   const message = insertCampaignMessage({
     campaignId,
     seq,
     authorType: "dm",
     content,
-    imageRequest:
-      imageEnabled && turn.imageArgs?.prompt
-        ? {
-            needed: true,
-            prompt: turn.imageArgs.prompt,
-            mode: context.campaign.settings.imageMode,
-            backend: context.campaign.settings.imageBackend,
-            aspect: context.campaign.settings.aspect,
-            reason: turn.imageArgs.reason,
-            characterIds: [],
-          }
-        : undefined,
     locationId: turn.locationId ?? undefined,
     // Links the narration back to the conversation it came from so the lead
     // can reroll its prose (src/lib/dm/renarrate.ts) without re-running the
@@ -2041,9 +1995,6 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
     }
   }
 
-  if (message.imageRequest && imageProducerReady(context.campaign.settings)) {
-    void fulfillMessageImage(campaignId, message.id, message.imageRequest, context.campaign.settings);
-  }
   turn.status = "done";
   saveDmTurn(turn);
 }

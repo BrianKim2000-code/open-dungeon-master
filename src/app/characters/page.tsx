@@ -39,14 +39,10 @@ type LibraryCharacter = {
   background: string;
   level: number;
   updatedAt: string;
-  portraitStatus?: "queued" | "generating" | "failed" | null;
   campaigns?: CharacterAssignment[];
   sheet?: { portrait?: { url: string } | null; gender?: string };
 };
 
-function portraitPending(character: LibraryCharacter) {
-  return character.portraitStatus === "queued" || character.portraitStatus === "generating";
-}
 
 // Matches the ComfyUI generation timeout; polling stops even if the server
 // never resolves the job.
@@ -88,10 +84,10 @@ export default function CharactersPage() {
     });
   }, [reloads, settle]);
 
-  // While a portrait renders in the background, re-fetch until it lands (or
-  // fails); the finished image then appears without a reload.
+  // A picture someone replaced elsewhere needs a reload to show; nothing
+  // renders in the background any more.
   useEffect(() => {
-    if (!characters.some(portraitPending) || pollCount.current >= PORTRAIT_POLL_LIMIT) {
+    if (pollCount.current >= PORTRAIT_POLL_LIMIT) {
       return;
     }
     const id = setTimeout(() => {
@@ -361,19 +357,8 @@ function CharacterCard({
               alt={character.name}
               className="size-12 shrink-0 rounded-lg border border-amber-500/30 object-cover shadow-glow-gold"
             />
-          ) : portraitPending(character) ? (
-            <span
-              title="Painting portrait..."
-              className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-amber-500/30 bg-stone-900"
-            >
-              <Loader2 className="size-4 animate-spin text-amber-200" />
-            </span>
           ) : (
-            <span
-              title={
-                character.portraitStatus === "failed" ? "Portrait generation failed" : undefined
-              }
-            >
+            <span>
               <CharacterPortrait
                 look={{
                   race: character.race,

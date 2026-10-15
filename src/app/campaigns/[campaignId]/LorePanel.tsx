@@ -3,7 +3,6 @@
 import { EmptyState } from "@/components/EmptyState";
 import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { collectTags } from "@/lib/workshop/pickers";
 import { WORLD_LORE_CATEGORIES, type LoreLinkTarget } from "@/lib/dm/world-lore-logic";
 import { SectionHead } from "@/components/ui/SectionHead";
@@ -104,11 +103,6 @@ export function LorePanel({
   }
 
   // The tour's "open the editor" step, answered where the editor is a sheet.
-  useTourPrepare((name) => {
-    if (name === "open-lore-editor" && rows && steersStory && !adding && editingId === null) {
-      startAdd();
-    }
-  });
 
   function startEdit(entry: LoreEntryView) {
     setDraft(draftFromEntry(entry));

@@ -9,9 +9,8 @@ import {
   setNpcPortrait,
   updateNpcFromDraft,
 } from "@/lib/db/npcs";
-import { describePersonality, normalizeNpcDraft } from "@/lib/npcs/forge";
+import { normalizeNpcDraft } from "@/lib/npcs/forge";
 import { isUploadedImagePath } from "@/lib/uploads";
-import { queueNpcPortrait } from "@/lib/portrait";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,8 +33,6 @@ const patchSchema = z.object({
     .string()
     .refine((value) => value === "" || isUploadedImagePath(value), "Not an uploaded file.")
     .optional(),
-  // Render one instead of uploading one.
-  generatePortrait: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -76,13 +73,6 @@ export async function PATCH(
     }
     if (!updateNpcFromDraft(campaignId, npcId, outcome.draft)) {
       return Response.json({ error: "That NPC is not at this table." }, { status: 404 });
-    }
-    if (body.generatePortrait) {
-      queueNpcPortrait(context.campaign, {
-        id: npcId,
-        trait: outcome.draft.trait,
-        personality: describePersonality(outcome.draft.personality),
-      });
     }
   }
 

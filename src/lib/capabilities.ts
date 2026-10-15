@@ -1,11 +1,9 @@
-import { configValue, getGlobalConfig } from "@/lib/app-config";
-import { openAiImagesConfigured } from "@/lib/openai-images";
+import { getGlobalConfig } from "@/lib/app-config";
 import { configuredDefaultStorySettings } from "@/lib/runtime-defaults";
 import { endpointKind } from "@/lib/dm/sampling-logic";
 import { serverEnv } from "@/lib/server-env";
 import { harnessConfig, probeHarness } from "@/lib/harness/status";
 import { isHarnessId } from "@/lib/harness/types";
-import { harnessImagesReady } from "@/lib/harness/images";
 import type { StorySettings } from "@/lib/types";
 
 // What this server can actually do, derived from the same resolution the DM
@@ -76,38 +74,14 @@ export function utilityConfigured(settings: Pick<StorySettings, "utilityModel">)
   return Boolean(settings.utilityModel.trim());
 }
 
-// Images follow the same rule: the key-gated OpenAI backend needs
-// its key, and a self-hosted backend counts when the admin or env named a
-// URL for it or when something answers at the shipped default. A bare
-// default with nothing listening is the "no image AI on this server" case
-// that every upload-or-paint control needs to know about, so that it can
-// offer the upload alone instead of a paint button that fails.
-export function imagesConfigured(
-  backend: string,
-  hasOpenaiKey: boolean,
-  explicitUrl: string,
-  defaultReachable: boolean,
-): boolean {
-  if (backend === "openai") {
-    return hasOpenaiKey;
-  }
-  // The agent program's own pictures: ready means seen working here.
-  if (backend === "harness") {
-    return harnessImagesReady();
-  }
-  return Boolean(explicitUrl.trim()) || defaultReachable;
+// There is no image generator on this server any more: tables bring their
+// own pictures (uploads). Every "may I paint?" control therefore answers no,
+// which is what turns those controls into upload-only ones.
+export function imagesConfigured(): boolean {
+  return false;
 }
 
-// Where a cheap liveness GET goes for the image backend. ComfyUI exposes
-// /system_stats; the bundled FLUX workers share one /health. OpenAI is
-// key-gated and never probed.
-export function imagesProbeUrl(backend: string, comfyBaseUrl: string, fluxWorkerUrl: string): string {
-  if (backend === "comfyui") {
-    return `${comfyBaseUrl.replace(/\/+$/, "")}/system_stats`;
-  }
-  if (backend === "mflux-hs" || backend === "sdnq-hs") {
-    return `${fluxWorkerUrl.replace(/\/+$/, "")}/health`;
-  }
+export function imagesProbeUrl(): string {
   return "";
 }
 
@@ -240,35 +214,11 @@ export async function probeReachable(
   return probe;
 }
 
-// The producer-side question every portrait and map enqueue asks before it
-// promises a picture: is there an image backend on this server at all? Cached
-// through the same probe window as the endpoint, so a burst of character
-// creations costs one probe, not one per character.
-export async function imagesAvailable(
-  settings?: Pick<StorySettings, "imageBackend" | "customBaseUrl" | "customApiKey">,
-): Promise<boolean> {
-  // A campaign holding its own OpenAI key answers for itself. The snapshot
-  // below describes the SERVER's default backend, which on a
-  // bring-your-own-key host is "none at all", and would refuse a render the
-  // campaign can perfectly well pay for. Only the key-gated backend may take
-  // this shortcut: a self-hosted one's readiness is liveness, and only the
-  // probe knows that.
-  if (settings?.imageBackend === "openai" && openAiImagesConfigured(settings)) {
-    return true;
-  }
-  // So does a campaign set to the agent program's pictures, which the
-  // server's default backend says nothing about: its readiness is the
-  // agent's own (installed, switched on, a test picture seen here).
-  if (settings?.imageBackend === "harness") {
-    return harnessImagesReady();
-  }
-  try {
-    return (await capabilitiesSnapshot()).images.configured;
-  } catch {
-    // A failed snapshot must not turn into a lost render on a host that has
-    // an image backend; the old unconditional behavior is the fallback.
-    return true;
-  }
+// The producer-side question every portrait and map enqueue used to ask.
+// With the generators gone the answer is always no; kept so callers and the
+// capability probe share one name.
+export async function imagesAvailable(): Promise<boolean> {
+  return false;
 }
 
 // Whether the chosen agent program is installed, allowed to run here and
@@ -292,51 +242,24 @@ export async function capabilitiesSnapshot(): Promise<Capabilities> {
   const cfg = getGlobalConfig();
   const configured = storyConfigured(settings);
   const ollamaBase = serverEnv("OLLAMA_BASE_URL", "http://127.0.0.1:11434");
-  const comfyBase = configValue(cfg.images.comfyUrl, "COMFYUI_URL", "http://127.0.0.1:8188");
-  const fluxBase = serverEnv("FLUX_WORKER_URL", "http://127.0.0.1:7869");
-  const [storyReachable, imagesReachable] = await Promise.all([
+  const storyReachable =
     settings.textProvider === "harness"
-      ? harnessReady()
+      ? await harnessReady()
       : configured
-      ? probeReachable(
-          storyProbeUrl(settings, ollamaBase),
-          Date.now(),
-          storyProbeHeaders(settings, {
-            configured: cfg.text.customApiKey,
-            openaiCompat: serverEnv("OPENAI_COMPAT_API_KEY"),
-            openRouter: serverEnv("OPENROUTER_API_KEY"),
-          }),
-        )
-      : Promise.resolve(false),
-    probeReachable(imagesProbeUrl(settings.imageBackend, comfyBase, fluxBase)),
-  ]);
-  // Asked of the backend's own resolver rather than re-listed here, so the
-  // key a table lends from its OpenAI text model counts the same way at the
-  // creator as it does at render time (src/lib/openai-images.ts).
-  const hasOpenaiImageKey = openAiImagesConfigured();
-  const explicitImageUrl =
-    settings.imageBackend === "comfyui"
-      ? configValue(cfg.images.comfyUrl, "COMFYUI_URL")
-      : serverEnv("FLUX_WORKER_URL");
+        ? await probeReachable(
+            storyProbeUrl(settings, ollamaBase),
+            Date.now(),
+            storyProbeHeaders(settings, {
+              configured: cfg.text.customApiKey,
+              openaiCompat: serverEnv("OPENAI_COMPAT_API_KEY"),
+              openRouter: serverEnv("OPENROUTER_API_KEY"),
+            }),
+          )
+        : false;
 
   return {
     story: { configured, reachable: storyReachable, model: configured ? storyModelName(settings) : "" },
     utility: { configured: utilityConfigured(settings) },
-    images: {
-      configured: imagesConfigured(
-        settings.imageBackend,
-        hasOpenaiImageKey,
-        explicitImageUrl,
-        imagesReachable,
-      ),
-      reachable:
-        settings.imageBackend === "openai"
-          ? hasOpenaiImageKey
-          : settings.imageBackend === "harness"
-            ? harnessImagesReady()
-            : imagesReachable,
-      backend: settings.imageBackend,
-      openaiPlace: backendPlace(configValue(cfg.images.openaiBaseUrl, "OPENAI_IMAGE_BASE_URL", "https://api.openai.com/v1")),
-    },
+    images: { configured: false, reachable: false, backend: "", openaiPlace: "" },
   };
 }

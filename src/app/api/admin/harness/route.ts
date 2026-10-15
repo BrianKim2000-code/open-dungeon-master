@@ -1,10 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
-import { saveGlobalConfig } from "@/lib/db/app-settings";
 import { recentAgentActivity } from "@/lib/agents/activity";
 import { activeBridgeSessions, harnessMcpUrl, harnessRateLimit } from "@/lib/harness/bridge";
-import { testHarnessPictures } from "@/lib/harness/picture-test";
-import { rescueStrandedCampaigns } from "@/lib/image-backend-rescue";
 import { forgetHarnessStatus, harnessConfig, probeAllHarnesses, probeHarness } from "@/lib/harness/status";
 import { testHarness } from "@/lib/harness/test-run";
 import { isHarnessId } from "@/lib/harness/types";
@@ -12,7 +9,7 @@ import { isDeviceWorld } from "@/lib/server-env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// A test turn or a test picture runs a real program end to end.
+// A test turn runs a real program end to end.
 export const maxDuration = 600;
 
 // The agent programs on this machine (docs/archive/harness-mcp-plan.md 6). Probing
@@ -66,25 +63,5 @@ export async function POST(request: Request) {
     }
     return Response.json(await testHarness(isHarnessId(config.id) ? config.id : undefined));
   }
-  if (action === "adopt") {
-    // One step from a passing test to painting tables: on, the default for
-    // new campaigns, and the campaigns stranded on a backend that cannot
-    // paint moved onto it. Only after a real picture came back here.
-    if (!harnessConfig().imagesVerifiedAt) {
-      return Response.json({ error: "Paint a test picture first." }, { status: 409 });
-    }
-    saveGlobalConfig({ harness: { images: "native" }, images: { defaultBackend: "harness" } });
-    forgetHarnessStatus();
-    return Response.json({ moved: await rescueStrandedCampaigns() });
-  }
-  // A real picture, painted the way the tables paint one, before they are
-  // allowed to ask for it (src/lib/harness/picture-test.ts). Only a success
-  // here clears the option.
-  const result = await testHarnessPictures();
-  if (!result.image) {
-    return Response.json({ ...result, error: result.error ?? "The picture could not be made." }, { status: 502 });
-  }
-  saveGlobalConfig({ harness: { imagesVerifiedAt: new Date().toISOString() } });
-  forgetHarnessStatus();
-  return Response.json(result);
+  return Response.json({ error: "Unknown action." }, { status: 400 });
 }

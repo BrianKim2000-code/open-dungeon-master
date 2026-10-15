@@ -8,7 +8,6 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { DisclosureHead, FieldLabel, OptionalNumber } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import type { WorkbenchPart, WorkbenchReadout } from "@/lib/dm/encounter-workbench";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { MonsterRosterPicker } from "@/app/campaigns/[campaignId]/MonsterRosterPicker";
 
 // The encounter workbench: what a roster costs, and what it is likely to do.
@@ -77,9 +76,6 @@ export function DmWorkbenchPanel({
   const [error, setError] = useState("");
 
   // The tour's "unfold the workbench" step.
-  useTourPrepare((name) => {
-    if (name === "open-workbench") setOpen(true);
-  });
 
   async function run() {
     setBusy(true);

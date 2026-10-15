@@ -9,7 +9,7 @@ import {
   updateCharacterPortrait,
 } from "@/lib/db/characters";
 import { listEventsForLibraryCharacter } from "@/lib/db/character-events";
-import { mirrorToCampaignSheets, portraitStatus, queueLibraryPortrait } from "@/lib/portrait";
+import { mirrorToCampaignSheets } from "@/lib/portrait-uploads";
 import { admitSheet, refusal } from "@/lib/characters/admit";
 import { attachmentSchema, createSheetSchema } from "@/lib/schemas/sheet";
 
@@ -44,7 +44,6 @@ export async function GET(
   return Response.json({
     character: {
       ...character,
-      portraitStatus: portraitStatus(character.id),
       campaigns: listAssignmentsForCharacter(user.id, characterId),
     },
     events: listEventsForLibraryCharacter(characterId),
@@ -118,15 +117,9 @@ export async function PATCH(
     return Response.json({ error: "Character not found." }, { status: 404 });
   }
   admitted.settle();
-  // The builder's "Regenerate portrait" clears the saved one to have a new
-  // one painted; a character with none (the placeholder chosen) stays so.
-  if (stored.sheet.portrait && !character.sheet.portrait) {
-    queueLibraryPortrait(character);
-  }
   return Response.json({
     character: {
       ...character,
-      portraitStatus: portraitStatus(character.id),
       campaigns: listAssignmentsForCharacter(user.id, characterId),
     },
   });

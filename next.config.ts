@@ -51,11 +51,10 @@ export const loginMediaRewrites = LOGIN_MEDIA_ROOTS.map((root) => ({
 // plugin objects, no <base> or form target elsewhere, no type sniffing, and
 // only the origin goes out as a referrer. The resource policy (where
 // scripts, pictures, sound and connections may come from) is report-only:
-// the 3D dice and the picture codecs compile WebAssembly, voice opens
-// WebRTC and sockets, and a host may point the table at its own picture or
-// speech server, so it is reported in the console rather than enforced
-// until every one of those has been seen running under it. A table page
-// reports two string evals today; both are feature probes inside a try
+// the picture codecs compile WebAssembly, and a host may point the table at
+// its own picture server, so it is reported in the console rather than
+// enforced until every one of those has been seen running under it. A table
+// page reports two string evals today; both are feature probes inside a try
 // with a fallback (Zod's JIT check and is-generator-function), not code
 // that needs 'unsafe-eval'.
 const enforcedCsp = ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'", "form-action 'self'"].join("; ");

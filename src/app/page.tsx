@@ -5,9 +5,7 @@ import { useEffect, useState } from "react";
 import type React from "react";
 import { ui } from "@/lib/ui";
 import { cn } from "@/lib/cn";
-import { GameIcon } from "@/components/ui/GameIcon";
 import type { SessionUser } from "@/lib/campaign-types";
-import { HowToPlayDialog } from "@/components/HowToPlayDialog";
 import AuthForm from "@/app/AuthForm";
 import { ChangePasswordForm } from "@/app/ChangePasswordForm";
 import { Dashboard } from "@/app/home/Dashboard";
@@ -106,7 +104,6 @@ function nextDoorWorld(): number {
 // The front door: on a desk the painting stands to the left and the form to
 // the right; a phone gets the form alone, as before.
 function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
-  const [howToOpen, setHowToOpen] = useState(false);
   const [world] = useState(nextDoorWorld);
   const painting = DOOR_WORLDS[world];
 
@@ -147,11 +144,6 @@ function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
             <AuthForm onAuthed={onAuthed} />
           </div>
 
-          <div className="mt-4 flex justify-center">
-            <button type="button" onClick={() => setHowToOpen(true)} className={cn(ui.btnSmall, "min-h-10")}>
-              <GameIcon icon={{ kind: "glyph", key: "tab-story" }} size="size-6" /> How to play
-            </button>
-          </div>
 
           <footer className="mt-6 flex items-center justify-center gap-4 border-t border-amber-500/15 pt-4">
             <a href="/licenses" className="inline-flex min-h-10 items-center text-xs text-stone-500 hover:text-amber-200">
@@ -169,7 +161,6 @@ function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
         </div>
       </section>
 
-      <HowToPlayDialog open={howToOpen} onOpenChange={setHowToOpen} />
     </main>
   );
 }

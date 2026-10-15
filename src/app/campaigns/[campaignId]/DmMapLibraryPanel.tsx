@@ -8,7 +8,6 @@ import { ui } from "@/lib/ui";
 import { backdropDataUrl, nameFromFilename } from "@/lib/battlemap/uvtt";
 import { Sheet } from "@/components/ui/Sheet";
 import { readLoad, useLoadStatus } from "@/lib/load-state";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { DEFAULT_MAP_TOOLS, type MapTools } from "@/app/campaigns/[campaignId]/MapToolbox";
 import { useMapToasts } from "@/app/campaigns/[campaignId]/MapToasts";
 import { Listed } from "@/app/campaigns/[campaignId]/PanelKit";
@@ -106,9 +105,6 @@ export function DmMapLibraryPanel({
   const gallery = layout === "gallery";
 
   // The tour's "open the new-map controls" step.
-  useTourPrepare((name) => {
-    if (name === "open-map-create") setCreating(true);
-  });
 
   // Selecting a map is the same act in both layouts; in the gallery it also
   // raises the editor sheet, which the drawer has no need of.

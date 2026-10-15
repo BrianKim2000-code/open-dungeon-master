@@ -1,4 +1,3 @@
-import { configValue, getGlobalConfig } from "@/lib/app-config";
 import { currentUser } from "@/lib/auth";
 import { imagesConfigured, storyConfigured } from "@/lib/capabilities";
 import { getDatabase } from "@/lib/db/core";
@@ -108,10 +107,6 @@ export async function GET() {
   // what the desktop shell writes and what the DM path resolves, so report it
   // too. Config-only flags, no probes: /api/capabilities owns reachability.
   const settings = configuredDefaultStorySettings();
-  const cfg = getGlobalConfig();
-  const hasOpenaiImageKey = Boolean(
-    cfg.images.openaiApiKey || serverEnv("OPENAI_IMAGE_API_KEY") || serverEnv("OPENAI_API_KEY"),
-  );
 
   return Response.json({
     openRouterConfigured: Boolean(serverEnv("OPENROUTER_API_KEY")),
@@ -122,17 +117,9 @@ export async function GET() {
     custom: {
       configured: settings.textProvider === "custom" && storyConfigured(settings),
       story: storyConfigured(settings),
-      // Config-only, like the rest of this block: a self-hosted backend
-      // counts here only when its URL was named. /api/capabilities adds the
-      // default-URL probe.
-      images: imagesConfigured(
-        settings.imageBackend,
-        hasOpenaiImageKey,
-        settings.imageBackend === "comfyui"
-          ? configValue(cfg.images.comfyUrl, "COMFYUI_URL")
-          : serverEnv("FLUX_WORKER_URL"),
-        false,
-      ),
+      // No image generator ships with this server any more; tables bring
+      // their own pictures.
+      images: imagesConfigured(),
     },
   });
 }

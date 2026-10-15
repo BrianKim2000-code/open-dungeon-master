@@ -1417,7 +1417,7 @@ function ensureSchema(db: SqliteDatabase) {
     // Per-account preferences (the dice look) that should follow the person
     // between browsers. One JSON blob rather than columns because every reader
     // wants all of it at once and absent keys mean "use the default", like the
-    // client's localStorage cache (src/lib/dice/dice-look-store.ts).
+    // client's localStorage cache.
     ["settings_json", `TEXT NOT NULL DEFAULT '{}'`],
   ]);
   db.exec(
@@ -2038,7 +2038,7 @@ function ensureSchema(db: SqliteDatabase) {
     // restores them, so this is a visibility flag rather than a lifecycle.
     ["archived", `INTEGER NOT NULL DEFAULT 0`],
     // A face, as a /uploads/ path written by /api/upload or rendered by the
-    // media queue (src/lib/portrait.ts). A bare path rather than the
+    // upload store (src/lib/uploads-store.ts). A bare path rather than the
     // attachment JSON character sheets use, because an NPC portrait has no
     // filename or type worth keeping: it is only ever shown.
     ["portrait_url", `TEXT NOT NULL DEFAULT ''`],

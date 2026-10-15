@@ -1,5 +1,4 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import type { DiceLook } from "@/lib/dice/dice-look";
 import { closeStreamsForSession, closeStreamsForUser } from "@/lib/live-streams";
 
 export type UserAvatar = {
@@ -132,11 +131,7 @@ export function setUserAvatar(userId: string, avatar: UserAvatar | null) {
 
 // Account preferences that follow the person between browsers. Absent keys
 // mean "use the default", so a patch merges rather than replaces.
-export type UserSettings = {
-  // The player's virtual dice (src/lib/dice/dice-look.ts); absent means
-  // the tray's original look.
-  diceLook?: DiceLook;
-};
+export type UserSettings = Record<string, never>;
 
 export function getUserSettings(userId: string): UserSettings {
   const row = getDatabase()

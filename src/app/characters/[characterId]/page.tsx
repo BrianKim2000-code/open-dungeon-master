@@ -1,9 +1,9 @@
 "use client";
 
 import { PageSkeleton } from "@/components/PageSkeleton";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { AvatarCropDialog } from "@/app/settings/AvatarCropDialog";
 import { AppHeader } from "@/components/AppHeader";
 import { KebabMenu, type KebabItem } from "@/components/KebabMenu";
@@ -12,10 +12,8 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { cn } from "@/lib/cn";
 import { downloadBlob, filenameSlug } from "@/lib/download";
-import { downloadCharacterSheetPdf } from "@/lib/pdf/download";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { CharacterPortrait, ui } from "@/lib/ui";
-import { offersImages, useCapabilities } from "@/lib/use-capabilities";
 import { SheetSections, StorySoFar, type CharacterEvent } from "./SheetSections";
 import { navigateTo } from "@/lib/navigation";
 import { UseInCampaignDialog } from "./UseInCampaignDialog";
@@ -39,15 +37,11 @@ type LibraryCharacter = {
   background: string;
   level: number;
   xp: number;
-  portraitStatus?: "queued" | "generating" | "failed" | null;
   campaigns?: CharacterAssignment[];
   sheet: CreateSheetInput;
   updatedAt: string;
 };
 
-// Matches the ComfyUI generation timeout; polling stops even if the server
-// never resolves the job.
-const PORTRAIT_POLL_LIMIT = 240;
 
 function titleCase(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -62,31 +56,11 @@ export default function CharacterDetailPage({
   const [character, setCharacter] = useState<LibraryCharacter | null>(null);
   const [events, setEvents] = useState<CharacterEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pdfBusy, setPdfBusy] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [cropping, setCropping] = useState(false);
   const [seating, setSeating] = useState(false);
-  const [painting, setPainting] = useState(false);
-  const [portraitError, setPortraitError] = useState("");
-  // "Paint one" only where the server has an image model to paint with.
-  const canPaint = offersImages(useCapabilities());
-  const pollCount = useRef(0);
-
-  async function handleDownloadPdf() {
-    if (!character) {
-      return;
-    }
-    setPdfBusy(true);
-    try {
-      // The PDF builder (pdf-lib) loads on demand; see lib/pdf/download.
-      const { libraryToPdfCharacter } = await import("@/lib/pdf/character-sheet-pdf");
-      await downloadCharacterSheetPdf(libraryToPdfCharacter(character));
-    } finally {
-      setPdfBusy(false);
-    }
-  }
 
   // The whole character as one JSON file, portrait inlined, for carrying to
   // another device or server (see src/lib/character-bundle.ts).
@@ -126,17 +100,14 @@ export default function CharacterDetailPage({
     });
     if (response.ok) {
       setCharacter((current) =>
-        current
-          ? { ...current, portraitStatus: null, sheet: { ...current.sheet, portrait } }
-          : current,
+        current ? { ...current, sheet: { ...current.sheet, portrait } } : current,
       );
     }
   }
 
-  // The third choice beside upload and paint: no picture at all, which shows
+  // The third choice beside upload: no picture at all, which shows
   // the stand-in plate for the class or race (src/lib/placeholders.ts).
   async function clearToPlaceholder() {
-    setPortraitError("");
     const response = await fetch(`/api/characters/${characterId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -144,32 +115,8 @@ export default function CharacterDetailPage({
     });
     if (response.ok) {
       setCharacter((current) =>
-        current
-          ? { ...current, portraitStatus: null, sheet: { ...current.sheet, portrait: null } }
-          : current,
+        current ? { ...current, sheet: { ...current.sheet, portrait: null } } : current,
       );
-    }
-  }
-
-  // Queues a fresh render; the poll that watches creation renders picks up
-  // the result the same way.
-  async function paintPortrait() {
-    setPortraitError("");
-    setPainting(true);
-    try {
-      const response = await fetch(`/api/characters/${characterId}/portrait`, { method: "POST" });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setPortraitError(data.error ?? "Could not queue the portrait.");
-        return;
-      }
-      setCharacter((current) =>
-        current
-          ? { ...current, portraitStatus: "queued", sheet: { ...current.sheet, portrait: null } }
-          : current,
-      );
-    } finally {
-      setPainting(false);
     }
   }
 
@@ -202,26 +149,6 @@ export default function CharacterDetailPage({
       .finally(() => setLoading(false));
   }, [characterId]);
 
-  // While the portrait renders in the background, re-fetch until it lands.
-  const portraitPending =
-    character?.portraitStatus === "queued" || character?.portraitStatus === "generating";
-  useEffect(() => {
-    if (!portraitPending || pollCount.current >= PORTRAIT_POLL_LIMIT) {
-      return;
-    }
-    const id = setTimeout(() => {
-      pollCount.current += 1;
-      fetch(`/api/characters/${characterId}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => {
-          if (data?.character) {
-            setCharacter(data.character);
-          }
-        });
-    }, 2500);
-    return () => clearTimeout(id);
-  }, [portraitPending, character, characterId]);
-
   if (loading) {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
@@ -253,14 +180,6 @@ export default function CharacterDetailPage({
   // right-click or long press on the header. Each hint is the sentence the
   // old button carried as its tooltip.
   const actions: KebabItem[] = [
-    {
-      id: "pdf",
-      label: pdfBusy ? "Preparing..." : "Download PDF",
-      hint: "Download this character sheet as a fillable PDF",
-      glyph: "ui-export",
-      disabled: pdfBusy,
-      onSelect: () => void handleDownloadPdf(),
-    },
     {
       id: "export",
       label: exporting ? "Exporting..." : "Export",
@@ -300,18 +219,6 @@ export default function CharacterDetailPage({
       separated: true,
       onSelect: () => setCropping(true),
     },
-    ...(canPaint
-      ? [
-          {
-            id: "paint",
-            label: portraitPending ? "Painting..." : "Paint one",
-            hint: "Paint a new portrait on this server's image model",
-            glyph: "ui-paint",
-            disabled: painting || portraitPending,
-            onSelect: () => void paintPortrait(),
-          },
-        ]
-      : []),
     ...(sheet.portrait
       ? [
           {
@@ -324,7 +231,7 @@ export default function CharacterDetailPage({
         ]
       : []),
   ];
-  const working = pdfBusy || exporting || cloning || painting;
+  const working = exporting || cloning;
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
@@ -342,13 +249,6 @@ export default function CharacterDetailPage({
                 caption={character.name}
                 className="size-20 shrink-0 rounded-xl border border-amber-500/30 object-cover shadow-glow-gold sm:size-24"
               />
-            ) : portraitPending ? (
-              <span
-                title="Painting portrait..."
-                className="flex size-20 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-stone-900 sm:size-24"
-              >
-                <Loader2 className="size-5 animate-spin text-amber-200" />
-              </span>
             ) : (
               <CharacterPortrait
                 look={{ race: character.race, class: character.class, gender: sheet.gender }}
@@ -377,9 +277,6 @@ export default function CharacterDetailPage({
               {character.subclass ? ` (${character.subclass})` : ""}
               {character.background ? ` · ${titleCase(character.background)}` : ""}
             </p>
-            {!sheet.portrait && character.portraitStatus === "failed" ? (
-              <p className="reveal mt-1 text-xs text-stone-500">Portrait couldn&apos;t be generated.</p>
-            ) : null}
             {/* Each campaign holds its own copy of this sheet, so one library
                 entry can be at several tables at once. Naming them is what
                 makes "which game is this one in?" answerable. */}
@@ -422,20 +319,13 @@ export default function CharacterDetailPage({
             heading={character.name}
             busy={working}
           />
-          {working || portraitPending ? (
+          {working ? (
             <span role="status" className="live-in text-xs text-stone-400">
-              {pdfBusy
-                ? "Preparing the PDF..."
-                : exporting
-                  ? "Exporting..."
-                  : cloning
-                    ? "Copying..."
-                    : "Painting the portrait..."}
+              {exporting ? "Exporting..." : cloning ? "Copying..." : "Working..."}
             </span>
           ) : null}
         </div>
         {exportError ? <p role="alert" className="motion-shake mt-2 text-sm text-red-400">{exportError}</p> : null}
-        {portraitError ? <p role="alert" className="motion-shake mt-2 text-sm text-red-400">{portraitError}</p> : null}
       </ContextMenu>
 
       <SheetSections sheet={sheet} level={character.level} />

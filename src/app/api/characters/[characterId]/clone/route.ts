@@ -1,6 +1,5 @@
 import { currentUser, unauthorized } from "@/lib/auth";
 import { duplicateCharacter } from "@/lib/db/characters";
-import { portraitStatus } from "@/lib/portrait";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +27,6 @@ export async function POST(
     {
       character: {
         ...character,
-        portraitStatus: portraitStatus(character.id),
         campaigns: [],
       },
     },

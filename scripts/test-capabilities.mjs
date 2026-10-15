@@ -40,24 +40,6 @@ function utilityConfigured({ utilityModel = "" }) {
   return Boolean(utilityModel.trim());
 }
 
-// Mirrors imagesConfigured / imagesProbeUrl in src/lib/capabilities.ts.
-function imagesConfigured(backend, hasOpenaiKey, explicitUrl, defaultReachable) {
-  if (backend === "openai") {
-    return hasOpenaiKey;
-  }
-  return Boolean(explicitUrl.trim()) || defaultReachable;
-}
-
-function imagesProbeUrl(backend, comfyBaseUrl, fluxWorkerUrl) {
-  if (backend === "comfyui") {
-    return `${comfyBaseUrl.replace(/\/+$/, "")}/system_stats`;
-  }
-  if (backend === "mflux-hs" || backend === "sdnq-hs") {
-    return `${fluxWorkerUrl.replace(/\/+$/, "")}/health`;
-  }
-  return "";
-}
-
 
 function storyProbeUrl({ textProvider, customBaseUrl = "" }, ollamaBaseUrl) {
   if (textProvider === "none") {
@@ -149,45 +131,11 @@ check("an empty utility model means the utility lane is off", () => {
   assert.equal(utilityConfigured({ utilityModel: "gemma4:e4b-it-qat" }), true);
 });
 
-// Self-hosted image backends resolve to a default URL even when nothing was
-// configured, so only the key-gated OpenAI backend can be positively absent.
-// A fresh install defaults to ComfyUI with nothing listening on :8188. That
-// must read as "no image AI", or every upload-or-paint control keeps offering
-// a paint button that fails, and every new character reports a failed portrait.
-check("openai images need a key; self-hosted backends need a URL or a live default", () => {
-  assert.equal(imagesConfigured("openai", false, "", true), false);
-  assert.equal(imagesConfigured("openai", true, "", false), true);
-  for (const backend of ["comfyui", "mflux-hs", "sdnq-hs"]) {
-    assert.equal(imagesConfigured(backend, false, "", false), false, `${backend} bare default`);
-    assert.equal(imagesConfigured(backend, false, "", true), true, `${backend} live default`);
-    assert.equal(
-      imagesConfigured(backend, false, "http://gpu-box:8188", false),
-      true,
-      `${backend} explicit URL counts even when down`,
-    );
-    assert.equal(imagesConfigured(backend, false, "   ", false), false, `${backend} blank URL`);
-  }
-});
-
-check("the image probe hits ComfyUI's system_stats or the FLUX worker's health", () => {
-  assert.equal(
-    imagesProbeUrl("comfyui", "http://127.0.0.1:8188/", ""),
-    "http://127.0.0.1:8188/system_stats",
-  );
-  assert.equal(imagesProbeUrl("mflux-hs", "", "http://127.0.0.1:7869"), "http://127.0.0.1:7869/health");
-  assert.equal(imagesProbeUrl("sdnq-hs", "", "http://127.0.0.1:7869/"), "http://127.0.0.1:7869/health");
-  assert.equal(imagesProbeUrl("openai", "http://127.0.0.1:8188", "http://127.0.0.1:7869"), "");
-});
-
-// The enqueue sites must ask before they promise a picture; otherwise a
-// no-AI host records a failed portrait for every character it creates.
-check("portrait renders are gated on imagesAvailable", () => {
-  const portrait = readFileSync(path.join(root, "src/lib/portrait.ts"), "utf8");
-  assert.match(portrait, /import \{ imagesAvailable \} from "@\/lib\/capabilities"/);
-  assert.equal((portrait.match(/whenImagesAvailable\(/g) || []).length >= 4, true);
-  // The settings argument is OPTIONAL on purpose: a library portrait belongs
-  // to no campaign and must keep asking the server-wide question.
-  assert.match(source, /export async function imagesAvailable\(\s*(settings\?:|\))/);
+// There is no image generator any more: the capability answer is always no,
+// which is what turns every upload-or-paint control into an upload-only one.
+check("the image capability is permanently off", () => {
+  assert.match(source, /export function imagesConfigured\(\): boolean \{\s*return false;/);
+  assert.match(source, /images: \{ configured: false, reachable: false, backend: "", openaiPlace: "" \}/);
 });
 
 // The story probe must accept whatever URL shape the owner pasted, the same

@@ -13,7 +13,6 @@ import { readLoad, useLoadStatus } from "@/lib/load-state";
 import { DisclosureHead, quietRow } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import { MONSTER_NAME_MAX, type MonsterDraft, type MonsterReadout } from "@/lib/bestiary/monster-draft";
 import { Sheet } from "@/components/ui/Sheet";
-import { useTourPrepare } from "@/lib/tours/prepare";
 import { MonsterBuildControls } from "@/app/workshop/bestiary/MonsterBuildControls";
 import { MonsterEditor } from "@/app/workshop/bestiary/MonsterEditor";
 import { MonsterRows } from "@/app/workshop/bestiary/MonsterRows";
@@ -52,9 +51,6 @@ export function DmBestiaryPanel({
   const [editorOpen, setEditorOpen] = useState(false);
   const [building, setBuilding] = useState(false);
   // The tour's "unfold the builder" step.
-  useTourPrepare((name) => {
-    if (name === "open-monster-build") setBuilding(true);
-  });
   const [draft, setDraft] = useState<MonsterDraft | null>(null);
   const [desc, setDesc] = useState("");
   const [readout, setReadout] = useState<MonsterReadout | null>(null);

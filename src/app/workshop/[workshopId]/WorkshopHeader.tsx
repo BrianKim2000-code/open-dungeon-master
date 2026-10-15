@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CircleHelp, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { headIcon } from "@/app/workshop/kit";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
@@ -19,11 +19,9 @@ import type { WorkshopSummary } from "@/app/workshop/types";
 export function WorkshopHeader({
   workshop,
   onRenamed,
-  onHelp,
 }: {
   workshop: WorkshopSummary;
   onRenamed: (title: string) => void;
-  onHelp: () => void;
 }) {
   const router = useRouter();
   const [renaming, setRenaming] = useState(false);
@@ -123,16 +121,6 @@ export function WorkshopHeader({
           </>
         )}
         <div className="ml-auto flex items-center gap-1" data-tour="hub-actions">
-          <button
-            type="button"
-            aria-label="How workshops work"
-            title="Guides and tours"
-            onClick={onHelp}
-            data-tour="hub-help"
-            className={cn(ui.iconAction, headIcon)}
-          >
-            <CircleHelp className="size-4" />
-          </button>
           <button
             type="button"
             disabled={cloning}

@@ -28,15 +28,11 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { JOIN_NOTE_PREFIX, latestUnintroducedJoin } from "@/lib/campaign-types";
 import { composerLimit, textLength } from "@/lib/text-limits";
-import { markTourSeen, tourSeen } from "@/lib/tours/logic";
-import { DM_TOUR, DM_TOUR_ID, PLAYER_TOUR, PLAYER_TOUR_ID } from "@/lib/tours/table";
 import { Composer, type InputKind } from "@/app/campaigns/[campaignId]/Composer";
 import { composerGate } from "@/app/campaigns/[campaignId]/composerGate";
-import { DiceOverlay } from "@/app/campaigns/[campaignId]/DiceOverlay";
 import { secretAudience } from "@/lib/dice/secret-audience";
 import {
   requestMotionAccess,
@@ -78,22 +74,19 @@ const LevelUpDialog = lazy(() =>
 );
 
 // What a table only needs when someone reaches for it: the dialogs, the
-// tours, the character gate and the board. Each is its own download,
+// character gate and the board. Each is its own download,
 // fetched when the browser is idle after the table is up (with the side
 // panels, side-panel-loaders.ts), so it is already here when it is opened.
 // The dialogs that animate closed mount on first open and then stay
 // mounted (useOpenedOnce), so their exit animation still plays.
 const tablePieces = {
-  HelpDialog: preloadable(() => import("@/components/HelpDialog").then((module) => module.HelpDialog)),
-  GuidedTour: preloadable(() => import("@/components/ui/GuidedTour").then((module) => module.GuidedTour)),
   CharacterGate: preloadable(() => import("@/app/campaigns/[campaignId]/CharacterGate").then((module) => module.CharacterGate)),
-  DiceLookDialog: preloadable(() => import("@/components/DiceLookEditor").then((module) => module.DiceLookDialog)),
   DiceTrayDialog: preloadable(() => import("@/app/campaigns/[campaignId]/DiceTrayDialog").then((module) => module.DiceTrayDialog)),
   LoreCheckDialog: preloadable(() => import("@/app/campaigns/[campaignId]/LoreCheckDialog").then((module) => module.LoreCheckDialog)),
   RenarrateDialog: preloadable(() => import("@/app/campaigns/[campaignId]/RenarrateDialog").then((module) => module.RenarrateDialog)),
   LabelSheet: preloadable(() => import("@/app/campaigns/[campaignId]/LabelSheet").then((module) => module.LabelSheet)),
 };
-const { HelpDialog, GuidedTour, CharacterGate, DiceLookDialog, DiceTrayDialog, LoreCheckDialog, RenarrateDialog, LabelSheet } = tablePieces;
+const { CharacterGate, DiceTrayDialog, LoreCheckDialog, RenarrateDialog, LabelSheet } = tablePieces;
 const { BattleMapPanel } = panels;
 
 // True from the first time `open` is true: a dialog mounts then and stays.
@@ -123,53 +116,6 @@ function usePreloadTable() {
       window.clearTimeout(idle as number);
     };
   }, []);
-}
-
-// The localStorage-backed preferences below are read as external stores.
-// Each keeps its last answer and forgets it only when its own event says
-// something changed, so a render never touches localStorage; the events
-// subscribed to are the same ones as before, nothing more.
-const DICE3D_EVENT = "odm-dice3d-pref";
-let dice3dCache: boolean | null = null;
-
-function readDice3d(): boolean {
-  if (dice3dCache === null) {
-    dice3dCache = window.localStorage.getItem("odm:dice3d") !== "off";
-  }
-  return dice3dCache;
-}
-
-function subscribeDicePref(callback: () => void) {
-  const listener = () => {
-    dice3dCache = null;
-    callback();
-  };
-  window.addEventListener(DICE3D_EVENT, listener);
-  return () => window.removeEventListener(DICE3D_EVENT, listener);
-}
-
-// The once-only flag of each table tour, read the way the dice preference
-// is: from localStorage as an external store, so finishing a tour in one
-// tab is known to every other.
-const TOUR_SEEN_EVENT = "odm-tour-seen";
-const tourSeenCache = new Map<string, boolean>();
-
-function readTourSeen(tourId: string): boolean {
-  let seen = tourSeenCache.get(tourId);
-  if (seen === undefined) {
-    seen = tourSeen(window.localStorage, tourId);
-    tourSeenCache.set(tourId, seen);
-  }
-  return seen;
-}
-
-function subscribeTourSeen(callback: () => void) {
-  const listener = () => {
-    tourSeenCache.clear();
-    callback();
-  };
-  window.addEventListener(TOUR_SEEN_EVENT, listener);
-  return () => window.removeEventListener(TOUR_SEEN_EVENT, listener);
 }
 
 // The play table. Header, the story column, the docked context column and
@@ -240,25 +186,11 @@ export function SessionView({
   const [renarrate, setRenarrate] = useState<CampaignMessage | null>(null);
   // Bumped on pin/unpin so the pins panel refetches without a stream event.
   const [pinsVersion, setPinsVersion] = useState(0);
-  // The guided tour on screen, if any: the player's or the DM's.
-  const [tour, setTour] = useState<"player" | "dm" | null>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
-  const dice3d = useSyncExternalStore(subscribeDicePref, readDice3d, () => true);
-  const toggleDice3d = useCallback(() => {
-    window.localStorage.setItem("odm:dice3d", dice3d ? "off" : "on");
-    window.dispatchEvent(new Event(DICE3D_EVENT));
-  }, [dice3d]);
-  const [diceLookOpen, setDiceLookOpen] = useState(false);
-  const openDiceLook = useCallback(() => setDiceLookOpen(true), []);
   const [diceTrayOpen, setDiceTrayOpen] = useState(false);
   const openDiceTray = useCallback(() => setDiceTrayOpen(true), []);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const openHelp = useCallback(() => setHelpOpen(true), []);
   usePreloadTable();
-  const helpMounted = useOpenedOnce(helpOpen);
-  const diceLookMounted = useOpenedOnce(diceLookOpen);
   const diceTrayMounted = useOpenedOnce(diceTrayOpen);
-  const tourMounted = useOpenedOnce(tour !== null);
 
   // Shake to roll is a device preference; while it is on here, this
   // member's rolls are held at the campaign so the phone can release them.
@@ -377,34 +309,6 @@ export function SessionView({
     setKind("narrate");
   }
 
-  // The tour for this seat runs once, the first time the table is sat at,
-  // after the layout has had a moment to settle. Help replays it.
-  const tourId = isDm ? DM_TOUR_ID : PLAYER_TOUR_ID;
-  const tourAlreadySeen = useSyncExternalStore(
-    subscribeTourSeen,
-    () => readTourSeen(tourId),
-    () => true,
-  );
-  // A phone starts the tour on the chat column: which steps apply is read
-  // off the page before any step's prepare runs, and a fight with a map
-  // opens the phone on the board, which would drop every composer step.
-  const startTour = useCallback(
-    (which: "player" | "dm") => {
-      setMobileView("chat");
-      setTour(which);
-    },
-    [setMobileView],
-  );
-  useEffect(() => {
-    if (tourAlreadySeen) return;
-    const timer = window.setTimeout(() => startTour(isDm ? "dm" : "player"), 1200);
-    return () => clearTimeout(timer);
-  }, [tourAlreadySeen, isDm, startTour]);
-  const closeTour = useCallback(() => {
-    markTourSeen(window.localStorage, tourId);
-    window.dispatchEvent(new Event(TOUR_SEEN_EVENT));
-    setTour(null);
-  }, [tourId]);
   const myName = actingSheet?.name ?? "your character";
   const meId = me?.id ?? "";
   // Muted by the party lead: the server refuses the send, so the box says
@@ -592,37 +496,6 @@ export function SessionView({
     [caps.adjudicates, state.messages, state.rolls, beatThreshold, beatSnoozedUntil],
   );
   const openStoryCapture = useCallback(() => selectPanelView("dm"), [selectPanelView]);
-  // What a tour step needs on screen before it can point at anything: the
-  // right side-panel tab, or on a phone the chat column. While the fight
-  // stage holds the board, the Battle tab shows the party, so the maps
-  // step opens the Map tab instead.
-  const hasBattleMap = Boolean(state.battleMap);
-  const boardInTab = hasBattleMap && !(docked && stageView === "board");
-  const prepareTourStep = useCallback(
-    (name: string) => {
-      switch (name) {
-        case "show-chat":
-          setMobileView("chat");
-          break;
-        case "open-dm":
-          selectPanelView("dm");
-          break;
-        case "open-party":
-          selectPanelView("party");
-          break;
-        case "open-story":
-          selectPanelView("story");
-          break;
-        case "open-map":
-          selectPanelView(boardInTab ? "battle" : "map");
-          break;
-        case "open-chat":
-          selectPanelView("chat");
-          break;
-      }
-    },
-    [selectPanelView, setMobileView, boardInTab],
-  );
   const snoozeStory = useCallback(() => setBeatSnoozedUntil(snoozeUntil(Date.now())), []);
   // The cadence memo above only reruns on new messages or rolls, so at a
   // quiet table a snooze would outlive its own expiry. Clearing it when the
@@ -704,12 +577,8 @@ export function SessionView({
         title={campaign.title}
         scene={campaign.scene}
         user={me}
-        dice3d={dice3d}
-        onToggleDice3d={toggleDice3d}
-        onCustomizeDice={openDiceLook}
         onRollDice={openDiceTray}
         shake={shake}
-        onHelp={openHelp}
         stage={state.battleMap && docked ? { on: stageView === "board", onToggle: toggleStage } : undefined}
         ribbon={
           state.encounter?.status === "active" ? (
@@ -942,7 +811,6 @@ export function SessionView({
         steersStory={steersStory}
       />
 
-      {dice3d ? <DiceOverlay latestRoll={state.latestRoll} enabled /> : null}
       <SceneTitle card={state.titleCard} onShown={markTitleCardShown} />
       <SafetyPause campaignId={campaign.id} paused={state.safetyPause !== null} steersStory={steersStory} />
       <HandoutStage
@@ -963,7 +831,6 @@ export function SessionView({
       {labelMounted ? (
         <LabelSheet campaignId={campaign.id} label={openedLabel} onClose={() => setOpenedLabel(null)} />
       ) : null}
-      {diceLookMounted ? <DiceLookDialog open={diceLookOpen} onOpenChange={setDiceLookOpen} /> : null}
       {diceTrayMounted ? (
       <DiceTrayDialog
         open={diceTrayOpen}
@@ -974,38 +841,6 @@ export function SessionView({
           steersStory: caps.steersStory,
           aiTable: campaign.gameSettings?.dmMode === "ai" || campaign.gameSettings?.dmMode === "steered",
         })}
-      />
-      ) : null}
-
-      {helpMounted ? (
-      <HelpDialog
-        open={helpOpen}
-        onOpenChange={setHelpOpen}
-        tours={[
-          {
-            label: "Tour the table",
-            detail: "How a player takes a turn, asks the DM, and finds the party, the story and the maps.",
-            onStart: () => startTour("player"),
-          },
-          ...(caps.adjudicates
-            ? [
-                {
-                  label: "Tour the DM console",
-                  detail: "The floor, story beats, hand-over switches, the queue and the tools.",
-                  onStart: () => startTour("dm"),
-                },
-              ]
-            : []),
-        ]}
-      />
-      ) : null}
-
-      {tourMounted ? (
-      <GuidedTour
-        open={tour !== null}
-        steps={tour === "dm" ? DM_TOUR : PLAYER_TOUR}
-        onPrepare={prepareTourStep}
-        onClose={closeTour}
       />
       ) : null}
 

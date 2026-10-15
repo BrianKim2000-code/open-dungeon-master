@@ -3,11 +3,10 @@
 import { LoadFailed } from "@/app/campaigns/[campaignId]/PanelKit";
 import { readLoad, useLoadStatus } from "@/lib/load-state";
 import { EmptyState } from "@/components/EmptyState";
-import { CircleHelp, Copy, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Loader2, Plus, Trash2 } from "lucide-react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SectionHead } from "@/components/ui/SectionHead";
-import { headIcon } from "@/app/workshop/kit";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
@@ -19,10 +18,6 @@ import { ContextMenu } from "@/components/ui/ContextMenu";
 import { AppHeader } from "@/components/AppHeader";
 import { DEFAULT_TARGET_PARTY } from "@/lib/workshop/kind";
 import { ImportBundleButton } from "@/app/workshop/ImportBundleButton";
-import { WorkshopHelpDialog } from "@/components/WorkshopHelpDialog";
-import { GuidedTour } from "@/components/ui/GuidedTour";
-import { markTourSeen, tourSeen } from "@/lib/tours/logic";
-import { SHELF_TOUR, SHELF_TOUR_ID } from "@/lib/tours/workshop";
 import type { WorkshopSummary } from "@/app/workshop/types";
 import { navigateTo } from "@/lib/navigation";
 
@@ -48,21 +43,6 @@ export default function WorkshopListPage() {
   const [busy, setBusy] = useState(false);
   const [cloningId, setCloningId] = useState("");
   const [error, setError] = useState("");
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [touring, setTouring] = useState(false);
-
-  // The shelf's tour runs once, the first time the shelf is seen with its
-  // list drawn. Help replays it.
-  useEffect(() => {
-    if (loading || tourSeen(window.localStorage, SHELF_TOUR_ID)) return;
-    const timer = window.setTimeout(() => setTouring(true), 900);
-    return () => clearTimeout(timer);
-  }, [loading]);
-  function closeTour() {
-    markTourSeen(window.localStorage, SHELF_TOUR_ID);
-    setTouring(false);
-  }
-
   useEffect(() => {
     let cancelled = false;
     readLoad<{ workshops?: WorkshopSummary[] }>(fetch("/api/workshops"), "Your workshops").then((outcome) => {
@@ -151,31 +131,8 @@ export default function WorkshopListPage() {
               it when you start a campaign.
             </p>
           </div>
-          <button
-            type="button"
-            aria-label="How workshops work"
-            title="Guides and tours"
-            onClick={() => setHelpOpen(true)}
-            data-tour="shelf-help"
-            className={cn(ui.iconAction, headIcon, "ml-auto self-start")}
-          >
-            <CircleHelp className="size-4" />
-          </button>
         </div>
       </header>
-      <WorkshopHelpDialog
-        open={helpOpen}
-        onOpenChange={setHelpOpen}
-        tours={[
-          {
-            label: "Tour the shelf",
-            detail: "Starting a workshop, importing a bundle, and what the tiles do.",
-            onStart: () => setTouring(true),
-          },
-        ]}
-      />
-      <GuidedTour open={touring} steps={SHELF_TOUR} onClose={closeTour} />
-
       <section className="mb-6">
         {creating ? (
           <form onSubmit={create} className={`${ui.card} reveal ornate space-y-3 p-4`}>

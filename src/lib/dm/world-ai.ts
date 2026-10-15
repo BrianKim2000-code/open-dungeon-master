@@ -3,21 +3,15 @@ import { arcTextTimeoutMs } from "@/lib/model-client";
 import { requestUtilityMessage } from "@/lib/dm/model";
 import { withLanguage } from "@/lib/dm/table-language-logic";
 import { stripReasoningArtifacts } from "@/lib/story-prompt";
-import { generateStoryImage } from "@/lib/image-generate";
-import { toEnglishForImage } from "@/lib/image-english";
-import { enqueueMediaJob } from "@/lib/media-queue";
-import { presetFor } from "@/lib/worlds/preset";
-import { configuredDefaultStorySettings } from "@/lib/runtime-defaults";
-import { copyIntoUploads, whenImagesAvailable } from "@/lib/portrait";
-import { updateWorldEntity, worldView } from "@/lib/db/world-forge";
-import { askMessages, draftMessages, forgeMessages, paintPrompt, readForgeReply, replyJson, worldDigest, type ForgePreview } from "@/lib/worldforge/forge";
+import { worldView } from "@/lib/db/world-forge";
+import { askMessages, draftMessages, forgeMessages, readForgeReply, replyJson, worldDigest, type ForgePreview } from "@/lib/worldforge/forge";
 import { mentionSegments } from "@/lib/worldforge/text";
 import { fieldLines, formatYear, sortEvents } from "@/lib/worldforge/time";
 import { typeFor } from "@/lib/worldforge/model";
 
 // WorldForge's AI tools against the workshop's own models: the forge (notes
 // into entries and links, previewed, nothing written), ask the world, draft
-// an entry, paint an entry. Each is optional equipment: a server with no
+// an entry. Each is optional equipment: a server with no
 // text model answers with the model's error and the panel never offers the
 // button in the first place (src/lib/use-capabilities.ts).
 
@@ -77,33 +71,4 @@ export async function draftEntry(campaign: Campaign, ref: string, hint: string):
     draftMessages({ worldName: campaign.title, name: entity.name, typeName: type.name, known, hiddenTruth: entity.entry.hiddenTruth, hint }),
   );
   return typeof reply === "string" ? { text: reply.slice(0, 12_000) } : reply;
-}
-
-// Fire and forget on the serial media queue (one GPU, shared with the DM
-// model). Nothing is promised when the server has no image backend.
-export function paintEntry(campaign: Campaign, ref: string): boolean {
-  const { doc, entities } = worldView(campaign.id);
-  const entity = entities.find((entry) => entry.ref === ref);
-  if (!entity) return false;
-  const type = typeFor(doc, entity.shelf, entity.entry.typeId);
-  // The genre's portrait style is for faces; anything else only takes the
-  // genre's name, or a relic comes out as a cloaked figure.
-  const style =
-    entity.shelf === "npc"
-      ? presetFor({ genre: campaign.gameSettings.genre, worldPack: campaign.gameSettings.worldPack }).portraitStyle
-      : `${campaign.gameSettings.genre.replace(/_/g, " ")} setting`;
-  const about = [entity.tagline, entity.entry.article || entity.text].filter(Boolean).join(" ");
-  void whenImagesAvailable(() =>
-    enqueueMediaJob(`world picture ${ref}`, async () => {
-      try {
-        const english = await toEnglishForImage(campaign, { type: type.name, about });
-        const prompt = paintPrompt(entity.shelf, english.type, english.about, style);
-        const image = await generateStoryImage(configuredDefaultStorySettings(), { prompt, mode: "fast", aspect: entity.shelf === "location" ? "landscape" : "square" });
-        updateWorldEntity(campaign.id, ref, { portrait: copyIntoUploads(image.url).url });
-      } catch (error) {
-        console.error(`[worldforge] picture failed for ${ref}:`, error);
-      }
-    }),
-  );
-  return true;
 }

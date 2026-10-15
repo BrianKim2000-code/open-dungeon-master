@@ -41,14 +41,10 @@ function statusTone(status: HarnessStatus): { tone: "ready" | "warn" | "off" | "
 // its own, so choosing a program never rides along with an unrelated edit.
 export function AdminHarnessSection({
   textProvider,
-  imagesBackend = "",
   onConfig,
   speedNotes = {},
 }: {
   textProvider: string;
-  // The server's default picture backend, to say whether the tables already
-  // paint with the agent.
-  imagesBackend?: string;
   onConfig: (patch: AdminConfigDraftPatch) => void;
   // What the last Fast calls ran at (issue 255).
   speedNotes?: Partial<Record<SpeedChannel, SpeedNote>>;
@@ -163,24 +159,6 @@ export function AdminHarnessSection({
     }
   }
 
-  // The test's "Paint the tables' pictures with it" changed the saved
-  // settings on the server: both this section's draft and the panel's copy
-  // take them up, or the next save here or there would switch it back off.
-  async function adopted() {
-    const settings = await fetch("/api/admin/settings")
-      .then((response) => (response.ok ? response.json() : null))
-      .catch(() => null);
-    if (settings?.config) {
-      onConfig({
-        harness: { images: settings.config.harness.images },
-        images: { defaultBackend: settings.config.images.defaultBackend },
-      });
-      setDraft(settings.config.harness as HarnessConfig);
-      setData((current) => (current ? { ...current, config: settings.config.harness } : current));
-    }
-    void load(true);
-  }
-
   const models = chosen?.models ?? [];
   const usage = data.usage;
 
@@ -238,9 +216,6 @@ export function AdminHarnessSection({
                   {status.lockdown === "removed" ? <ShieldCheck className="size-3.5" /> : <ShieldHalf className="size-3.5" />}
                   {status.lockdown === "removed" ? "Own tools removed" : "Own tools boxed in"}
                   {status.lockdownProven ? "" : " (untested)"}
-                </span>
-                <span className="hx-chip">
-                  {status.nativeImages === "no" ? "No pictures" : status.nativeImages === "verified" ? "Paints (checked)" : "Paints (untested)"}
                 </span>
               </span>
             </button>
@@ -354,24 +329,6 @@ export function AdminHarnessSection({
                 />
               </Field>
             </div>
-            {chosen.nativeImages !== "no" ? (
-              <label className="flex items-center gap-3 text-sm text-stone-300">
-                <Switch
-                  label="Let it paint for the tables"
-                  on={draft.images === "native"}
-                  disabled={chosen.nativeImages !== "verified"}
-                  onChange={(on) => setDraft({ ...draft, images: on ? "native" : "off" })}
-                />
-                <span>
-                  Let it paint for the tables
-                  <span className="block text-xs text-stone-500">
-                    {chosen.nativeImages === "verified"
-                      ? "Tables can choose it as their image backend."
-                      : "Available once a test picture below comes back."}
-                  </span>
-                </span>
-              </label>
-            ) : null}
             <Field label="Path to the program (advanced)" hint="Blank finds it on its own, even when the server was started without your shell's PATH.">
               <input
                 className={ui.input}
@@ -410,14 +367,7 @@ export function AdminHarnessSection({
       </div>
 
       {chosen && data.config.id === chosen.id ? (
-        <HarnessTestPanel
-          saved={savedChoice}
-          paints={chosen.nativeImages !== "no"}
-          picturesVerified={Boolean(data.config.imagesVerifiedAt)}
-          picturesForTables={data.config.images === "native" && imagesBackend === "harness"}
-          onVerified={() => void load(true)}
-          onAdopted={() => void adopted()}
-        />
+        <HarnessTestPanel saved={savedChoice} />
       ) : null}
 
       {usage ? (

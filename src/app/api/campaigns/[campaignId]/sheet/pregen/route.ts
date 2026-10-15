@@ -5,7 +5,6 @@ import { createCharacter } from "@/lib/db/characters";
 import { createSheet, getSheetForUser } from "@/lib/db/sheets";
 import { seatAddedSheet } from "@/lib/character-seat";
 import { publishPersisted } from "@/lib/events";
-import { queueLibraryPortrait } from "@/lib/portrait";
 import { createSheetSchema } from "@/lib/schemas/sheet";
 import { pregenById } from "@/lib/starter/pregens";
 
@@ -54,7 +53,6 @@ export async function POST(
   const libraryCharacter = createCharacter(context.user.id, context.campaign.startingLevel, admitted.sheet);
   const sheet = createSheet(campaignId, context.user.id, context.campaign.startingLevel, admitted.sheet, libraryCharacter.id);
   admitted.settle();
-  queueLibraryPortrait(libraryCharacter);
   seatAddedSheet(context.campaign, context.user.id, sheet.id);
   publishPersisted(campaignId, "sheet_updated", { sheet });
   return Response.json({ sheet }, { status: 201 });

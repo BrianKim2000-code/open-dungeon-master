@@ -176,18 +176,17 @@ server.close();
 {
   const chat = table("Harness charge", 1);
   const harness = { ...chat, settings: { ...chat.settings, textProvider: "harness" } };
-  const imageEnabled = chat.settings.imageGenerationEnabled && chat.settings.autoImages;
   const chatTokens = dmTurnToolTokens(chat);
   assert.equal(
     chatTokens,
     Math.max(
-      estimateTokens(JSON.stringify(dmTurnTools(chat, false, imageEnabled, false))),
-      estimateTokens(JSON.stringify(dmTurnTools(chat, true, imageEnabled, false))),
+      estimateTokens(JSON.stringify(dmTurnTools(chat, false, false))),
+      estimateTokens(JSON.stringify(dmTurnTools(chat, true, false))),
     ),
     "a chat table is still charged the larger of its two sets",
   );
   const harnessTokens = dmTurnToolTokens(harness);
-  assert.equal(harnessTokens, estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(harness, imageEnabled, false)))));
+  assert.equal(harnessTokens, estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(harness, false)))));
   assert.ok(harnessTokens > chatTokens, `the whole catalogue (${harnessTokens}) costs more than either set (${chatTokens})`);
   assert.equal(
     promptWindowTokens(131_072, harnessTokens),
